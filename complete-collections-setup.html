@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Firebase Collections Setup</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background: #f5f5f5;
+    }
+    .setup-section { 
+      background: white; 
+      margin: 20px 0; 
+      padding: 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .result { 
+      margin: 10px 0; 
+      padding: 10px; 
+      border-radius: 5px; 
+      border-left: 4px solid #ccc;
+    }
+    .success { 
+      background: #d4edda; 
+      border-color: #28a745; 
+      color: #155724;
+    }
+    .error { 
+      background: #f8d7da; 
+      border-color: #dc3545; 
+      color: #721c24;
+    }
+    .info { 
+      background: #d1ecf1; 
+      border-color: #17a2b8; 
+      color: #0c5460;
+    }
+    .warning { 
+      background: #fff3cd; 
+      border-color: #ffc107; 
+      color: #856404;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 16px;
+    }
+    button:hover { background: #0056b3; }
+    button.success { background: #28a745; }
+    button.danger { background: #dc3545; }
+    .collection-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    .collection-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #dee2e6;
+    }
+    .collection-card h4 {
+      margin: 0 0 10px 0;
+      color: #495057;
+    }
+    .collection-card ul {
+      margin: 5px 0;
+      padding-left: 20px;
+      font-size: 14px;
+      color: #6c757d;
+    }
+    .progress {
+      width: 100%;
+      height: 20px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .progress-bar {
+      height: 100%;
+      background: #28a745;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .feature-badge {
+      display: inline-block;
+      background: #007bff;
+      color: white;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin: 2px;
+    }
+    .core { background: #28a745; }
+    .advanced { background: #17a2b8; }
+    .future { background: #6c757d; }
+  </style>
+</head>
+<body>
+  <h1>🏗️ Complete HomeShow Firebase Collections</h1>
+  <p>This will create ALL collections your HomeShow app will ever need - core features, advanced functionality, and future expansions.</p>
+  
+  <div class="setup-section">
+    <h3>📊 Collections Overview</h3>
+    <div class="collection-grid">
+      <div class="collection-card">
+        <h4>🏪 vendors <span class="feature-badge core">Core</span></h4>
+        <ul>
+          <li>Vendor profiles & booth info</li>
+          <li>Approval status & verification</li>
+          <li>Social media & contact details</li>
+          <li>Business cards & media</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🎫 attendees <span class="feature-badge core">Core</span></h4>
+        <ul>
+          <li>Attendee profiles & preferences</li>
+          <li>QR codes & short codes</li>
+          <li>Saved vendors & business cards</li>
+          <li>Privacy & consent settings</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🤝 leads <span class="feature-badge core">Core</span></h4>
+        <ul>
+          <li>Card exchanges & contacts</li>
+          <li>Lead scoring & notes</li>
+          <li>Follow-up tracking</li>
+          <li>Interaction history</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>👥 users <span class="feature-badge core">Core</span></h4>
+        <ul>
+          <li>Authentication & roles</li>
+          <li>App preferences & settings</li>
+          <li>Cross-device sync</li>
+          <li>Admin permissions</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📄 public <span class="feature-badge core">Core</span></h4>
+        <ul>
+          <li>Event information & schedule</li>
+          <li>Categories & interests lists</li>
+          <li>App configuration</li>
+          <li>Public announcements</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📅 events <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>Event schedules & sessions</li>
+          <li>Speaker information</li>
+          <li>Workshop registration</li>
+          <li>Event notifications</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🏆 contests <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>Contest entries & voting</li>
+          <li>Prize information</li>
+          <li>Winner selection</li>
+          <li>Participation tracking</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📊 analytics <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>User behavior tracking</li>
+          <li>Vendor performance metrics</li>
+          <li>Popular booths & times</li>
+          <li>Engagement statistics</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>💬 messages <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>In-app messaging system</li>
+          <li>Vendor-attendee communication</li>
+          <li>Announcement broadcasts</li>
+          <li>Support chat</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🎁 promotions <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>Special offers & discounts</li>
+          <li>Coupon management</li>
+          <li>Time-limited deals</li>
+          <li>Redemption tracking</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📱 notifications <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>Push notification logs</li>
+          <li>Email delivery tracking</li>
+          <li>SMS campaign history</li>
+          <li>Subscription management</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🗺️ maps <span class="feature-badge advanced">Advanced</span></h4>
+        <ul>
+          <li>Interactive floor plans</li>
+          <li>Booth coordinates & layouts</li>
+          <li>Navigation waypoints</li>
+          <li>Facility information</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📋 surveys <span class="feature-badge future">Future</span></h4>
+        <ul>
+          <li>Post-event feedback</li>
+          <li>Vendor satisfaction surveys</li>
+          <li>Feature request forms</li>
+          <li>Market research data</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>🔄 integrations <span class="feature-badge future">Future</span></h4>
+        <ul>
+          <li>CRM system connections</li>
+          <li>Email marketing platforms</li>
+          <li>Payment processing</li>
+          <li>Third-party APIs</li>
+        </ul>
+      </div>
+      
+      <div class="collection-card">
+        <h4>📈 reports <span class="feature-badge future">Future</span></h4>
+        <ul>
+          <li>Automated report generation</li>
+          <li>Custom dashboard data</li>
+          <li>Export capabilities</li>
+          <li>Historical comparisons</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <h3>📊 Progress</h3>
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div id="currentTask">Ready to create all collections...</div>
+  </div>
+
+  <div class="setup-section">
+    <h3>🚀 Creation Options</h3>
+    <button onclick="createAllCollections()" class="success">🏗️ CREATE ALL COLLECTIONS</button>
+    <button onclick="createCoreCollections()">⭐ Core Collections Only</button>
+    <button onclick="createAdvancedCollections()">🔧 Advanced Collections</button>
+    <button onclick="createFutureCollections()">🚀 Future Collections</button>
+    <button onclick="verifyAllCollections()">📋 Verify All Data</button>
+    <button onclick="clearResults()" class="danger">🧹 Clear Results</button>
+  </div>
+  
+  <div id="results"></div>
+
+  <!-- Firebase Config -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, query, getDocs, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDHpZ1mcn4qkgWW1BQcu6HQ8FM5LYA59aA",
+      authDomain: "putnam-county-home-show-130cb.firebaseapp.com",
+      projectId: "putnam-county-home-show-130cb",
+      storageBucket: "putnam-county-home-show-130cb.firebasestorage.app",
+      messagingSenderId: "1085199568795",
+      appId: "1:1085199568795:web:61527ae4d08c2cb802db3e"
+    };
+
+    let app, auth, db, currentUser;
+    let totalTasks = 0;
+    let completedTasks = 0;
+
+    function log(message, type = 'info') {
+      addResult(message, type);
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function addResult(message, type = 'info') {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `result ${type}`;
+      div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+      results.appendChild(div);
+      results.scrollTop = results.scrollHeight;
+    }
+
+    function updateProgress(task) {
+      completedTasks++;
+      const progress = (completedTasks / totalTasks) * 100;
+      document.getElementById('progressBar').style.width = `${progress}%`;
+      document.getElementById('currentTask').textContent = task;
+    }
+
+    function resetProgress(total) {
+      totalTasks = total;
+      completedTasks = 0;
+      document.getElementById('progressBar').style.width = '0%';
+      document.getElementById('currentTask').textContent = 'Starting...';
+    }
+
+    async function initializeFirebase() {
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+        });
+        
+        await signInAnonymously(auth);
+        log('✅ Firebase initialized and authenticated', 'success');
+        
+        return true;
+      } catch (error) {
+        log(`❌ Firebase initialization failed: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    window.createAllCollections = async function() {
+      resetProgress(50); // Estimate total operations
+      log('🏗️ CREATING ALL COLLECTIONS FOR HOMESHOW APP...', 'info');
+      
+      try {
+        await createCoreCollections();
+        await createAdvancedCollections();
+        await createFutureCollections();
+        
+        updateProgress('Complete!');
+        log('🎉 ALL COLLECTIONS CREATED! Your HomeShow app is fully equipped.', 'success');
+        
+      } catch (error) {
+        log(`❌ Collection creation failed: ${error.message}`, 'error');
+      }
+    };
+
+    window.createCoreCollections = async function() {
+      if (!totalTasks) resetProgress(20);
+      log('⭐ Creating core collections...', 'info');
+      
+      // Enhanced Vendors
+      await createEnhancedVendors();
+      
+      // Enhanced Attendees
+      await createEnhancedAttendees();
+      
+      // Enhanced Leads
+      await createEnhancedLeads();
+      
+      // Enhanced Users
+      await createEnhancedUsers();
+      
+      // Enhanced Public Data
+      await createEnhancedPublicData();
+      
+      log('✅ Core collections created', 'success');
+    };
+
+    window.createAdvancedCollections = async function() {
+      if (!totalTasks) resetProgress(25);
+      log('🔧 Creating advanced collections...', 'info');
+      
+      await createEventsCollection();
+      await createContestsCollection();
+      await createAnalyticsCollection();
+      await createMessagesCollection();
+      await createPromotionsCollection();
+      await createNotificationsCollection();
+      await createMapsCollection();
+      
+      log('✅ Advanced collections created', 'success');
+    };
+
+    window.createFutureCollections = async function() {
+      if (!totalTasks) resetProgress(10);
+      log('🚀 Creating future-ready collections...', 'info');
+      
+      await createSurveysCollection();
+      await createIntegrationsCollection();
+      await createReportsCollection();
+      
+      log('✅ Future collections created', 'success');
+    };
+
+    async function createEnhancedVendors() {
+      const vendors = [
+        {
+          id: 'vendor-kitchen-001',
+          name: 'Superior Kitchen Design',
+          category: 'Kitchen',
+          booth: 'A1',
+          contactEmail: 'info@superiorkitchen.com',
+          contactPhone: '+1-555-0101',
+          logoUrl: 'https://via.placeholder.com/200x100/4CAF50/white?text=Kitchen',
+          approved: true,
+          verified: true,
+          featured: true,
+          ownerUid: currentUser?.uid || 'admin',
+          profile: {
+            description: 'Custom kitchen designs and renovations with 20+ years of experience.',
+            specialOffer: '15% off all kitchen consultations during the home show!',
+            website: 'https://superiorkitchen.com',
+            facebook: 'https://facebook.com/superiorkitchen',
+            instagram: 'https://instagram.com/superiorkitchen',
+            backgroundImage: 'https://via.placeholder.com/800x400/4CAF50/white?text=Kitchen+Background',
+            profileImage: 'https://via.placeholder.com/300x300/4CAF50/white?text=Kitchen+Profile',
+            businessCardFront: 'https://via.placeholder.com/400x250/4CAF50/white?text=Kitchen+Card+Front',
+            businessCardBack: 'https://via.placeholder.com/400x250/4CAF50/white?text=Kitchen+Card+Back',
+            bio: 'We specialize in creating beautiful, functional kitchens that fit your lifestyle and budget.',
+            selectedSocials: ['website', 'facebook', 'instagram'],
+            introVideo: 'https://example.com/kitchen-intro.mp4',
+            homeShowVideo: 'https://example.com/kitchen-showcase.mp4'
+          },
+          boothCoordinates: { x: 100, y: 150 },
+          hours: {
+            friday: { open: '09:00', close: '18:00' },
+            saturday: { open: '09:00', close: '18:00' },
+            sunday: { open: '10:00', close: '17:00' }
+          },
+          services: ['Design', 'Installation', 'Renovation', 'Consultation'],
+          priceRange: '$$',
+          rating: 4.8,
+          reviewCount: 127,
+          yearsInBusiness: 20,
+          certifications: ['Licensed Contractor', 'Kitchen Design Certified'],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          id: 'vendor-solar-001',
+          name: 'Eco Solar Solutions',
+          category: 'Solar',
+          booth: 'B3',
+          contactEmail: 'contact@ecosolar.com',
+          contactPhone: '+1-555-0202',
+          logoUrl: 'https://via.placeholder.com/200x100/FF9800/white?text=Solar',
+          approved: true,
+          verified: true,
+          featured: false,
+          ownerUid: currentUser?.uid || 'admin',
+          profile: {
+            description: 'Leading solar panel installation and energy solutions.',
+            specialOffer: 'Free solar assessment and $500 off installation!',
+            website: 'https://ecosolar.com',
+            linkedin: 'https://linkedin.com/company/ecosolar',
+            backgroundImage: 'https://via.placeholder.com/800x400/FF9800/white?text=Solar+Background',
+            profileImage: 'https://via.placeholder.com/300x300/FF9800/white?text=Solar+Profile',
+            bio: 'Helping homeowners reduce energy costs with clean, renewable solar power.',
+            selectedSocials: ['website', 'linkedin']
+          },
+          boothCoordinates: { x: 300, y: 200 },
+          hours: {
+            friday: { open: '09:00', close: '18:00' },
+            saturday: { open: '09:00', close: '18:00' },
+            sunday: { open: '10:00', close: '17:00' }
+          },
+          services: ['Solar Installation', 'Energy Audit', 'Maintenance', 'Financing'],
+          priceRange: '$$$',
+          rating: 4.9,
+          reviewCount: 89,
+          yearsInBusiness: 12,
+          certifications: ['Solar Certified', 'Electrical Licensed'],
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          id: 'vendor-bath-001',
+          name: 'Master Bath Renovations',
+          category: 'Bath',
+          booth: 'C2',
+          contactEmail: 'info@masterbath.com',
+          contactPhone: '+1-555-0303',
+          logoUrl: 'https://via.placeholder.com/200x100/2196F3/white?text=Bath',
+          approved: true,
+          verified: true,
+          featured: false,
+          ownerUid: currentUser?.uid || 'admin',
+          profile: {
+            description: 'Complete bathroom renovations from design to completion.',
+            specialOffer: '10% off bathroom remodeling packages!',
+            website: 'https://masterbath.com',
+            facebook: 'https://facebook.com/masterbath',
+            bio: 'Transform your bathroom into a luxurious spa-like retreat.',
+            selectedSocials: ['website', 'facebook']
+          },
+          boothCoordinates: { x: 200, y: 300 },
+          services: ['Bathroom Design', 'Full Renovation', 'Tile Work', 'Plumbing'],
+          priceRange: '$$',
+          rating: 4.7,
+          reviewCount: 156,
+          yearsInBusiness: 15,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      for (const vendor of vendors) {
+        try {
+          const vendorRef = doc(db, 'vendors', vendor.id);
+          const { id, ...vendorData } = vendor;
+          await setDoc(vendorRef, vendorData);
+          log(`✅ Created enhanced vendor: ${vendor.name}`, 'success');
+          updateProgress(`Created vendor: ${vendor.name}`);
+        } catch (error) {
+          log(`❌ Failed to create vendor ${vendor.name}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createEnhancedAttendees() {
+      const sampleAttendees = [
+        {
+          id: 'attendee-demo-001',
+          ownerUid: currentUser?.uid || 'admin',
+          name: 'John Smith',
+          email: 'john.smith@example.com',
+          phone: '+1-555-1001',
+          zip: '12345',
+          interests: ['Kitchen', 'Bath', 'Solar'],
+          shortCode: 'JS001',
+          qrData: 'homeshow://attendee/JS001',
+          consentEmail: true,
+          consentSMS: false,
+          savedBusinessCards: [],
+          savedVendors: ['vendor-kitchen-001'],
+          card: {
+            profileImage: 'https://via.placeholder.com/150x150/6c757d/white?text=JS',
+            backgroundImage: 'https://via.placeholder.com/400x200/007bff/white?text=John+Smith',
+            familySize: 4,
+            visitingReasons: ['Kitchen remodel', 'Solar installation', 'Just browsing'],
+            bio: 'Looking to renovate our kitchen and explore solar options for our home.',
+            location: 'Springfield, County'
+          },
+          preferences: {
+            notifications: true,
+            theme: 'light',
+            language: 'en'
+          },
+          stats: {
+            venueVisits: 1,
+            cardsShared: 0,
+            vendorsViewed: 5,
+            lastActive: serverTimestamp()
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          id: 'attendee-demo-002',
+          ownerUid: currentUser?.uid || 'admin',
+          name: 'Sarah Johnson',
+          email: 'sarah.johnson@example.com',
+          phone: '+1-555-1002',
+          zip: '12346',
+          interests: ['Solar', 'Landscaping', 'Windows'],
+          shortCode: 'SJ002',
+          qrData: 'homeshow://attendee/SJ002',
+          consentEmail: true,
+          consentSMS: true,
+          savedBusinessCards: [],
+          savedVendors: ['vendor-solar-001'],
+          card: {
+            profileImage: 'https://via.placeholder.com/150x150/6c757d/white?text=SJ',
+            backgroundImage: 'https://via.placeholder.com/400x200/28a745/white?text=Sarah+Johnson',
+            familySize: 2,
+            visitingReasons: ['Solar installation', 'Landscaping', 'Energy efficiency'],
+            bio: 'Interested in making our home more energy efficient and improving our outdoor space.',
+            location: 'Riverside, County'
+          },
+          preferences: {
+            notifications: true,
+            theme: 'dark',
+            language: 'en'
+          },
+          stats: {
+            venueVisits: 1,
+            cardsShared: 1,
+            vendorsViewed: 8,
+            lastActive: serverTimestamp()
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      for (const attendee of sampleAttendees) {
+        try {
+          const attendeeRef = doc(db, 'attendees', attendee.id);
+          const { id, ...attendeeData } = attendee;
+          await setDoc(attendeeRef, attendeeData);
+          log(`✅ Created enhanced attendee: ${attendee.name}`, 'success');
+          updateProgress(`Created attendee: ${attendee.name}`);
+        } catch (error) {
+          log(`❌ Failed to create attendee ${attendee.name}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createEnhancedLeads() {
+      const sampleLeads = [
+        {
+          id: 'lead-demo-001',
+          attendeeId: 'attendee-demo-001',
+          vendorId: 'vendor-kitchen-001',
+          createdByUid: currentUser?.uid || 'admin',
+          exchangeMethod: 'card_share',
+          notes: 'Interested in full kitchen renovation, budget around $30k',
+          emailSent: false,
+          cardShared: true,
+          status: 'new',
+          priority: 'high',
+          followUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          tags: ['kitchen', 'renovation', 'high-budget'],
+          contactAttempts: 0,
+          lastContactDate: null,
+          createdAt: serverTimestamp(),
+          timestamp: Date.now(),
+          updatedAt: serverTimestamp()
+        },
+        {
+          id: 'lead-demo-002',
+          attendeeId: 'attendee-demo-002',
+          vendorId: 'vendor-solar-001',
+          createdByUid: currentUser?.uid || 'admin',
+          exchangeMethod: 'manual',
+          notes: 'Wants solar assessment for 2000 sq ft home, south-facing roof',
+          emailSent: true,
+          cardShared: false,
+          status: 'contacted',
+          priority: 'medium',
+          followUpDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+          tags: ['solar', 'assessment', 'residential'],
+          contactAttempts: 1,
+          lastContactDate: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          timestamp: Date.now(),
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      for (const lead of sampleLeads) {
+        try {
+          const leadRef = doc(db, 'leads', lead.id);
+          const { id, ...leadData } = lead;
+          await setDoc(leadRef, leadData);
+          log(`✅ Created enhanced lead: ${lead.id}`, 'success');
+          updateProgress(`Created lead: ${lead.id}`);
+        } catch (error) {
+          log(`❌ Failed to create lead ${lead.id}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createEnhancedUsers() {
+      const sampleUsers = [
+        {
+          id: currentUser?.uid || 'admin-user',
+          role: 'organizer',
+          vendorId: null,
+          preferences: {
+            theme: 'light',
+            notifications: true,
+            language: 'en',
+            timezone: 'America/New_York'
+          },
+          permissions: {
+            manageVendors: true,
+            viewAnalytics: true,
+            sendNotifications: true,
+            moderateContent: true
+          },
+          profile: {
+            name: 'Admin User',
+            email: 'andrew@houseofkna.com',
+            phone: '+1-555-0001'
+          },
+          stats: {
+            loginCount: 0,
+            lastLogin: serverTimestamp(),
+            actionsPerformed: 0
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      for (const user of sampleUsers) {
+        try {
+          const userRef = doc(db, 'users', user.id);
+          const { id, ...userData } = user;
+          await setDoc(userRef, userData);
+          log(`✅ Created enhanced user profile`, 'success');
+          updateProgress('Created admin user');
+        } catch (error) {
+          log(`❌ Failed to create user: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createEnhancedPublicData() {
+      const publicData = [
+        {
+          id: 'event-info',
+          data: {
+            eventName: 'Putnam County Home Show 2025',
+            eventDate: '2025-10-15',
+            eventEndDate: '2025-10-17',
+            eventTime: '9:00 AM - 6:00 PM',
+            location: 'Putnam County Fairgrounds',
+            address: '123 Fair Street, Putnam, County 12345',
+            description: 'The premier home improvement and lifestyle expo in Putnam County.',
+            website: 'https://putnamhomeshow.com',
+            socialMedia: {
+              facebook: 'https://facebook.com/putnamhomeshow',
+              instagram: 'https://instagram.com/putnamhomeshow',
+              twitter: 'https://twitter.com/putnamhomeshow'
+            },
+            ticketPrices: {
+              adult: 12,
+              senior: 8,
+              child: 0,
+              family: 30
+            },
+            parking: {
+              cost: 5,
+              description: 'Free parking available on-site'
+            },
+            updatedAt: serverTimestamp()
+          }
+        },
+        {
+          id: 'categories',
+          data: {
+            categories: [
+              'Kitchen', 'Bath', 'Landscaping', 'Windows', 'Solar',
+              'Roofing', 'Flooring', 'HVAC', 'Painting', 'Electrical',
+              'Plumbing', 'Security', 'Furniture', 'Appliances',
+              'Outdoor Living', 'Storage', 'Lighting', 'Insulation'
+            ],
+            updatedAt: serverTimestamp()
+          }
+        },
+        {
+          id: 'interests',
+          data: {
+            interests: [
+              'Kitchen', 'Bath', 'Landscaping', 'Windows', 'Solar',
+              'Roofing', 'Flooring', 'HVAC', 'Painting', 'Outdoor Living',
+              'Security', 'Energy Efficiency', 'Smart Home', 'Storage'
+            ],
+            updatedAt: serverTimestamp()
+          }
+        },
+        {
+          id: 'visiting-reasons',
+          data: {
+            reasons: [
+              'Building a home', 'Renovating', 'Needing new gutters',
+              'Floor plans', 'Kitchen remodel', 'Bathroom remodel',
+              'Solar installation', 'Roofing repair', 'HVAC upgrade',
+              'Landscaping', 'Windows replacement', 'Just browsing',
+              'Energy efficiency', 'Smart home upgrades', 'Outdoor living'
+            ],
+            updatedAt: serverTimestamp()
+          }
+        },
+        {
+          id: 'app-config',
+          data: {
+            version: '1.0.0',
+            featuresEnabled: {
+              qrScanning: true,
+              messaging: true,
+              contests: true,
+              analytics: true,
+              notifications: true
+            },
+            maintenanceMode: false,
+            supportEmail: 'support@putnamhomeshow.com',
+            supportPhone: '+1-555-SUPPORT',
+            updatedAt: serverTimestamp()
+          }
+        }
+      ];
+
+      for (const item of publicData) {
+        try {
+          const docRef = doc(db, 'public', item.id);
+          await setDoc(docRef, item.data);
+          log(`✅ Created enhanced public document: ${item.id}`, 'success');
+          updateProgress(`Created public: ${item.id}`);
+        } catch (error) {
+          log(`❌ Failed to create public document ${item.id}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createEventsCollection() {
+      const events = [
+        {
+          id: 'event-001',
+          title: 'Kitchen Design Workshop',
+          description: 'Learn the latest trends in kitchen design and functionality.',
+          startTime: '2025-10-15T10:00:00Z',
+          endTime: '2025-10-15T11:30:00Z',
+          location: 'Conference Room A',
+          speaker: {
+            name: 'Chef Maria Rodriguez',
+            bio: 'Award-winning kitchen designer with 15 years experience',
+            image: 'https://via.placeholder.com/150x150'
+          },
+          capacity: 50,
+          registered: 23,
+          category: 'Workshop',
+          tags: ['kitchen', 'design', 'trends'],
+          registrationRequired: true,
+          cost: 0,
+          materials: ['Design guide', 'Planning worksheet'],
+          createdAt: serverTimestamp()
+        },
+        {
+          id: 'event-002',
+          title: 'Solar Energy Presentation',
+          description: 'Understanding solar panels and energy savings for your home.',
+          startTime: '2025-10-15T14:00:00Z',
+          endTime: '2025-10-15T15:00:00Z',
+          location: 'Main Stage',
+          speaker: {
+            name: 'Dr. James Green',
+            bio: 'Solar energy expert and environmental scientist',
+            image: 'https://via.placeholder.com/150x150'
+          },
+          capacity: 200,
+          registered: 87,
+          category: 'Presentation',
+          tags: ['solar', 'energy', 'environment'],
+          registrationRequired: false,
+          cost: 0,
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const event of events) {
+        try {
+          const eventRef = doc(db, 'events', event.id);
+          const { id, ...eventData } = event;
+          await setDoc(eventRef, eventData);
+          log(`✅ Created event: ${event.title}`, 'success');
+          updateProgress(`Created event: ${event.title}`);
+        } catch (error) {
+          log(`❌ Failed to create event ${event.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createContestsCollection() {
+      const contests = [
+        {
+          id: 'contest-001',
+          title: 'Best Home Renovation Photo Contest',
+          description: 'Share your before and after renovation photos for a chance to win!',
+          startDate: '2025-10-15',
+          endDate: '2025-10-17',
+          prizes: [
+            { place: 1, description: '$500 Home Depot Gift Card', value: 500 },
+            { place: 2, description: '$250 Home Depot Gift Card', value: 250 },
+            { place: 3, description: '$100 Home Depot Gift Card', value: 100 }
+          ],
+          rules: [
+            'Must be original photos of your own renovation',
+            'Before and after photos required',
+            'Maximum 3 entries per person',
+            'Professional contractors excluded'
+          ],
+          categories: ['Kitchen', 'Bathroom', 'Outdoor', 'Full Home'],
+          votingMethod: 'public',
+          status: 'active',
+          entries: [],
+          totalVotes: 0,
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const contest of contests) {
+        try {
+          const contestRef = doc(db, 'contests', contest.id);
+          const { id, ...contestData } = contest;
+          await setDoc(contestRef, contestData);
+          log(`✅ Created contest: ${contest.title}`, 'success');
+          updateProgress(`Created contest: ${contest.title}`);
+        } catch (error) {
+          log(`❌ Failed to create contest ${contest.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createAnalyticsCollection() {
+      const analyticsData = [
+        {
+          id: 'daily-stats-2025-10-15',
+          date: '2025-10-15',
+          totalVisitors: 0,
+          uniqueVisitors: 0,
+          vendorViews: {},
+          popularBooths: [],
+          peakHours: [],
+          averageSessionTime: 0,
+          bounceRate: 0,
+          conversionRate: 0,
+          createdAt: serverTimestamp()
+        },
+        {
+          id: 'vendor-performance',
+          metrics: {
+            mostViewed: [],
+            mostSaved: [],
+            mostLeads: [],
+            highestRated: []
+          },
+          updatedAt: serverTimestamp()
+        }
+      ];
+
+      for (const analytics of analyticsData) {
+        try {
+          const analyticsRef = doc(db, 'analytics', analytics.id);
+          const { id, ...data } = analytics;
+          await setDoc(analyticsRef, data);
+          log(`✅ Created analytics: ${analytics.id}`, 'success');
+          updateProgress(`Created analytics: ${analytics.id}`);
+        } catch (error) {
+          log(`❌ Failed to create analytics ${analytics.id}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createMessagesCollection() {
+      const messages = [
+        {
+          id: 'welcome-message',
+          type: 'broadcast',
+          title: 'Welcome to Putnam County Home Show!',
+          content: 'Thank you for attending! Don\'t forget to visit all our amazing vendors and check out the workshops.',
+          senderId: 'system',
+          recipients: 'all',
+          status: 'sent',
+          priority: 'normal',
+          scheduledTime: null,
+          sentTime: serverTimestamp(),
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const message of messages) {
+        try {
+          const messageRef = doc(db, 'messages', message.id);
+          const { id, ...messageData } = message;
+          await setDoc(messageRef, messageData);
+          log(`✅ Created message: ${message.title}`, 'success');
+          updateProgress(`Created message: ${message.title}`);
+        } catch (error) {
+          log(`❌ Failed to create message ${message.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createPromotionsCollection() {
+      const promotions = [
+        {
+          id: 'promo-001',
+          title: 'Home Show Special - 20% Off Kitchen Consultations',
+          description: 'Valid only during the home show weekend. Book your consultation at our booth!',
+          vendor: 'vendor-kitchen-001',
+          discountType: 'percentage',
+          discountValue: 20,
+          code: 'HOMESHOW20',
+          validFrom: '2025-10-15',
+          validUntil: '2025-10-31',
+          maxUses: 100,
+          currentUses: 0,
+          terms: [
+            'Valid for new customers only',
+            'Cannot be combined with other offers',
+            'Consultation must be booked during home show'
+          ],
+          active: true,
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const promo of promotions) {
+        try {
+          const promoRef = doc(db, 'promotions', promo.id);
+          const { id, ...promoData } = promo;
+          await setDoc(promoRef, promoData);
+          log(`✅ Created promotion: ${promo.title}`, 'success');
+          updateProgress(`Created promotion: ${promo.title}`);
+        } catch (error) {
+          log(`❌ Failed to create promotion ${promo.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createNotificationsCollection() {
+      const notifications = [
+        {
+          id: 'notification-log-001',
+          type: 'push',
+          title: 'Welcome to the Home Show!',
+          body: 'Start exploring vendors and don\'t miss our special workshops.',
+          recipients: ['all'],
+          status: 'sent',
+          sentCount: 0,
+          deliveredCount: 0,
+          openedCount: 0,
+          sentAt: serverTimestamp(),
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const notification of notifications) {
+        try {
+          const notificationRef = doc(db, 'notifications', notification.id);
+          const { id, ...notificationData } = notification;
+          await setDoc(notificationRef, notificationData);
+          log(`✅ Created notification log: ${notification.title}`, 'success');
+          updateProgress(`Created notification: ${notification.title}`);
+        } catch (error) {
+          log(`❌ Failed to create notification ${notification.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createMapsCollection() {
+      const maps = [
+        {
+          id: 'main-floor-plan',
+          name: 'Main Exhibition Hall',
+          type: 'floor_plan',
+          imageUrl: 'https://via.placeholder.com/800x600/f8f9fa/6c757d?text=Floor+Plan',
+          dimensions: { width: 800, height: 600 },
+          scale: 1, // meters per pixel
+          booths: [
+            { id: 'A1', name: 'Superior Kitchen Design', x: 100, y: 150, width: 80, height: 60 },
+            { id: 'B3', name: 'Eco Solar Solutions', x: 300, y: 200, width: 80, height: 60 },
+            { id: 'C2', name: 'Master Bath Renovations', x: 200, y: 300, width: 80, height: 60 }
+          ],
+          amenities: [
+            { type: 'restroom', x: 50, y: 50 },
+            { type: 'food', x: 700, y: 100 },
+            { type: 'info', x: 400, y: 50 },
+            { type: 'exit', x: 750, y: 550 }
+          ],
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const map of maps) {
+        try {
+          const mapRef = doc(db, 'maps', map.id);
+          const { id, ...mapData } = map;
+          await setDoc(mapRef, mapData);
+          log(`✅ Created map: ${map.name}`, 'success');
+          updateProgress(`Created map: ${map.name}`);
+        } catch (error) {
+          log(`❌ Failed to create map ${map.name}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createSurveysCollection() {
+      const surveys = [
+        {
+          id: 'post-event-survey',
+          title: 'Post-Event Feedback Survey',
+          description: 'Help us improve future home shows with your feedback!',
+          questions: [
+            {
+              id: 'q1',
+              type: 'rating',
+              question: 'How would you rate your overall experience?',
+              scale: 5,
+              required: true
+            },
+            {
+              id: 'q2',
+              type: 'multiple_choice',
+              question: 'Which vendors did you find most helpful?',
+              options: ['Kitchen vendors', 'Solar vendors', 'Bath vendors', 'Landscaping vendors'],
+              multiple: true,
+              required: false
+            },
+            {
+              id: 'q3',
+              type: 'text',
+              question: 'What improvements would you suggest for next year?',
+              required: false
+            }
+          ],
+          status: 'draft',
+          responses: [],
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const survey of surveys) {
+        try {
+          const surveyRef = doc(db, 'surveys', survey.id);
+          const { id, ...surveyData } = survey;
+          await setDoc(surveyRef, surveyData);
+          log(`✅ Created survey: ${survey.title}`, 'success');
+          updateProgress(`Created survey: ${survey.title}`);
+        } catch (error) {
+          log(`❌ Failed to create survey ${survey.title}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createIntegrationsCollection() {
+      const integrations = [
+        {
+          id: 'mailchimp-integration',
+          name: 'Mailchimp Email Marketing',
+          type: 'email_marketing',
+          status: 'configured',
+          settings: {
+            apiKey: '[ENCRYPTED]',
+            listId: 'homeshow-attendees',
+            autoSync: true
+          },
+          lastSync: null,
+          createdAt: serverTimestamp()
+        },
+        {
+          id: 'stripe-payments',
+          name: 'Stripe Payment Processing',
+          type: 'payments',
+          status: 'inactive',
+          settings: {
+            publicKey: '[PLACEHOLDER]',
+            webhookUrl: 'https://api.homeshow.com/webhooks/stripe'
+          },
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const integration of integrations) {
+        try {
+          const integrationRef = doc(db, 'integrations', integration.id);
+          const { id, ...integrationData } = integration;
+          await setDoc(integrationRef, integrationData);
+          log(`✅ Created integration: ${integration.name}`, 'success');
+          updateProgress(`Created integration: ${integration.name}`);
+        } catch (error) {
+          log(`❌ Failed to create integration ${integration.name}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    async function createReportsCollection() {
+      const reports = [
+        {
+          id: 'vendor-performance-report',
+          name: 'Vendor Performance Report',
+          type: 'vendor_analytics',
+          schedule: 'daily',
+          format: 'pdf',
+          recipients: ['andrew@houseofkna.com'],
+          lastGenerated: null,
+          parameters: {
+            metrics: ['views', 'leads', 'ratings', 'saves'],
+            period: 'event_duration'
+          },
+          active: true,
+          createdAt: serverTimestamp()
+        },
+        {
+          id: 'attendee-engagement-report',
+          name: 'Attendee Engagement Report',
+          type: 'attendee_analytics',
+          schedule: 'weekly',
+          format: 'csv',
+          recipients: ['andrew@houseofkna.com'],
+          lastGenerated: null,
+          parameters: {
+            metrics: ['session_time', 'vendors_visited', 'cards_shared'],
+            segmentation: ['first_time', 'returning']
+          },
+          active: true,
+          createdAt: serverTimestamp()
+        }
+      ];
+
+      for (const report of reports) {
+        try {
+          const reportRef = doc(db, 'reports', report.id);
+          const { id, ...reportData } = report;
+          await setDoc(reportRef, reportData);
+          log(`✅ Created report: ${report.name}`, 'success');
+          updateProgress(`Created report: ${report.name}`);
+        } catch (error) {
+          log(`❌ Failed to create report ${report.name}: ${error.message}`, 'error');
+        }
+      }
+    }
+
+    window.verifyAllCollections = async function() {
+      log('🔍 Verifying all collections...', 'info');
+      
+      const collections = [
+        'vendors', 'attendees', 'leads', 'users', 'public',
+        'events', 'contests', 'analytics', 'messages', 'promotions',
+        'notifications', 'maps', 'surveys', 'integrations', 'reports'
+      ];
+      
+      let totalDocs = 0;
+      
+      for (const collectionName of collections) {
+        try {
+          const q = query(collection(db, collectionName));
+          const querySnapshot = await getDocs(q);
+          totalDocs += querySnapshot.size;
+          
+          if (querySnapshot.size > 0) {
+            log(`📊 ${collectionName}: ${querySnapshot.size} documents`, 'success');
+          } else {
+            log(`📊 ${collectionName}: 0 documents (empty)`, 'warning');
+          }
+        } catch (error) {
+          log(`❌ Cannot access ${collectionName}: ${error.message}`, 'error');
+        }
+      }
+      
+      log(`🎉 Verification complete: ${totalDocs} total documents across all collections`, 'success');
+    };
+
+    window.clearResults = function() {
+      document.getElementById('results').innerHTML = '';
+      resetProgress(0);
+    };
+
+    // Initialize Firebase when page loads
+    initializeFirebase().then(() => {
+      log('🚀 Ready to create comprehensive HomeShow collections!', 'success');
+    });
+  </script>
+</body>
+</html>

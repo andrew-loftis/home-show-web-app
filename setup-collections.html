@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Collections Setup</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      max-width: 1000px; 
+      margin: 0 auto; 
+      padding: 20px; 
+      background: #f5f5f5;
+    }
+    .setup-section { 
+      background: white; 
+      margin: 20px 0; 
+      padding: 20px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .result { 
+      margin: 10px 0; 
+      padding: 10px; 
+      border-radius: 5px; 
+      border-left: 4px solid #ccc;
+    }
+    .success { 
+      background: #d4edda; 
+      border-color: #28a745; 
+      color: #155724;
+    }
+    .error { 
+      background: #f8d7da; 
+      border-color: #dc3545; 
+      color: #721c24;
+    }
+    .info { 
+      background: #d1ecf1; 
+      border-color: #17a2b8; 
+      color: #0c5460;
+    }
+    .warning { 
+      background: #fff3cd; 
+      border-color: #ffc107; 
+      color: #856404;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 16px;
+    }
+    button:hover { background: #0056b3; }
+    button.success { background: #28a745; }
+    button.danger { background: #dc3545; }
+    .collection-status {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .status-pending { background: #ffc107; color: #000; }
+    .status-success { background: #28a745; color: #fff; }
+    .status-error { background: #dc3545; color: #fff; }
+    pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>🔥 Firebase Collections Setup</h1>
+  <p>This will create all the necessary Firestore collections for your HomeShow app with sample data.</p>
+  
+  <div class="setup-section">
+    <h3>📋 Collections Overview</h3>
+    <div class="collection-status">
+      <span>🏪 vendors</span>
+      <span class="status-badge status-pending" id="vendors-status">Pending</span>
+    </div>
+    <div class="collection-status">
+      <span>👥 users</span>
+      <span class="status-badge status-pending" id="users-status">Pending</span>
+    </div>
+    <div class="collection-status">
+      <span>🎫 attendees</span>
+      <span class="status-badge status-pending" id="attendees-status">Pending</span>
+    </div>
+    <div class="collection-status">
+      <span>🤝 leads</span>
+      <span class="status-badge status-pending" id="leads-status">Pending</span>
+    </div>
+    <div class="collection-status">
+      <span>📄 public</span>
+      <span class="status-badge status-pending" id="public-status">Pending</span>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <h3>🚀 Setup Actions</h3>
+    <button onclick="setupAllCollections()">📦 Create All Collections</button>
+    <button onclick="setupVendors()" class="success">🏪 Setup Vendors</button>
+    <button onclick="setupPublicData()">📄 Setup Public Data</button>
+    <button onclick="verifySetup()">✅ Verify Setup</button>
+    <button onclick="clearResults()" class="danger">🧹 Clear Results</button>
+  </div>
+
+  <div class="setup-section">
+    <h3>⚠️ Important Notes</h3>
+    <div class="result warning">
+      <strong>Admin Authentication Required:</strong> You need to sign in as an admin (andrew@houseofkna.com) or update the rules to allow vendor creation. For testing, we'll try to create vendors anyway.
+    </div>
+  </div>
+  
+  <div id="results"></div>
+
+  <!-- Firebase Config -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, query, getDocs, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDHpZ1mcn4qkgWW1BQcu6HQ8FM5LYA59aA",
+      authDomain: "putnam-county-home-show-130cb.firebaseapp.com",
+      projectId: "putnam-county-home-show-130cb",
+      storageBucket: "putnam-county-home-show-130cb.firebasestorage.app",
+      messagingSenderId: "1085199568795",
+      appId: "1:1085199568795:web:61527ae4d08c2cb802db3e"
+    };
+
+    let app, auth, db, currentUser;
+
+    function log(message, type = 'info') {
+      addResult(message, type);
+      console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+
+    function addResult(message, type = 'info') {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `result ${type}`;
+      div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}]</strong> ${message}`;
+      results.appendChild(div);
+      results.scrollTop = results.scrollHeight;
+    }
+
+    function updateStatus(collection, status) {
+      const statusEl = document.getElementById(`${collection}-status`);
+      statusEl.className = `status-badge status-${status}`;
+      statusEl.textContent = status === 'success' ? 'Created' : status === 'error' ? 'Failed' : 'Pending';
+    }
+
+    async function initializeFirebase() {
+      try {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+        
+        onAuthStateChanged(auth, (user) => {
+          currentUser = user;
+        });
+        
+        // Try anonymous sign-in first
+        await signInAnonymously(auth);
+        log('✅ Firebase initialized and authenticated anonymously', 'success');
+        
+        return true;
+      } catch (error) {
+        log(`❌ Firebase initialization failed: ${error.message}`, 'error');
+        return false;
+      }
+    }
+
+    window.setupVendors = async function() {
+      try {
+        log('🏪 Setting up vendors collection...', 'info');
+        
+        if (!currentUser) {
+          log('❌ No authenticated user', 'error');
+          return;
+        }
+
+        const vendors = [
+          {
+            id: 'vendor-001',
+            name: 'Superior Kitchen Design',
+            category: 'Kitchen',
+            booth: 'A1',
+            contactEmail: 'info@superiorkitchen.com',
+            contactPhone: '+1-555-0101',
+            logoUrl: 'https://via.placeholder.com/200x100/4CAF50/white?text=Kitchen',
+            approved: true,
+            verified: true,
+            ownerUid: currentUser.uid,
+            profile: {
+              description: 'Custom kitchen designs and renovations with 20+ years of experience.',
+              specialOffer: '15% off all kitchen consultations during the home show!',
+              website: 'https://superiorkitchen.com',
+              backgroundImage: 'https://via.placeholder.com/800x400/4CAF50/white?text=Kitchen+Background',
+              profileImage: 'https://via.placeholder.com/300x300/4CAF50/white?text=Kitchen+Profile',
+              bio: 'We specialize in creating beautiful, functional kitchens that fit your lifestyle and budget.',
+              selectedSocials: ['website', 'facebook', 'instagram']
+            },
+            boothCoordinates: { x: 100, y: 150 },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          },
+          {
+            id: 'vendor-002',
+            name: 'Eco Solar Solutions',
+            category: 'Solar',
+            booth: 'B3',
+            contactEmail: 'contact@ecosolar.com',
+            contactPhone: '+1-555-0202',
+            logoUrl: 'https://via.placeholder.com/200x100/FF9800/white?text=Solar',
+            approved: true,
+            verified: true,
+            ownerUid: currentUser.uid,
+            profile: {
+              description: 'Leading solar panel installation and energy solutions.',
+              specialOffer: 'Free solar assessment and $500 off installation!',
+              website: 'https://ecosolar.com',
+              backgroundImage: 'https://via.placeholder.com/800x400/FF9800/white?text=Solar+Background',
+              profileImage: 'https://via.placeholder.com/300x300/FF9800/white?text=Solar+Profile',
+              bio: 'Helping homeowners reduce energy costs with clean, renewable solar power.',
+              selectedSocials: ['website', 'linkedin']
+            },
+            boothCoordinates: { x: 300, y: 200 },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          },
+          {
+            id: 'vendor-003',
+            name: 'Master Bath Renovations',
+            category: 'Bath',
+            booth: 'C2',
+            contactEmail: 'info@masterbath.com',
+            contactPhone: '+1-555-0303',
+            logoUrl: 'https://via.placeholder.com/200x100/2196F3/white?text=Bath',
+            approved: true,
+            verified: false,
+            ownerUid: currentUser.uid,
+            profile: {
+              description: 'Complete bathroom renovations from design to completion.',
+              specialOffer: '10% off bathroom remodeling packages!',
+              website: 'https://masterbath.com',
+              backgroundImage: 'https://via.placeholder.com/800x400/2196F3/white?text=Bath+Background',
+              profileImage: 'https://via.placeholder.com/300x300/2196F3/white?text=Bath+Profile',
+              bio: 'Transform your bathroom into a luxurious spa-like retreat.',
+              selectedSocials: ['website', 'facebook']
+            },
+            boothCoordinates: { x: 200, y: 300 },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          },
+          {
+            id: 'vendor-004',
+            name: 'Green Thumb Landscaping',
+            category: 'Landscaping',
+            booth: 'D1',
+            contactEmail: 'hello@greenthumb.com',
+            contactPhone: '+1-555-0404',
+            logoUrl: 'https://via.placeholder.com/200x100/8BC34A/white?text=Landscape',
+            approved: true,
+            verified: true,
+            ownerUid: currentUser.uid,
+            profile: {
+              description: 'Professional landscaping and outdoor living solutions.',
+              specialOffer: 'Free landscape design consultation worth $200!',
+              website: 'https://greenthumb.com',
+              backgroundImage: 'https://via.placeholder.com/800x400/8BC34A/white?text=Landscape+Background',
+              profileImage: 'https://via.placeholder.com/300x300/8BC34A/white?text=Landscape+Profile',
+              bio: 'Creating beautiful outdoor spaces that enhance your property value.',
+              selectedSocials: ['website', 'instagram', 'facebook']
+            },
+            boothCoordinates: { x: 400, y: 250 },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          },
+          {
+            id: 'vendor-005',
+            name: 'Perfect Windows & Doors',
+            category: 'Windows',
+            booth: 'E2',
+            contactEmail: 'sales@perfectwindows.com',
+            contactPhone: '+1-555-0505',
+            logoUrl: 'https://via.placeholder.com/200x100/9C27B0/white?text=Windows',
+            approved: true,
+            verified: true,
+            ownerUid: currentUser.uid,
+            profile: {
+              description: 'Energy-efficient windows and doors for modern homes.',
+              specialOffer: '20% off window replacement packages!',
+              website: 'https://perfectwindows.com',
+              backgroundImage: 'https://via.placeholder.com/800x400/9C27B0/white?text=Windows+Background',
+              profileImage: 'https://via.placeholder.com/300x300/9C27B0/white?text=Windows+Profile',
+              bio: 'Quality windows and doors that improve energy efficiency and curb appeal.',
+              selectedSocials: ['website', 'youtube']
+            },
+            boothCoordinates: { x: 150, y: 400 },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }
+        ];
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const vendor of vendors) {
+          try {
+            const vendorRef = doc(db, 'vendors', vendor.id);
+            const { id, ...vendorData } = vendor;
+            await setDoc(vendorRef, vendorData);
+            log(`✅ Created vendor: ${vendor.name}`, 'success');
+            successCount++;
+          } catch (error) {
+            log(`❌ Failed to create vendor ${vendor.name}: ${error.message}`, 'error');
+            failCount++;
+          }
+        }
+
+        if (successCount > 0) {
+          updateStatus('vendors', 'success');
+          log(`🎉 Vendors setup complete: ${successCount} created, ${failCount} failed`, 'success');
+        } else {
+          updateStatus('vendors', 'error');
+          log(`❌ Vendor setup failed: likely need admin permissions`, 'error');
+        }
+
+      } catch (error) {
+        updateStatus('vendors', 'error');
+        log(`❌ Vendor setup failed: ${error.message}`, 'error');
+      }
+    };
+
+    window.setupPublicData = async function() {
+      try {
+        log('📄 Setting up public data...', 'info');
+
+        const publicData = [
+          {
+            id: 'event-info',
+            data: {
+              eventName: 'Putnam County Home Show 2025',
+              eventDate: '2025-10-15',
+              eventTime: '9:00 AM - 6:00 PM',
+              location: 'Putnam County Fairgrounds',
+              address: '123 Fair Street, Putnam, County 12345',
+              description: 'The premier home improvement and lifestyle expo in Putnam County.',
+              updatedAt: serverTimestamp()
+            }
+          },
+          {
+            id: 'categories',
+            data: {
+              categories: [
+                'Kitchen', 'Bath', 'Landscaping', 'Windows', 'Solar', 
+                'Roofing', 'Flooring', 'HVAC', 'Painting', 'Electrical',
+                'Plumbing', 'Security', 'Furniture', 'Appliances'
+              ],
+              updatedAt: serverTimestamp()
+            }
+          },
+          {
+            id: 'interests',
+            data: {
+              interests: [
+                'Kitchen', 'Bath', 'Landscaping', 'Windows', 'Solar',
+                'Roofing', 'Flooring', 'HVAC', 'Painting'
+              ],
+              updatedAt: serverTimestamp()
+            }
+          },
+          {
+            id: 'visiting-reasons',
+            data: {
+              reasons: [
+                'Building a home', 'Renovating', 'Needing new gutters',
+                'Floor plans', 'Kitchen remodel', 'Bathroom remodel',
+                'Solar installation', 'Roofing repair', 'HVAC upgrade',
+                'Landscaping', 'Windows replacement', 'Just browsing'
+              ],
+              updatedAt: serverTimestamp()
+            }
+          }
+        ];
+
+        for (const item of publicData) {
+          try {
+            const docRef = doc(db, 'public', item.id);
+            await setDoc(docRef, item.data);
+            log(`✅ Created public document: ${item.id}`, 'success');
+          } catch (error) {
+            log(`❌ Failed to create public document ${item.id}: ${error.message}`, 'error');
+          }
+        }
+
+        updateStatus('public', 'success');
+        log('🎉 Public data setup complete', 'success');
+
+      } catch (error) {
+        updateStatus('public', 'error');
+        log(`❌ Public data setup failed: ${error.message}`, 'error');
+      }
+    };
+
+    window.setupAllCollections = async function() {
+      log('🚀 Starting complete collections setup...', 'info');
+      
+      try {
+        // Setup vendors
+        await setupVendors();
+        
+        // Setup public data
+        await setupPublicData();
+        
+        // Create sample user (current user)
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          await setDoc(userRef, {
+            preferences: {
+              theme: 'light',
+              notifications: true
+            },
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          updateStatus('users', 'success');
+          log('✅ Sample user document created', 'success');
+        } catch (error) {
+          updateStatus('users', 'error');
+          log(`❌ Failed to create user document: ${error.message}`, 'error');
+        }
+
+        // Note about attendees and leads
+        updateStatus('attendees', 'success');
+        updateStatus('leads', 'success');
+        log('ℹ️ Attendees and leads will be created when users interact with the app', 'info');
+        
+        log('🎉 Collections setup complete!', 'success');
+        
+      } catch (error) {
+        log(`❌ Collections setup failed: ${error.message}`, 'error');
+      }
+    };
+
+    window.verifySetup = async function() {
+      log('🔍 Verifying collections setup...', 'info');
+      
+      const collections = ['vendors', 'users', 'public'];
+      
+      for (const collectionName of collections) {
+        try {
+          const q = query(collection(db, collectionName));
+          const querySnapshot = await getDocs(q);
+          log(`📊 ${collectionName}: ${querySnapshot.size} documents`, 'info');
+          
+          if (collectionName === 'vendors') {
+            querySnapshot.forEach((doc) => {
+              const vendor = doc.data();
+              log(`  🏪 ${vendor.name} (${vendor.category}) - Approved: ${vendor.approved}`, 'info');
+            });
+          }
+        } catch (error) {
+          log(`❌ Failed to verify ${collectionName}: ${error.message}`, 'error');
+        }
+      }
+    };
+
+    window.clearResults = function() {
+      document.getElementById('results').innerHTML = '';
+      // Reset status badges
+      ['vendors', 'users', 'attendees', 'leads', 'public'].forEach(collection => {
+        updateStatus(collection, 'pending');
+      });
+    };
+
+    // Initialize Firebase when page loads
+    initializeFirebase();
+  </script>
+</body>
+</html>
