@@ -1,0 +1,22 @@
+# Changelog
+
+## 2025-10-10 - Business Card System Update
+- Replaced legacy LeadPass/RFID system with business card sharing (app now called HomeShow)
+- Added attendee business cards with profile images, background images, family size, visiting reasons, bio, location
+- Enhanced vendor profiles with home show videos, business card uploads, social media selection
+- Created Instagram-style vendor gallery for browsing all vendor profiles
+- Updated vendor landing pages with hero sections, video overlays, business card display
+- Implemented card sharing system - attendees share cards with vendors
+- Added social media integration with selective display
+- Updated navigation: LeadPass → My Card, added Vendor Gallery tab
+- Enhanced EditVendorProfile with business card fields and social media selection
+- Updated mock data with business card information and enhanced vendor profiles
+- Removed RFID simulation, replaced with ShareCard view
+
+## 2025-10-10 - Initial Implementation
+- Initial LeadPass SPA implementation (project later renamed to HomeShow)
+- All core features, role-based UI, onboarding, vendor/attendee/organizer flows
+- Interactive SVG map, RFID simulation, vendor landing, registration wizard
+- Offline queue, localStorage persistence, hash routing
+- All views and UI helpers implemented
+- Documentation: FEATURES_COMPLETE.md, TESTING_GUIDE.md, ROLE_SWITCHING_FIX.md, SESSION_COMPLETE.md

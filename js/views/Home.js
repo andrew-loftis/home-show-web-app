@@ -1,0 +1,122 @@
+import { getState, currentVendor } from "../store.js";
+
+export default function Home(root) {
+  const state = getState();
+  let html = "";
+  if (state.role === "attendee") {
+    html = `
+      <div class="container-glass fade-in">
+        <div class="text-center mb-8">
+          <h1 class="text-4xl font-bold mb-3 text-glass">Welcome Back</h1>
+          <p class="text-xl text-glass-secondary">Create your digital business card and connect with amazing vendors</p>
+        </div>
+        
+        <div class="glass-card p-8 mb-8 text-center">
+          <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-teal-500 mx-auto mb-4 flex items-center justify-center">
+            <ion-icon name="card-outline" class="text-white text-2xl"></ion-icon>
+          </div>
+          <h3 class="text-xl font-semibold mb-2 text-glass">Your Digital Business Card</h3>
+          <p class="text-glass-secondary mb-6">Share your information instantly with vendors you're interested in</p>
+          <button class="brand-bg px-8 py-4 text-lg font-semibold" onclick="window.location.hash='/cards'">
+            Create My Business Card
+          </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-slate-600 to-slate-800 mb-4 flex items-center justify-center">
+              <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Browse Vendors</h3>
+            <p class="text-glass-secondary text-sm">Explore vendor galleries and find the perfect services for your needs</p>
+          </div>
+          
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/map'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-gray-800 mb-4 flex items-center justify-center">
+              <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Interactive Map</h3>
+            <p class="text-glass-secondary text-sm">Navigate the venue and locate vendor booths with ease</p>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (state.role === "vendor") {
+    const vendor = currentVendor();
+    html = `
+      <div class="container-glass fade-in">
+        <div class="glass-card p-8 mb-8">
+          <div class="flex items-center gap-6 mb-6">
+            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
+              ${vendor?.logoUrl ? `<img src="${vendor.logoUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">` : `<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>`}
+            </div>
+            <div>
+              <h1 class="text-2xl font-bold text-glass">${vendor?.name || "Vendor Dashboard"}</h1>
+              <p class="text-glass-secondary">Booth ${vendor?.booth || "-"} • ${vendor?.category || "General"}</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-6">
+            <div class="glass-card p-6 text-center">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 mx-auto mb-3 flex items-center justify-center">
+                <ion-icon name="people-outline" class="text-white text-xl"></ion-icon>
+              </div>
+              <div class="text-sm text-glass-secondary mb-1">Total Leads</div>
+              <div class="text-3xl font-bold text-glass">${vendor ? vendor.leadCount || 0 : 0}</div>
+            </div>
+            <div class="glass-card p-6 text-center">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-600 to-green-600 mx-auto mb-3 flex items-center justify-center">
+                <ion-icon name="trending-up-outline" class="text-white text-xl"></ion-icon>
+              </div>
+              <div class="text-sm text-glass-secondary mb-1">This Hour</div>
+              <div class="text-3xl font-bold text-glass">0</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/cards'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-slate-600 to-blue-600 mb-4 flex items-center justify-center">
+              <ion-icon name="card-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Business Cards</h3>
+            <p class="text-glass-secondary text-sm">View and manage your digital business cards</p>
+          </div>
+          
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendor-leads'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 mb-4 flex items-center justify-center">
+              <ion-icon name="analytics-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Lead Management</h3>
+            <p class="text-glass-secondary text-sm">Track and analyze your leads and interactions</p>
+          </div>
+          
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/edit-vendor'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-slate-700 mb-4 flex items-center justify-center">
+              <ion-icon name="settings-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Profile Settings</h3>
+            <p class="text-glass-secondary text-sm">Update your vendor profile and preferences</p>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (state.role === "organizer") {
+    html = `
+      <div class="p-6 fade-in">
+        <div class="dark-bg rounded-xl p-4 mb-4">
+          <div class="font-bold text-lg">Organizer Dashboard</div>
+        </div>
+        <div class="grid gap-3">
+          <button class="card p-4 text-left w-full" onclick="window.location.hash='/admin'">Admin Dashboard</button>
+          <button class="card p-4 text-left w-full" onclick="window.location.hash='/vendors'">Vendor Directory</button>
+          <button class="card p-4 text-left w-full" onclick="window.location.hash='/schedule'">Schedule</button>
+          <button class="card p-4 text-left w-full" onclick="window.location.hash='/map'">Floor Plan</button>
+        </div>
+      </div>
+    `;
+  } else {
+    html = `<div class="p-8 text-center text-gray-400">Please select a role.</div>`;
+  }
+  root.innerHTML = html;
+}

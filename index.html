@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeShow</title>
+  <link rel="stylesheet" href="./css/styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: "#007AFF",
+            dark: "#1C1C1E"
+          }
+        }
+      }
+    }
+  </script>
+  <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <!-- Firebase modular SDK (no bundler) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+    // If you add other Firebase products, import them here as needed
+    // https://firebase.google.com/docs/web/setup#available-libraries
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDHpZ1mcn4qkgWW1BQcu6HQ8FM5LYA59aA",
+      authDomain: "putnam-county-home-show-130cb.firebaseapp.com",
+      projectId: "putnam-county-home-show-130cb",
+      storageBucket: "putnam-county-home-show-130cb.firebasestorage.app",
+      messagingSenderId: "1085199568795",
+      appId: "1:1085199568795:web:61527ae4d08c2cb802db3e"
+    };
+
+    // Initialize Firebase early so our modules can pick up the default app
+    initializeApp(firebaseConfig);
+    // Also expose config for js/firebase.js fallback
+    window.FIREBASE_CONFIG = firebaseConfig;
+  </script>
+</head>
+<body class="overflow-x-hidden">
+  <div id="app"></div>
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
