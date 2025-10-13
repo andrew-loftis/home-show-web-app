@@ -122,7 +122,8 @@ function hydrateStore() {
               uid: user.uid,
               displayName: user.displayName,
               email: user.email,
-              photoURL: user.photoURL
+              photoURL: user.photoURL,
+              isAnonymous: !!user.isAnonymous
             };
             // Determine admin via Firestore (adminEmails collection)
             try {
@@ -321,6 +322,8 @@ function vendorLogout() {
   notify();
 }
 async function upsertAttendee(payload) {
+  // Require a non-guest account
+  if (!ensureAccountOrPrompt('create or update your card')) return null;
   // Try Firestore when authenticated
   if (state.user && state.user.uid) {
     try {
@@ -404,6 +407,7 @@ async function upsertAttendee(payload) {
   return att;
 }
 async function saveVendorForAttendee(attendeeId, vendorId) {
+  if (!ensureAccountOrPrompt('save a vendor')) return false;
   if (!state.savedVendorsByAttendee[attendeeId]) state.savedVendorsByAttendee[attendeeId] = [];
   if (!state.savedVendorsByAttendee[attendeeId].includes(vendorId)) state.savedVendorsByAttendee[attendeeId].push(vendorId);
   // Persist to Firestore when possible (attendee doc has array field 'savedVendors')
@@ -423,6 +427,7 @@ function saveBusinessCard(attendeeId, vendorId) {
   notify();
 }
 async function addLead(attendeeId, vendorId, method = "card_share") {
+  if (!ensureAccountOrPrompt(method === 'card_share' ? 'share your card' : 'record a lead')) return null;
   const lead = {
     id: uuid(),
     attendee_id: attendeeId,
@@ -516,6 +521,39 @@ async function shareBusinessCard(attendeeId, vendorId) {
 }
 // UUID and short code helpers
 import { uuid, genShortCode } from "./utils/id.js";
+
+// --- Auth gating helper ---
+function ensureAccountOrPrompt(action = 'continue') {
+  const isGuest = !state.user || state.user.isAnonymous === true;
+  if (!isGuest) return true;
+  // Lazy-load UI and auth helpers to show a modal prompt
+  Promise.all([
+    import('./utils/ui.js'),
+    import('./firebase.js')
+  ]).then(([ui, auth]) => {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="text-center">
+        <div class="text-xl font-semibold mb-2">Sign in required</div>
+        <div class="text-sm text-gray-600 mb-4">You need an account to ${action}. Create one in seconds.</div>
+        <div class="grid grid-cols-1 gap-2">
+          <button id="auth-google" class="brand-bg px-4 py-2 rounded">Continue with Google</button>
+          <button id="auth-email" class="glass-button px-4 py-2 rounded">Sign in / Sign up</button>
+        </div>
+      </div>
+    `;
+    ui.Modal(wrapper);
+    const close = () => ui.closeModal();
+    const googleBtn = wrapper.querySelector('#auth-google');
+    const emailBtn = wrapper.querySelector('#auth-email');
+    if (googleBtn) googleBtn.onclick = async () => { try { await auth.signInWithGoogle(); close(); } catch {} };
+    if (emailBtn) emailBtn.onclick = () => { window.location.hash = '/more'; close(); };
+  }).catch(() => {
+    // Fallback: just navigate to profile auth screen
+    window.location.hash = '/more';
+  });
+  return false;
+}
 
 export {
   hydrateStore,

@@ -49,7 +49,6 @@ export default function More(root) {
         ` : `
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <button class="brand-bg p-3" id="googleSignInBtn">Sign in with Google</button>
-            <button class="glass-button p-3" id="anonSignInBtn">Continue as Visitor</button>
           </div>
           <form id="emailAuthForm" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-2">
             <input type="email" required placeholder="Email" class="glass-input p-3 rounded border border-white/15 bg-white/10 text-glass" name="email">
@@ -90,10 +89,8 @@ export default function More(root) {
   import("../firebase.js").then(({ signInWithGoogle, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser, listAdminEmails, addAdminEmail, removeAdminEmail }) => {
     const signInBtn = root.querySelector('#googleSignInBtn');
     const signOutBtn = root.querySelector('#signOutBtn');
-    const anonBtn = root.querySelector('#anonSignInBtn');
-    if (signInBtn) signInBtn.onclick = async () => { try { await signInWithGoogle(); } catch {} };
-    if (signOutBtn) signOutBtn.onclick = async () => { try { await signOutUser(); } catch {} };
-    if (anonBtn) anonBtn.onclick = async () => { try { await signInAnonymouslyUser(); } catch {} };
+  if (signInBtn) signInBtn.onclick = async () => { try { await signInWithGoogle(); } catch {} };
+  if (signOutBtn) signOutBtn.onclick = async () => { try { await signOutUser(); } catch {} };
 
     const emailForm = root.querySelector('#emailAuthForm');
     if (emailForm) {

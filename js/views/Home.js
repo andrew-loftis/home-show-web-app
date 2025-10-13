@@ -3,7 +3,42 @@ import { getState, currentVendor } from "../store.js";
 export default function Home(root) {
   const state = getState();
   let html = "";
-  if (state.role === "attendee") {
+  if (!state.user || state.user.isAnonymous) {
+    // Guest experience: sign-in/sign-up section prominent
+    html = `
+      <div class="container-glass fade-in">
+        <div class="text-center mb-8">
+          <h1 class="text-4xl font-bold mb-3 text-glass">Welcome</h1>
+          <p class="text-xl text-glass-secondary">Swap cards. Discover vendors. Connect fast.</p>
+        </div>
+        <div class="glass-card p-8 mb-8">
+          <h3 class="text-xl font-semibold mb-3 text-glass text-center">Create your account</h3>
+          <p class="text-glass-secondary text-center mb-4">Sign in to create your card, save vendors, and share your info.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button class="brand-bg p-3" id="homeGoogleSignIn">Continue with Google</button>
+            <button class="glass-button p-3" id="homeEmailSignIn">Sign in with Email</button>
+            <button class="glass-button p-3" id="homeSignUp">Create Account</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-slate-600 to-slate-800 mb-4 flex items-center justify-center">
+              <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Browse Vendors</h3>
+            <p class="text-glass-secondary text-sm">Explore the directory. Create an account to save favorites.</p>
+          </div>
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/map'">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-gray-800 mb-4 flex items-center justify-center">
+              <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+            </div>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Interactive Map</h3>
+            <p class="text-glass-secondary text-sm">Find booths. An account lets you share your card on the floor.</p>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if (state.role === "attendee") {
     html = `
       <div class="container-glass fade-in">
         <div class="text-center mb-8">
@@ -119,4 +154,16 @@ export default function Home(root) {
     html = `<div class="p-8 text-center text-gray-400">Please select a role.</div>`;
   }
   root.innerHTML = html;
+
+  // Wire up home auth buttons if present
+  if (!state.user || state.user.isAnonymous) {
+    import("../firebase.js").then(({ signInWithGoogle, signInWithEmailPassword, signUpWithEmailPassword }) => {
+      const g = root.querySelector('#homeGoogleSignIn');
+      const e = root.querySelector('#homeEmailSignIn');
+      const s = root.querySelector('#homeSignUp');
+      if (g) g.onclick = async () => { try { await signInWithGoogle(); } catch {} };
+      if (e) e.onclick = () => { window.location.hash = '/more'; };
+      if (s) s.onclick = () => { window.location.hash = '/more'; };
+    });
+  }
 }
