@@ -49,7 +49,13 @@ function renderLeadRow(lead, state) {
 
 function renderAttendeeCards(state) {
   const attendee = state.attendees[0];
-  if (!attendee) return `<div class="glass-card p-6 text-glass-secondary">Create your card and start sharing with vendors.</div>`;
+  if (!attendee) return `
+    <div class="space-y-4">
+      <div class="glass-card p-6 text-glass-secondary">Create your card and start sharing with vendors.</div>
+      <div>
+        <button class="brand-bg px-4 py-3 rounded" onclick="window.location.hash='/my-card'">Create My Business Card</button>
+      </div>
+    </div>`;
 
   const sent = state.leads
     .filter(l => l.attendee_id === attendee.id)
@@ -61,6 +67,15 @@ function renderAttendeeCards(state) {
 
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="glass-card p-6 mb-2">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-glass font-semibold">My Card</div>
+            <div class="text-xs text-glass-secondary">Create or edit your card</div>
+          </div>
+          <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/my-card'">Open</button>
+        </div>
+      </div>
       <div class="glass-card p-6">
         <div class="flex items-center gap-2 mb-4">
           <ion-icon name="paper-plane-outline" class="text-white"></ion-icon>

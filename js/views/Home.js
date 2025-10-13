@@ -19,6 +19,9 @@ export default function Home(root) {
             <button class="glass-button p-3" id="homeEmailSignIn">Sign in with Email</button>
             <button class="glass-button p-3" id="homeSignUp">Create Account</button>
           </div>
+          <div class="text-center mt-4">
+            <button class="glass-button px-4 py-2" id="goToMyCard">Create My Business Card</button>
+          </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">
@@ -161,9 +164,11 @@ export default function Home(root) {
       const g = root.querySelector('#homeGoogleSignIn');
       const e = root.querySelector('#homeEmailSignIn');
       const s = root.querySelector('#homeSignUp');
+      const go = root.querySelector('#goToMyCard');
       if (g) g.onclick = async () => { try { await signInWithGoogle(); } catch {} };
       if (e) e.onclick = () => { window.location.hash = '/more'; };
       if (s) s.onclick = () => { window.location.hash = '/more'; };
+      if (go) go.onclick = () => { window.location.hash = '/my-card'; };
     });
   }
 }

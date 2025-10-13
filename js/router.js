@@ -11,6 +11,7 @@ const routes = {
   "/map": "Map",
   "/interactive-map": "InteractiveMap",
   "/cards": "Cards",
+  "/my-card": "MyCard",
   "/vendor-login": "VendorLogin",
   "/vendor-leads": "VendorLeads",
   "/vendor-lead/:id": "VendorLeadDetail",
