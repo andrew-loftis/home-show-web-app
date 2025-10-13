@@ -56,6 +56,10 @@ export default function EditVendorProfile(root) {
               </label>
             </div>
             <div class="text-xs text-gray-500 mt-1">Paste a URL or upload a file from your device.</div>
+            <div class="flex items-center gap-3 mt-2">
+              <img id="vendorPreviewBackground" src="${profile.backgroundImage||''}" class="w-28 h-16 rounded object-cover border" style="display:${profile.backgroundImage?'block':'none'}">
+              <a id="vendorLinkBackground" href="${profile.backgroundImage||'#'}" target="_blank" class="text-xs text-primary break-all" style="display:${profile.backgroundImage?'inline':'none'}">${profile.backgroundImage||''}</a>
+            </div>
           </div>
           
           <div class="mb-4">
@@ -68,6 +72,10 @@ export default function EditVendorProfile(root) {
               </label>
             </div>
             <div class="text-xs text-gray-500 mt-1">Paste a URL or upload a file from your device.</div>
+            <div class="flex items-center gap-3 mt-2">
+              <img id="vendorPreviewProfile" src="${profile.profileImage||''}" class="w-16 h-16 rounded object-cover border" style="display:${profile.profileImage?'block':'none'}">
+              <a id="vendorLinkProfile" href="${profile.profileImage||'#'}" target="_blank" class="text-xs text-primary break-all" style="display:${profile.profileImage?'inline':'none'}">${profile.profileImage||''}</a>
+            </div>
           </div>
           
           <div class="mb-4">
@@ -99,6 +107,10 @@ export default function EditVendorProfile(root) {
                 <input type="file" accept="image/*" class="hidden" id="vendorUploadCardFront">
               </label>
             </div>
+            <div class="flex items-center gap-3 mt-2">
+              <img id="vendorPreviewCardFront" src="${profile.businessCardFront||''}" class="w-24 h-16 rounded object-cover border" style="display:${profile.businessCardFront?'block':'none'}">
+              <a id="vendorLinkCardFront" href="${profile.businessCardFront||'#'}" target="_blank" class="text-xs text-primary break-all" style="display:${profile.businessCardFront?'inline':'none'}">${profile.businessCardFront||''}</a>
+            </div>
           </div>
           
           <div class="mb-4">
@@ -109,6 +121,10 @@ export default function EditVendorProfile(root) {
                 <span class="upload-label-text">Upload</span>
                 <input type="file" accept="image/*" class="hidden" id="vendorUploadCardBack">
               </label>
+            </div>
+            <div class="flex items-center gap-3 mt-2">
+              <img id="vendorPreviewCardBack" src="${profile.businessCardBack||''}" class="w-24 h-16 rounded object-cover border" style="display:${profile.businessCardBack?'block':'none'}">
+              <a id="vendorLinkCardBack" href="${profile.businessCardBack||'#'}" target="_blank" class="text-xs text-primary break-all" style="display:${profile.businessCardBack?'inline':'none'}">${profile.businessCardBack||''}</a>
             </div>
           </div>
           
@@ -211,6 +227,8 @@ export default function EditVendorProfile(root) {
     };
     // Wire upload handlers
     wireVendorUploads(root, vendor.id);
+    // Sync preview thumbnails for links
+    syncVendorImagePreviews(root);
   }
   render();
 }
@@ -249,4 +267,38 @@ function wireVendorUploads(root, vendorId) {
     if (cardFrontFile) cardFrontFile.onchange = () => doUpload(cardFrontFile, cardFrontInput);
     if (cardBackFile) cardBackFile.onchange = () => doUpload(cardBackFile, cardBackInput);
   });
+}
+
+function syncVendorImagePreviews(root) {
+  const pairs = [
+    ['backgroundImage', '#vendorPreviewBackground', '#vendorLinkBackground'],
+    ['profileImage', '#vendorPreviewProfile', '#vendorLinkProfile'],
+    ['businessCardFront', '#vendorPreviewCardFront', '#vendorLinkCardFront'],
+    ['businessCardBack', '#vendorPreviewCardBack', '#vendorLinkCardBack']
+  ];
+  const set = (name, imgSel, linkSel) => {
+    const input = root.querySelector(`input[name="${name}"]`);
+    const img = root.querySelector(imgSel);
+    const link = root.querySelector(linkSel);
+    const apply = () => {
+      const url = (input?.value || '').trim();
+      if (img && link) {
+        if (url) {
+          img.src = url;
+          img.style.display = 'block';
+          link.href = url;
+          link.textContent = url;
+          link.style.display = 'inline';
+        } else {
+          img.style.display = 'none';
+          link.style.display = 'none';
+        }
+      }
+    };
+    if (input) {
+      input.addEventListener('input', apply);
+      apply();
+    }
+  };
+  pairs.forEach(([n, i, l]) => set(n, i, l));
 }

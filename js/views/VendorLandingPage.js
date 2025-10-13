@@ -10,6 +10,9 @@ export default function VendorLandingPage(root, params) {
   }
   
   const profile = vendor.profile || {};
+  // People-focused placeholder for profile image (stable per vendor id)
+  const peoplePlaceholder = (seed, size = 192) => `https://source.unsplash.com/random/${size}x${size}/?people,portrait,team,group&sig=${encodeURIComponent(seed || 'vendor')}`;
+  const profileImgSrc = profile.profileImage || peoplePlaceholder(vendor.id, 192);
   
   root.innerHTML = `
     <div class="fade-in">
@@ -33,7 +36,7 @@ export default function VendorLandingPage(root, params) {
       <!-- Profile Header -->
       <div class="relative px-6 pb-6">
         <div class="flex items-end gap-4 -mt-12 mb-3">
-          <img src="${profile.profileImage || vendor.logoUrl || './assets/splash.svg'}" class="w-24 h-24 rounded-xl border-4 border-white shadow-lg object-cover" onerror="this.style.display='none'">
+          <img src="${profileImgSrc}" class="w-24 h-24 rounded-xl border-4 border-white shadow-lg object-cover" onerror="this.style.display='none'">
           <div class="flex-1 pb-2">
             <div class="font-bold text-2xl text-white">${vendor.name}</div>
             <div class="text-white/90">${vendor.category}${vendor.booth ? ` • Booth ${vendor.booth}` : ''}</div>
