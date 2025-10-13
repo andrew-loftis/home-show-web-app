@@ -18,8 +18,8 @@ export default function Vendors(root) {
   };
 
   const ph = (seed, w, h) => `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
-  // Use the same people-focused placeholder as VendorLandingPage for consistent avatars
-  const peoplePlaceholder = (seed, size = 192) => `https://source.unsplash.com/random/${size}x${size}/?people,portrait,team,group&sig=${encodeURIComponent(seed || 'vendor')}`;
+  // People avatar placeholder: pravatar provides consistent faces via the `u` seed
+  const peoplePlaceholder = (seed, size = 192) => `https://i.pravatar.cc/${size}?u=${encodeURIComponent(seed || 'vendor')}`;
   const vendorLogo = (v) => (v.logoUrl || (v.profile && v.profile.profileImage) || peoplePlaceholder(v.id, 192));
   const vendorBg = (v) => ((v.profile && v.profile.backgroundImage) || ph(`${v.id}-bg`, 1200, 640));
 
@@ -102,7 +102,7 @@ export default function Vendors(root) {
         ${list.map(v => `
           <div class="glass-card">
             <div class="flex items-center gap-4 p-3 cursor-pointer vendor-row" data-id="${v.id}">
-              <img src="${vendorLogo(v)}" class="w-10 h-10 rounded object-cover" onerror="this.style.display='none'">
+              <img src="${vendorLogo(v)}" class="w-10 h-10 rounded object-cover" onerror="this.onerror=null; this.src='./assets/splash.svg'">
               <div class="flex-1">
                 <div class="font-semibold">${v.name}</div>
                 <div class="text-xs text-glass-secondary">${v.category} ${v.booth ? `• Booth ${v.booth}` : ''}</div>
@@ -132,7 +132,7 @@ export default function Vendors(root) {
       <div class="glass-card overflow-hidden slide-up border border-white/15 shadow-glass">
         <div class="flex items-center gap-4 p-6 border-b border-white/20">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-            <img src="${vendorLogo(vendor)}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+            <img src="${vendorLogo(vendor)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='./assets/splash.svg'">
           </div>
           <div class="flex-1">
             <h3 class="text-xl font-bold text-glass">${vendor.name}</h3>

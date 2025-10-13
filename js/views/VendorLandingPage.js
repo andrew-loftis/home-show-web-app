@@ -10,8 +10,8 @@ export default function VendorLandingPage(root, params) {
   }
   
   const profile = vendor.profile || {};
-  // People-focused placeholder for profile image (stable per vendor id)
-  const peoplePlaceholder = (seed, size = 192) => `https://source.unsplash.com/random/${size}x${size}/?people,portrait,team,group&sig=${encodeURIComponent(seed || 'vendor')}`;
+  // People avatar placeholder: pravatar provides consistent faces via the `u` seed
+  const peoplePlaceholder = (seed, size = 192) => `https://i.pravatar.cc/${size}?u=${encodeURIComponent(seed || 'vendor')}`;
   const profileImgSrc = profile.profileImage || peoplePlaceholder(vendor.id, 192);
   
   // Background placeholder consistent with Vendors list
@@ -35,7 +35,7 @@ export default function VendorLandingPage(root, params) {
       <!-- Profile Header -->
       <div class="relative px-6 pb-6">
         <div class="flex items-end gap-4 -mt-12 mb-3">
-          <img src="${profileImgSrc}" class="w-24 h-24 rounded-xl border-4 border-white shadow-lg object-cover" onerror="this.style.display='none'">
+          <img src="${profileImgSrc}" class="w-24 h-24 rounded-xl border-4 border-white shadow-lg object-cover" onerror="this.onerror=null; this.src='./assets/splash.svg'">
           <div class="flex-1 pb-2">
             <div class="font-bold text-2xl text-white">${vendor.name}</div>
             <div class="text-white/90">${vendor.category}${vendor.booth ? ` • Booth ${vendor.booth}` : ''}</div>
