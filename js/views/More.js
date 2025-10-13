@@ -164,10 +164,10 @@ export default function More(root) {
   });
 
   // Walkthrough launchers
-  import('../utils/tour.js').then(({ startWalkthrough }) => {
+  import('../utils/tour.js').then(({ startWalkthrough, startRoleTour }) => {
     const gen = root.querySelector('#tourGeneralBtn');
     const roleBtn = root.querySelector('#tourRoleBtn');
     if (gen) gen.onclick = () => startWalkthrough('general');
-    if (roleBtn) roleBtn.onclick = () => startWalkthrough(state.isAdmin ? 'admin' : (state.role === 'vendor' ? 'vendor' : 'attendee'));
+    if (roleBtn) roleBtn.onclick = () => startRoleTour(state.isAdmin ? 'admin' : (state.role === 'vendor' ? 'vendor' : 'attendee'));
   });
 }
