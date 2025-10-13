@@ -11,7 +11,10 @@ function renderShell() {
   app.innerHTML = "";
   app.appendChild(renderHeader(state));
   app.appendChild(renderTabbar(state));
-  app.appendChild(document.createElement("main"));
+  const main = document.createElement("main");
+  // Ensure content can scroll above the fixed bottom tabbar and below sticky header
+  main.className = "pb-28 pt-2"; // Tailwind: padding-bottom ~7rem
+  app.appendChild(main);
 }
 
 function renderHeader(state) {

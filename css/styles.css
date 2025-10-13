@@ -41,6 +41,9 @@ body {
   color: var(--text-primary);
 }
 
+/* Ensure page can scroll fully with sticky header + fixed tabbar */
+main { min-height: calc(100vh - 64px); }
+
 /* Desktop constraints */
 @media (min-width: 768px) {
   .container-glass {
