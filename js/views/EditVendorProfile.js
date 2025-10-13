@@ -13,9 +13,34 @@ export default function EditVendorProfile(root) {
   function render() {
     root.innerHTML = `
       <div class="p-6 fade-in">
-        <h2 class="text-xl font-bold mb-4">Edit Booth Profile</h2>
+        <h2 class="text-xl font-bold mb-4">Edit Vendor Profile</h2>
         ${dirty?'<div class="mb-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">You have unsaved changes</div>':''}
-        <form id="profileForm" class="card p-4">
+        <form id="profileForm" class="card p-4 space-y-5">
+          <div>
+            <div class="font-semibold mb-2">Business Info</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium mb-1">Business Name</label>
+                <input name="businessName" placeholder="Company, LLC" value="${vendor.name||''}" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Contact Email</label>
+                <input name="contactEmail" type="email" placeholder="you@company.com" value="${vendor.contactEmail||''}" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Contact Phone</label>
+                <input name="contactPhone" placeholder="(555) 555-5555" value="${vendor.contactPhone||''}" class="w-full px-3 py-2 border rounded">
+              </div>
+              <div>
+                <label class="block text-sm font-medium mb-1">Booth</label>
+                <input name="booth" placeholder="A12" value="${vendor.booth||''}" class="w-full px-3 py-2 border rounded">
+              </div>
+            </div>
+            <div class="mt-3">
+              <label class="block text-sm font-medium mb-1">Business Address</label>
+              <input name="businessAddress" placeholder="123 Main St, City, ST 12345" value="${profile.businessAddress||''}" class="w-full px-3 py-2 border rounded">
+            </div>
+          </div>
           <div class="mb-4">
             <label class="block text-sm font-medium mb-1">Home Show Video URL</label>
             <input name="homeShowVideo" placeholder="https://youtube.com/..." value="${profile.homeShowVideo||''}" class="w-full px-3 py-2 border rounded">
@@ -48,6 +73,17 @@ export default function EditVendorProfile(root) {
           <div class="mb-4">
             <label class="block text-sm font-medium mb-1">Bio</label>
             <textarea name="bio" placeholder="Company description and expertise..." class="w-full px-3 py-2 border rounded" rows="3">${profile.bio||''}</textarea>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm font-medium mb-1">What We Do (Services)</label>
+              <textarea name="services" placeholder="Kitchens, baths, roofing, etc..." class="w-full px-3 py-2 border rounded" rows="3">${profile.services||''}</textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">How We Work (Approach)</label>
+              <textarea name="approach" placeholder="Our process, warranties, quality guarantees..." class="w-full px-3 py-2 border rounded" rows="3">${profile.approach||''}</textarea>
+            </div>
           </div>
           
           <input name="introVideo" placeholder="Intro Video URL" value="${profile.introVideo||''}" class="w-full mb-2 px-3 py-2 border rounded">
@@ -109,7 +145,35 @@ export default function EditVendorProfile(root) {
       const fd = new FormData(e.target);
       const formData = Object.fromEntries(fd.entries());
       formData.selectedSocials = fd.getAll("selectedSocials");
-      Object.assign(profile, formData);
+      // Map business info into vendor top-level and profile
+      const vendorUpdates = {
+        name: formData.businessName || vendor.name || null,
+        contactEmail: formData.contactEmail || vendor.contactEmail || null,
+        contactPhone: formData.contactPhone || vendor.contactPhone || null,
+        booth: formData.booth || vendor.booth || null
+      };
+      Object.assign(profile, {
+        homeShowVideo: formData.homeShowVideo,
+        backgroundImage: formData.backgroundImage,
+        profileImage: formData.profileImage,
+        bio: formData.bio,
+        introVideo: formData.introVideo,
+        description: formData.description,
+        specialOffer: formData.specialOffer,
+        businessCardFront: formData.businessCardFront,
+        businessCardBack: formData.businessCardBack,
+        website: formData.website,
+        facebook: formData.facebook,
+        instagram: formData.instagram,
+        twitter: formData.twitter,
+        linkedin: formData.linkedin,
+        tiktok: formData.tiktok,
+        youtube: formData.youtube,
+        selectedSocials: formData.selectedSocials,
+        businessAddress: formData.businessAddress,
+        services: formData.services,
+        approach: formData.approach
+      });
       // Save to Firestore if owner or admin
       try {
         const state = getState();
@@ -122,8 +186,19 @@ export default function EditVendorProfile(root) {
         const { getDb } = await import("../firebase.js");
         const db = getDb();
         const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-        await updateDoc(doc(db, 'vendors', vendor.id), { profile: { ...profile }, updatedAt: serverTimestamp() });
+        await updateDoc(doc(db, 'vendors', vendor.id), { 
+          profile: { ...profile },
+          name: vendorUpdates.name,
+          contactEmail: vendorUpdates.contactEmail,
+          contactPhone: vendorUpdates.contactPhone,
+          booth: vendorUpdates.booth,
+          updatedAt: serverTimestamp() 
+        });
         vendor.profile = { ...profile };
+        vendor.name = vendorUpdates.name;
+        vendor.contactEmail = vendorUpdates.contactEmail;
+        vendor.contactPhone = vendorUpdates.contactPhone;
+        vendor.booth = vendorUpdates.booth;
         dirty = false;
         Toast("Profile saved!");
         render();
