@@ -74,7 +74,7 @@ export default function AdminDashboard(root) {
                 <img src='${v.logoUrl || './assets/splash.svg'}' class='w-10 h-10 rounded' onerror='this.style.display="none"'>
                 <div class='flex-1'>
                   <div class='font-semibold'>${v.name || 'Untitled'} <span class='text-xs text-gray-500'>${v.ownerUid ? 'by ' + v.ownerUid : ''}</span></div>
-                  <div class='text-xs text-gray-500 mt-1'>Category: ${v.category || '-'} | Booths: ${(v.booths||[]).join(', ') || v.booth || '-'} | Total: $${(v.totalPrice||0).toLocaleString()}</div>
+                  <div class='text-xs text-gray-500 mt-1'>Category: ${v.category || '-'} | Booths: ${(v.booths||[]).join(', ') || v.booth || '-'} | Package: ${v.packageLabel || '-'} ($${(v.packagePrice||0).toLocaleString()}) | Extras: ${v.power? 'Power ($75)' : ''} ${v.tableChairs? (v.power? ' + ' : '') + 'Table & 2 Chairs ($25)' : ''} | Grand Total: $${(v.grandTotal||v.totalPrice||0).toLocaleString()}</div>
                 </div>
                 <div class='flex gap-2'>
                   <button class='brand-bg px-3 py-1 rounded approve-btn' data-id='${v.id}'>Approve</button>
