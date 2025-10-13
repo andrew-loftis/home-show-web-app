@@ -148,9 +148,15 @@ function hydrateStore() {
               let mine = null;
               snap.forEach(d => { mine = { id: d.id, approved: !!d.data().approved }; });
               state.myVendor = mine;
-              // If no explicit role chosen yet, infer one
+              // Normalize role based on privileges to avoid stale persisted role
               if (!state.role) {
                 state.role = state.isAdmin ? 'organizer' : (mine ? 'vendor' : 'attendee');
+              } else {
+                if (state.role === 'organizer' && !state.isAdmin) {
+                  state.role = mine ? 'vendor' : 'attendee';
+                } else if (state.role === 'vendor' && !mine && !state.isAdmin) {
+                  state.role = 'attendee';
+                }
               }
             } catch {}
             // Load attendee data owned by this user
@@ -176,6 +182,8 @@ function hydrateStore() {
             state.user = null;
             state.isAdmin = false;
             state.myVendor = null;
+            // When signed out, reflect Guest in header by clearing role
+            state.role = null;
           }
           persist();
           notify();

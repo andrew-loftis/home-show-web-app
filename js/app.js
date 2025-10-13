@@ -17,6 +17,7 @@ function renderShell() {
 function renderHeader(state) {
   const header = document.createElement("header");
   header.className = "flex items-center justify-between px-6 py-4 nav-glass shadow-glass sticky top-0 z-20";
+  const roleLabel = state.user ? (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Attendee') : 'Guest';
   header.innerHTML = `
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
@@ -25,7 +26,7 @@ function renderHeader(state) {
       <span class="font-bold text-xl text-glass">HomeShow</span>
     </div>
     <div class="glass-button px-3 py-1 text-sm font-medium">
-      ${state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : "Guest"}
+      ${roleLabel}
     </div>
   `;
   return header;
