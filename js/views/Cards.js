@@ -89,7 +89,7 @@ function renderAttendeeCards(state) {
           <ion-icon name="bookmark-outline" class="text-white"></ion-icon>
           <h3 class="text-lg font-semibold text-glass">Saved Vendors</h3>
         </div>
-        ${saved.length ? saved.map(v => renderSavedVendor(v)).join("") : `<div class='text-glass-secondary'>No saved vendors yet.</div>`}
+        ${saved.length ? renderSavedVendorsWallet(saved) : `<div class='text-glass-secondary'>No saved vendors yet.</div>`}
       </div>
     </div>
   `;
@@ -120,3 +120,62 @@ function renderSavedVendor(vendor) {
     </div>
   `;
 }
+
+// New: Apple Wallet-like horizontal carousel for saved vendors
+function renderSavedVendorsWallet(list) {
+  // Each vendor becomes a card: prioritize businessCardFront, then back, else a fallback branded card
+  const slides = list.map(v => renderWalletCard(v)).join("");
+  return `
+    <div class="wallet-wrapper">
+      <div class="wallet-nav">
+        <button class="wallet-btn" aria-label="Previous" onclick="window.scrollWallet('savedWallet','left')">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </button>
+        <button class="wallet-btn" aria-label="Next" onclick="window.scrollWallet('savedWallet','right')">
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </button>
+      </div>
+      <div class="wallet-carousel" id="savedWallet">
+        ${slides}
+      </div>
+    </div>
+  `;
+}
+
+function renderWalletCard(vendor) {
+  const profile = vendor.profile || {};
+  const img = profile.businessCardFront || profile.businessCardBack || "";
+  const fallbackLogo = (profile.profileImage) || (vendor.logoUrl) || `https://i.pravatar.cc/192?u=${encodeURIComponent(vendor.id || vendor.name || 'vendor')}`;
+  const bg = (profile.backgroundImage) || `https://picsum.photos/seed/${encodeURIComponent(vendor.id || vendor.name || 'bg')}/1200/640`;
+  const hasRealCard = !!img;
+  // Card body: image if provided; else a tasteful fallback card
+  const body = hasRealCard
+    ? `<img src="${img}" alt="${vendor.name} business card" class="wallet-img" onerror="this.style.display='none'">`
+    : `
+      <div class="wallet-fallback">
+        <div class="wallet-fallback-bg" style="background-image:url('${bg}')"></div>
+        <div class="wallet-fallback-inner">
+          <div class="wallet-logo">
+            <img src="${fallbackLogo}" alt="${vendor.name} logo" onerror="this.onerror=null; this.src='./assets/splash.svg'">
+          </div>
+          <div class="wallet-meta">
+            <div class="wallet-title">${vendor.name}</div>
+            <div class="wallet-sub">${vendor.category || ''}${vendor.booth ? ` • Booth ${vendor.booth}` : ''}</div>
+          </div>
+        </div>
+      </div>`;
+  return `
+    <div class="wallet-card" role="button" tabindex="0" aria-label="Open ${vendor.name}" onclick="window.location.hash='/vendor/${vendor.id}'">
+      ${body}
+      <div class="wallet-chip">${vendor.name}</div>
+    </div>
+  `;
+}
+
+// Global helper for nav buttons (horizontal scroll)
+window.scrollWallet = function(id, direction) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const amount = Math.max(320, Math.floor(el.clientWidth * 0.9));
+  el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
+};
