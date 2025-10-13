@@ -14,15 +14,14 @@ export default function VendorLandingPage(root, params) {
   const peoplePlaceholder = (seed, size = 192) => `https://source.unsplash.com/random/${size}x${size}/?people,portrait,team,group&sig=${encodeURIComponent(seed || 'vendor')}`;
   const profileImgSrc = profile.profileImage || peoplePlaceholder(vendor.id, 192);
   
+  // Background placeholder consistent with Vendors list
+  const bgPlaceholder = (seed, w=1200, h=640) => `https://picsum.photos/seed/${encodeURIComponent(seed || 'bg')}/${w}/${h}`;
+
   root.innerHTML = `
     <div class="fade-in">
       <!-- Hero Section -->
       <div class="relative">
-        ${profile.backgroundImage ? `
-          <img src="${profile.backgroundImage}" class="w-full h-72 object-cover" onerror="this.style.display='none'">
-        ` : `
-          <div class="w-full h-72 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900"></div>
-        `}
+        <img src="${profile.backgroundImage || bgPlaceholder(vendor.id, 1600, 384)}" class="w-full h-72 object-cover" onerror="this.style.display='none'">
         ${profile.homeShowVideo ? `
           <div class="absolute inset-0 flex items-center justify-center">
             <button class="w-16 h-16 bg-black/60 backdrop-blur rounded-full flex items-center justify-center hover:bg-black/70 transition-all" onclick="window.open('${profile.homeShowVideo}', '_blank')">

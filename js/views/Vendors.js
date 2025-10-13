@@ -18,7 +18,9 @@ export default function Vendors(root) {
   };
 
   const ph = (seed, w, h) => `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
-  const vendorLogo = (v) => (v.logoUrl || (v.profile && v.profile.profileImage) || ph(`${v.id}-logo`, 128, 128));
+  // Use the same people-focused placeholder as VendorLandingPage for consistent avatars
+  const peoplePlaceholder = (seed, size = 192) => `https://source.unsplash.com/random/${size}x${size}/?people,portrait,team,group&sig=${encodeURIComponent(seed || 'vendor')}`;
+  const vendorLogo = (v) => (v.logoUrl || (v.profile && v.profile.profileImage) || peoplePlaceholder(v.id, 192));
   const vendorBg = (v) => ((v.profile && v.profile.backgroundImage) || ph(`${v.id}-bg`, 1200, 640));
 
   const render = (list) => {
