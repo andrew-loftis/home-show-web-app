@@ -35,6 +35,8 @@ export default function MyCard(root) {
   }
   // Wire up file upload handlers if present
   wireCardUploads(root);
+  // Initialize live preview
+  updateCardPreview(root);
 }
 
 function renderRoleGate(state) {
@@ -77,7 +79,15 @@ function renderAttendeeCardEditor(state) {
   }
   
   return `
-    ${attendee?.card?.name ? renderAttendeeCard(attendee) : ""}
+    <div class="glass-card p-8 mb-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center justify-center">
+          <ion-icon name="eye-outline" class="text-white text-lg"></ion-icon>
+        </div>
+        <h3 class="text-xl font-semibold text-glass">Live Preview</h3>
+      </div>
+      <div id="cardPreview"></div>
+    </div>
     
     <div class="glass-card p-8 slide-up">
       <div class="flex items-center gap-3 mb-6">
@@ -191,15 +201,6 @@ function renderAttendeeCardEditor(state) {
         </div>
       </form>
     </div>
-    
-    ${attendee?.card?.name ? `
-      <div class="mt-8 text-center">
-        <button class="glass-button px-6 py-3 text-glass font-medium" onclick="window.location.hash='/saved-vendors'">
-          <ion-icon name="bookmark-outline" class="mr-2"></ion-icon>
-          View My Saved Vendors
-        </button>
-      </div>
-    ` : ""}
   `;
 }
 
@@ -245,7 +246,6 @@ function handleFormSubmit(e) {
 }
 
 function renderAttendeeCard(attendee, compact = false) {
-  if (!attendee.card || !attendee.card.name) return "";
   
   const card = attendee.card;
   return `
@@ -327,6 +327,8 @@ function wireCardUploads(root) {
       try {
         const url = await uploadImage(file, 'attendees', withProgress(btn));
         profileInput.value = url;
+        // trigger preview refresh
+        profileInput.dispatchEvent(new Event('input', { bubbles: true }));
       } catch {}
     };
     if (backgroundFile) backgroundFile.onchange = async () => {
@@ -335,7 +337,54 @@ function wireCardUploads(root) {
       try {
         const url = await uploadImage(file, 'attendees', withProgress(btn));
         bgInput.value = url;
+        // trigger preview refresh
+        bgInput.dispatchEvent(new Event('input', { bubbles: true }));
       } catch {}
     };
   });
 }
+
+function updateCardPreview(root) {
+  const previewEl = root.querySelector('#cardPreview');
+  const form = root.querySelector('#cardForm');
+  if (!previewEl || !form) return;
+  const fd = new FormData(form);
+  const visitingText = (fd.get('visitingReasons') || '').toString();
+  const visitingReasons = visitingText.split(',').map(s => s.trim()).filter(Boolean);
+  const interests = Array.from(form.querySelectorAll('input[name="interests"]:checked')).map(i => i.value);
+  const attendeePreview = {
+    name: fd.get('name') || '',
+    email: fd.get('email') || '',
+    phone: fd.get('phone') || '',
+    interests,
+    card: {
+      profileImage: fd.get('profileImage') || '',
+      backgroundImage: fd.get('backgroundImage') || '',
+      familySize: parseInt(fd.get('familySize')) || 1,
+      location: fd.get('location') || '',
+      bio: fd.get('bio') || '',
+      visitingReasons
+    }
+  };
+  previewEl.innerHTML = renderAttendeeCard(attendeePreview);
+}
+
+// Live preview event wiring
+document.addEventListener('input', (e) => {
+  const root = document.getElementById('app');
+  if (!root) return;
+  const cardForm = root.querySelector('#cardForm');
+  if (!cardForm) return;
+  if (cardForm.contains(e.target)) {
+    updateCardPreview(root);
+  }
+});
+document.addEventListener('change', (e) => {
+  const root = document.getElementById('app');
+  if (!root) return;
+  const cardForm = root.querySelector('#cardForm');
+  if (!cardForm) return;
+  if (cardForm.contains(e.target)) {
+    updateCardPreview(root);
+  }
+});
