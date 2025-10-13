@@ -69,6 +69,12 @@ function scheduleRender() {
     renderQueued = false;
     renderShell();
     renderCurrentView();
+    // After first render, consider showing walkthrough if first time
+    try {
+      import('./utils/tour.js').then(({ ensureFirstTimeWalkthrough }) => {
+        setTimeout(() => ensureFirstTimeWalkthrough(), 200);
+      });
+    } catch {}
   });
 }
 

@@ -6,7 +6,8 @@ export function Modal(content, opts = {}) {
   overlay.className = "fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50";
   overlay.onclick = () => closeModal();
   const panel = document.createElement("div");
-  panel.className = "bg-white rounded-xl p-6 shadow-xl max-w-md w-full fade-in";
+  // Use nav-glass so it respects dark/light glass styling
+  panel.className = "nav-glass rounded-xl p-6 shadow-xl max-w-md w-full fade-in";
   panel.onclick = e => e.stopPropagation();
   panel.appendChild(content);
   overlay.appendChild(panel);

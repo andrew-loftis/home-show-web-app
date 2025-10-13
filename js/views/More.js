@@ -39,6 +39,14 @@ export default function More(root) {
           </div>
         </div>
       `}
+      <div class="glass-card p-6 mb-6">
+        <h3 class="text-lg font-semibold text-glass mb-2">App Walkthrough</h3>
+        <div class="text-sm text-glass-secondary mb-4">View a guided tour any time. We tailor it to your current role.</div>
+        <div class="flex flex-wrap gap-2">
+          <button class="glass-button px-4 py-2" id="tourGeneralBtn">General Tour</button>
+          <button class="glass-button px-4 py-2" id="tourRoleBtn">${state.isAdmin ? 'Admin Tour' : (state.role === 'vendor' ? 'Vendor Tour' : 'Attendee Tour')}</button>
+        </div>
+      </div>
       <div class="glass-card p-6">
         <h3 class="text-lg font-semibold text-glass mb-2">Account</h3>
         ${state.isAdmin ? `` : `<div class="text-xs text-glass-secondary mb-3">Role switching is disabled.</div>`}
@@ -153,5 +161,13 @@ export default function More(root) {
         };
       }
     }
+  });
+
+  // Walkthrough launchers
+  import('../utils/tour.js').then(({ startWalkthrough }) => {
+    const gen = root.querySelector('#tourGeneralBtn');
+    const roleBtn = root.querySelector('#tourRoleBtn');
+    if (gen) gen.onclick = () => startWalkthrough('general');
+    if (roleBtn) roleBtn.onclick = () => startWalkthrough(state.isAdmin ? 'admin' : (state.role === 'vendor' ? 'vendor' : 'attendee'));
   });
 }

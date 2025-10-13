@@ -7,6 +7,7 @@ export default function MyCard(root) {
   console.log("Current state:", state);
   console.log("Current role:", state.role);
   
+  // Debug: Show what we have
   root.innerHTML = `
     <div class="container-glass fade-in">
       <div class="text-center mb-8">
@@ -14,7 +15,7 @@ export default function MyCard(root) {
         <p class="text-glass-secondary">Create and customize your digital business card</p>
       </div>
       
-      <div class="glass-card p-8 mb-6">
+      <div class="glass-card p-8">
         <h3 class="text-xl font-semibold text-glass mb-4">Debug Information</h3>
         <div class="space-y-2 text-sm">
           <div class="text-glass">Role: <span class="font-bold">${state.role || 'No role set'}</span></div>

@@ -90,7 +90,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, query, getDocs, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, query, getDocs, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDHpZ1mcn4qkgWW1BQcu6HQ8FM5LYA59aA",
@@ -226,7 +226,16 @@
         await setDoc(adminUserRef, adminUserData);
         updateProgress('✅ Created admin user document', 'success');
         
-        // Step 3: Create admin configuration
+        // Step 3: Add to adminEmails allowlist (for app isAdmin detection)
+        try {
+          const adminEmailRef = doc(db, 'adminEmails', String(email).toLowerCase());
+          await setDoc(adminEmailRef, { addedAt: serverTimestamp(), addedBy: user.uid }, { merge: true });
+          updateProgress('✅ Added to adminEmails allowlist', 'success');
+        } catch (e) {
+          updateProgress('⚠️ Could not write to adminEmails (check Firestore rules)', 'warning');
+        }
+
+        // Step 4: Create admin configuration
         updateProgress('⚙️ Setting up admin configuration...', 'info');
         const adminConfigRef = doc(db, 'admin-config', 'system-admins');
         const adminConfigData = {
@@ -274,7 +283,7 @@
         await setDoc(adminConfigRef, adminConfigData);
         updateProgress('✅ Created admin configuration', 'success');
         
-        // Step 4: Create initial admin audit log
+  // Step 5: Create initial admin audit log
         updateProgress('📋 Creating audit log...', 'info');
         const auditRef = doc(db, 'admin-analytics', 'audit-log-initial');
         const auditData = {
@@ -298,7 +307,7 @@
         await setDoc(auditRef, auditData);
         updateProgress('✅ Created audit log entry', 'success');
         
-        // Step 5: Verify admin setup
+  // Step 6: Verify admin setup
         updateProgress('🔍 Verifying admin setup...', 'info');
         const userDoc = await getDoc(adminUserRef);
         if (userDoc.exists() && userDoc.data().role === 'super_admin') {

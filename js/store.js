@@ -75,6 +75,8 @@ let state = {
   theme: "light",
   user: null, // { uid, displayName, email, photoURL }
   isAdmin: false,
+  // Track per-role walkthrough completion locally; we'll sync to user.preferences when signed in
+  walkthroughs: { general: false, attendee: false, vendor: false, admin: false },
   myVendor: null, // { id, approved } if user owns a vendor
   attendees: [],
   vendors: [],
@@ -125,18 +127,37 @@ function hydrateStore() {
               photoURL: user.photoURL,
               isAnonymous: !!user.isAnonymous
             };
-            // Determine admin via Firestore (adminEmails collection)
+            // Determine admin via (1) users doc role/security OR (2) adminEmails allowlist
+            let userDocRole = null;
+            let userDocSecurityAdmin = false;
             try {
-              state.isAdmin = await isAdminEmail(state.user.email);
+              const db = getDb();
+              const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+              const ref = doc(db, 'users', user.uid);
+              const snap = await getDoc(ref);
+              if (snap.exists()) {
+                const ud = snap.data() || {};
+                userDocRole = ud.role || null;
+                userDocSecurityAdmin = !!ud.security?.isAdmin || ud.role === 'super_admin';
+                // Pull in walkthrough preferences if present
+                if (ud.preferences?.walkthroughs) {
+                  state.walkthroughs = { ...state.walkthroughs, ...ud.preferences.walkthroughs };
+                }
+              }
+            } catch {}
+            try {
+              const allowlist = await isAdminEmail(state.user.email);
+              state.isAdmin = Boolean(userDocSecurityAdmin || allowlist || userDocRole === 'organizer' || userDocRole === 'admin' || userDocRole === 'super_admin');
             } catch {
-              state.isAdmin = false;
+              state.isAdmin = Boolean(userDocSecurityAdmin || userDocRole === 'organizer' || userDocRole === 'admin' || userDocRole === 'super_admin');
             }
-            // Ensure user doc exists/updated
+            // Ensure user doc exists/updated (preserve existing admin roles)
             try {
+              const nextRole = userDocRole || (state.isAdmin ? 'organizer' : 'visitor');
               await createOrUpdateUserDoc(user.uid, {
                 email: user.email || null,
                 displayName: user.displayName || null,
-                role: state.isAdmin ? 'organizer' : 'visitor'
+                role: nextRole
               });
             } catch {}
             // Determine if user owns a vendor
@@ -171,11 +192,14 @@ function hydrateStore() {
                 state.attendees = [att];
               }
             } catch {}
-            // Load per-user preferences (e.g., theme)
+            // Load per-user preferences (e.g., theme + walkthroughs)
             try {
               const prefs = await loadUserPreferences(user.uid);
               if (prefs && prefs.theme && prefs.theme !== state.theme) {
                 state.theme = prefs.theme;
+              }
+              if (prefs?.walkthroughs) {
+                state.walkthroughs = { ...state.walkthroughs, ...prefs.walkthroughs };
               }
             } catch {}
           } else {
@@ -256,6 +280,7 @@ function persist() {
     isOnline: state.isOnline,
     vendorLoginId: state.vendorLoginId,
     theme: state.theme,
+    walkthroughs: state.walkthroughs,
     attendees: state.attendees,
     vendors: state.vendors,
     leads: state.leads,
@@ -286,6 +311,24 @@ function setOnboarded() {
   state.hasOnboarded = true;
   persist();
   notify();
+}
+// Walkthrough helpers
+async function markWalkthrough(roleKey, done = true) {
+  state.walkthroughs[roleKey] = !!done;
+  persist();
+  notify();
+  // Sync to user preferences when signed in
+  if (state.user?.uid) {
+    try {
+      const { saveUserPreferences, loadUserPreferences } = await import('./firebase.js');
+      const current = await loadUserPreferences(state.user.uid);
+      const next = { ...(current||{}), walkthroughs: { ...(current?.walkthroughs||{}), [roleKey]: !!done } };
+      await saveUserPreferences(state.user.uid, next);
+    } catch {}
+  }
+}
+function hasSeenWalkthrough(roleKey) {
+  return !!state.walkthroughs[roleKey];
 }
 function setOnline(val) {
   state.isOnline = val;
@@ -569,6 +612,8 @@ export {
   getState,
   setRole,
   setOnboarded,
+  markWalkthrough,
+  hasSeenWalkthrough,
   setOnline,
   setTheme,
   getTheme,
