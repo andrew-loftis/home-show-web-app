@@ -17,6 +17,10 @@ export default function Vendors(root) {
     );
   };
 
+  const ph = (seed, w, h) => `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
+  const vendorLogo = (v) => (v.logoUrl || (v.profile && v.profile.profileImage) || ph(`${v.id}-logo`, 128, 128));
+  const vendorBg = (v) => ((v.profile && v.profile.backgroundImage) || ph(`${v.id}-bg`, 1200, 640));
+
   const render = (list) => {
     const filtered = filter(list);
     root.innerHTML = `
@@ -96,7 +100,7 @@ export default function Vendors(root) {
         ${list.map(v => `
           <div class="glass-card">
             <div class="flex items-center gap-4 p-3 cursor-pointer vendor-row" data-id="${v.id}">
-              <img src="${v.logoUrl || './assets/splash.svg'}" class="w-10 h-10 rounded" onerror="this.style.display='none'">
+              <img src="${vendorLogo(v)}" class="w-10 h-10 rounded object-cover" onerror="this.style.display='none'">
               <div class="flex-1">
                 <div class="font-semibold">${v.name}</div>
                 <div class="text-xs text-glass-secondary">${v.category} ${v.booth ? `• Booth ${v.booth}` : ''}</div>
@@ -126,7 +130,7 @@ export default function Vendors(root) {
       <div class="glass-card overflow-hidden slide-up border border-white/15 shadow-glass">
         <div class="flex items-center gap-4 p-6 border-b border-white/20">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-            ${vendor.logoUrl ? `<img src="${vendor.logoUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">` : `<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>`}
+            <img src="${vendorLogo(vendor)}" class="w-full h-full object-cover" onerror="this.style.display='none'">
           </div>
           <div class="flex-1">
             <h3 class="text-xl font-bold text-glass">${vendor.name}</h3>
@@ -135,16 +139,7 @@ export default function Vendors(root) {
           <button class="brand-bg px-6 py-3 rounded-xl font-semibold" onclick="window.location.hash='/vendor/${vendor.id}'">Visit</button>
         </div>
         <div class="relative">
-          ${profile.backgroundImage ? `
-            <img src="${profile.backgroundImage}" class="w-full h-80 object-cover" onerror="this.style.display='none'">
-          ` : `
-            <div class="w-full h-80 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900 flex items-center justify-center">
-              <div class="text-white text-center">
-                <ion-icon name="business-outline" class="text-6xl mb-4"></ion-icon>
-                <h4 class="text-2xl font-bold">${vendor.name}</h4>
-              </div>
-            </div>
-          `}
+          <img src="${vendorBg(vendor)}" class="w-full h-80 object-cover" onerror="this.style.display='none'">
           ${profile.homeShowVideo ? `
             <div class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
               <button class="play-video w-16 h-16 rounded-full bg-white/30 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:scale-110 transition-transform duration-300" data-url="${profile.homeShowVideo}">
@@ -210,22 +205,16 @@ export default function Vendors(root) {
     const hasMedia = profile.backgroundImage || profile.homeShowVideo;
     return `
       <div class="border-t border-white/10 preview-inner">
-        ${hasMedia ? `
-          <div class="relative">
-            ${profile.backgroundImage ? `
-              <img src="${profile.backgroundImage}" class="w-full h-56 object-cover" onerror="this.style.display='none'">
-            ` : `
-              <div class=\"w-full h-40 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900\"></div>
-            `}
-            ${profile.homeShowVideo ? `
-              <div class="absolute inset-0 flex items-center justify-center">
-                <button class="play-video w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" data-url="${profile.homeShowVideo}">
-                  <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
-                </button>
-              </div>
-            ` : ''}
-          </div>
-        ` : ''}
+        <div class="relative">
+          <img src="${vendorBg(vendor)}" class="w-full h-56 object-cover" onerror="this.style.display='none'">
+          ${profile.homeShowVideo ? `
+            <div class="absolute inset-0 flex items-center justify-center">
+              <button class="play-video w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" data-url="${profile.homeShowVideo}">
+                <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
+              </button>
+            </div>
+          ` : ''}
+        </div>
         <div class="p-4">
           ${profile.description ? `<p class=\"text-glass-secondary text-sm mb-3\">${profile.description}</p>` : ''}
           ${profile.specialOffer ? `
