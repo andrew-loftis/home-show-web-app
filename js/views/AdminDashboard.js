@@ -32,6 +32,11 @@ export default function AdminDashboard(root) {
       <div id="pendingVendors" class="grid gap-2 mb-4">
         <div class="text-gray-400 text-xs">Loading pending vendors…</div>
       </div>
+
+      <div class="font-semibold mb-2">User Management</div>
+      <div id="userManagement" class="grid gap-2">
+        <div class="text-gray-400 text-xs">Loading users…</div>
+      </div>
     </div>
   `;
   // Server-side counts (admins only)
@@ -98,6 +103,73 @@ export default function AdminDashboard(root) {
       } catch (e) {
         const container = root.querySelector('#pendingVendors');
         if (container) container.innerHTML = `<div class='text-red-500 text-xs'>Failed to load pending vendors</div>`;
+      }
+    });
+  }
+
+  // User management
+  if (state.isAdmin) {
+    import("../firebase.js").then(async ({ getDb, addAdminEmail, removeAdminEmail }) => {
+      try {
+        const db = getDb();
+        const { collection, getDocs, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const users = [];
+        usersSnap.forEach(d => users.push({ id: d.id, ...d.data() }));
+        const container = root.querySelector('#userManagement');
+        if (!users.length) {
+          container.innerHTML = `<div class='text-gray-400 text-xs'>No users found.</div>`;
+        } else {
+          container.innerHTML = users.map(u => `
+            <div class='card p-3 flex items-center gap-3'>
+              <div class='flex-1'>
+                <div class='font-semibold'>${u.displayName || u.email || u.id}</div>
+                <div class='text-xs text-gray-500'>${u.email || '-'} • Role: ${u.role || 'visitor'} ${u.security?.isAdmin ? '• Admin' : ''}</div>
+              </div>
+              <div class='flex items-center gap-2'>
+                <select class='glass-input text-sm role-select' data-uid='${u.id}'>
+                  ${['visitor','attendee','vendor','organizer','admin','super_admin'].map(r => `<option value='${r}' ${u.role===r?'selected':''}>${r}</option>`).join('')}
+                </select>
+                <button class='glass-button px-2 py-1 text-xs grant-admin' data-email='${(u.email||'').toLowerCase()}'>Grant Admin</button>
+                <button class='glass-button px-2 py-1 text-xs revoke-admin' data-email='${(u.email||'').toLowerCase()}'>Revoke Admin</button>
+              </div>
+            </div>
+          `).join("");
+          // Wire role change
+          container.querySelectorAll('.role-select').forEach(sel => {
+            sel.onchange = async () => {
+              const uid = sel.dataset.uid;
+              const role = sel.value;
+              try {
+                await setDoc(doc(db, 'users', uid), { role }, { merge: true });
+                sel.classList.add('brand-bg');
+                setTimeout(()=>sel.classList.remove('brand-bg'), 600);
+              } catch {}
+            };
+          });
+          // Admin grant/revoke
+          container.querySelectorAll('.grant-admin').forEach(btn => {
+            btn.onclick = async () => {
+              const email = btn.dataset.email;
+              if (!email) return;
+              await addAdminEmail(email, state.user?.uid||null);
+              btn.textContent = 'Granted';
+              setTimeout(()=>btn.textContent='Grant Admin', 800);
+            };
+          });
+          container.querySelectorAll('.revoke-admin').forEach(btn => {
+            btn.onclick = async () => {
+              const email = btn.dataset.email;
+              if (!email) return;
+              await removeAdminEmail(email);
+              btn.textContent = 'Revoked';
+              setTimeout(()=>btn.textContent='Revoke Admin', 800);
+            };
+          });
+        }
+      } catch (e) {
+        const container = root.querySelector('#userManagement');
+        if (container) container.innerHTML = `<div class='text-red-500 text-xs'>Failed to load users</div>`;
       }
     });
   }

@@ -75,6 +75,76 @@ export function startWalkthrough(kind = 'general') {
   Modal(wrapper);
 }
 
+// Role-based tour that navigates through the app
+const roleRoutes = {
+  attendee: [
+    { route: '/home', title: 'Home', icon: 'home-outline', body: 'Start here. Explore featured vendors and quick links.' },
+    { route: '/my-card', title: 'My Card', icon: 'card-outline', body: 'Build your digital card. Share it with vendors via QR.' },
+    { route: '/vendors', title: 'Vendors', icon: 'storefront-outline', body: 'Browse vendors by category and booth. Save those you like.' },
+    { route: '/saved-vendors', title: 'Saved Vendors', icon: 'bookmark-outline', body: 'Find all your saved vendors for follow-up.' },
+    { route: '/cards', title: 'Cards', icon: 'swap-horizontal-outline', body: 'See card shares and your interactions history.' },
+    { route: '/more', title: 'Profile', icon: 'person-circle-outline', body: 'Change theme, manage your account, and revisit this tour.' }
+  ],
+  vendor: [
+    { route: '/vendor-registration', title: 'Vendor Registration', icon: 'document-text-outline', body: 'Complete vendor info. Multi-booth pricing is supported.' },
+    { route: '/edit-vendor', title: 'Edit Profile', icon: 'build-outline', body: 'Update logo, description, offers, and social links.' },
+    { route: '/vendor-leads', title: 'Leads', icon: 'people-outline', body: 'View card swaps and leads collected at your booth.' },
+    { route: '/vendors', title: 'Directory Presence', icon: 'storefront-outline', body: 'Your profile becomes a landing page in the directory.' },
+    { route: '/cards', title: 'Cards', icon: 'card-outline', body: 'Review interactions and follow up after the show.' },
+    { route: '/more', title: 'Profile', icon: 'person-circle-outline', body: 'Manage your account and theme; revisit this tour anytime.' }
+  ],
+  admin: [
+    { route: '/admin', title: 'Admin Dashboard', icon: 'speedometer-outline', body: 'See totals, top vendors, and pending approvals.' },
+    { route: '/vendors', title: 'Vendor Directory', icon: 'storefront-outline', body: 'Spot-check vendor pages and content quality.' },
+    { route: '/cards', title: 'Card Activity', icon: 'swap-horizontal-outline', body: 'Review card exchanges via vendor/attendee perspectives.' },
+    { route: '/more', title: 'Admin Tools', icon: 'shield-checkmark-outline', body: 'Manage admins and launch walkthroughs from Profile.' }
+  ]
+};
+
+function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+export function startRoleTour(role) {
+  const sequence = roleRoutes[role];
+  if (!sequence) return startWalkthrough('general');
+  let idx = 0;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'nav-glass rounded-2xl p-4 max-w-lg w-full text-glass';
+
+  const goTo = async (route) => {
+    // Navigate and allow view to render
+    window.location.hash = route;
+    await wait(250);
+  };
+
+  const render = async () => {
+    const step = sequence[idx];
+    await goTo(step.route);
+    wrapper.innerHTML = `
+      <div class='mb-4'>${buildStep({ title: step.title, body: step.body, icon: step.icon })}</div>
+      <div class='flex items-center justify-between mt-6'>
+        <button id='skip' class='glass-button px-4 py-2'>Skip</button>
+        <div class='flex gap-2'>
+          <button id='prev' class='glass-button px-4 py-2' ${idx === 0 ? 'disabled' : ''}>Back</button>
+          <button id='next' class='brand-bg px-4 py-2'>${idx === sequence.length - 1 ? 'Done' : 'Next'}</button>
+        </div>
+      </div>
+      <div class='mt-4 text-center text-xs text-glass-secondary'>You can revisit this anytime in Profile → App Walkthrough</div>
+    `;
+    const prev = wrapper.querySelector('#prev');
+    const next = wrapper.querySelector('#next');
+    const skip = wrapper.querySelector('#skip');
+    if (prev) prev.onclick = async () => { if (idx > 0) { idx--; await render(); } };
+    if (next) next.onclick = async () => {
+      if (idx < sequence.length - 1) { idx++; await render(); }
+      else { await markWalkthrough(role, true); closeModal(); }
+    };
+    if (skip) skip.onclick = async () => { await markWalkthrough(role, true); closeModal(); };
+  };
+
+  render();
+  Modal(wrapper);
+}
+
 export async function ensureFirstTimeWalkthrough() {
   const state = getState();
   // Show general first-run walkthrough if never seen
@@ -85,6 +155,6 @@ export async function ensureFirstTimeWalkthrough() {
   // Role-based walkthroughs (first time in role)
   const role = state.isAdmin ? 'admin' : (state.role === 'vendor' ? 'vendor' : (state.role === 'attendee' ? 'attendee' : null));
   if (role && !hasSeenWalkthrough(role)) {
-    startWalkthrough(role);
+    startRoleTour(role);
   }
 }
