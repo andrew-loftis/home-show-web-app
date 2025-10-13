@@ -1,0 +1,8 @@
+[build]
+  publish = "."
+
+# Single Page App redirect
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

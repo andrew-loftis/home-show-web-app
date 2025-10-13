@@ -293,3 +293,53 @@ export async function getCollectionCount(path) {
     return 0;
   }
 }
+
+// --- Admin management (by email) ---
+export async function isAdminEmail(email) {
+  if (!email) return false;
+  try {
+    const db = getFirestore();
+    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
+    const snap = await getDoc(ref);
+    return snap.exists();
+  } catch {
+    return false;
+  }
+}
+
+export async function addAdminEmail(email, addedBy = null) {
+  if (!email) return false;
+  try {
+    const db = getFirestore();
+    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
+    await setDoc(ref, { addedAt: serverTimestamp(), addedBy: addedBy || null }, { merge: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function removeAdminEmail(email) {
+  if (!email) return false;
+  try {
+    const db = getFirestore();
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
+    await deleteDoc(ref);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function listAdminEmails() {
+  try {
+    const db = getFirestore();
+    const snap = await getDocs(collection(db, 'adminEmails'));
+    const out = [];
+    snap.forEach(d => out.push({ id: d.id, ...d.data() }));
+    return out;
+  } catch {
+    return [];
+  }
+}

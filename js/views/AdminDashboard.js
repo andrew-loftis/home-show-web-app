@@ -2,6 +2,10 @@ import { getState, topVendorsByLeadCount } from "../store.js";
 
 export default function AdminDashboard(root) {
   const state = getState();
+  if (!state.isAdmin) {
+    root.innerHTML = `<div class='p-8 text-center text-gray-400'>Admin access required.</div>`;
+    return;
+  }
   const topVendors = topVendorsByLeadCount();
   root.innerHTML = `
     <div class="p-6 fade-in">

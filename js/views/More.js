@@ -1,69 +1,7 @@
-import { getState, setRole, vendorLogout, setOnline, dequeueAll, setTheme, getTheme } from "../store.js";
-import { navigate } from "../router.js";
-import { Toast } from "../utils/ui.js";
+import { getState, setRole, vendorLogout, setTheme, getTheme } from "../store.js";
 
 export default function More(root) {
   const state = getState();
-  let menu = "";
-  if (state.role === "attendee") {
-    menu = `
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Your Card</h3>
-        <p class="text-sm text-glass-secondary mb-4">Build and adjust your visitor card details.</p>
-        <div class="flex gap-3">
-          <button class="brand-bg px-4 py-2 rounded" onclick="window.location.hash='/cards'">Open Cards</button>
-          <button class="glass-button px-4 py-2" onclick="window.location.hash='/cards'">Edit Card</button>
-        </div>
-      </div>
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Explore</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <button class="glass-button p-3" onclick="window.location.hash='/vendors'">Browse Vendors</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/saved-vendors'">Saved Vendors</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/map'">Map</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/schedule'">Schedule</button>
-        </div>
-      </div>
-    `;
-  } else if (state.role === "vendor") {
-    menu = `
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Business Card</h3>
-        <p class="text-sm text-glass-secondary mb-4">Build and adjust your vendor business card.</p>
-        <div class="flex gap-3">
-          <button class="brand-bg px-4 py-2" onclick="window.location.hash='/cards'">Open Cards</button>
-          <button class="glass-button px-4 py-2" onclick="window.location.hash='/cards'">Edit Card</button>
-        </div>
-      </div>
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Landing Page</h3>
-        <p class="text-sm text-glass-secondary mb-4">Adjust your vendor landing page content.</p>
-        <div class="flex gap-3">
-          <button class="brand-bg px-4 py-2" onclick="window.location.hash='/edit-vendor'">Edit Landing Page</button>
-          <button class="glass-button px-4 py-2" onclick="window.location.hash='/vendor/' + (window.getState().vendorLoginId || '')">Preview</button>
-        </div>
-      </div>
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Manage</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <button class="glass-button p-3" onclick="window.location.hash='/vendor-leads'">View Leads</button>
-          <button class="glass-button p-3" id="logoutBtn">Logout</button>
-        </div>
-      </div>
-    `;
-  } else if (state.role === "organizer") {
-    menu = `
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">Organizer Tools</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <button class="glass-button p-3" onclick="window.location.hash='/admin'">Admin Dashboard</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/vendors'">Vendor Directory</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/schedule'">Event Schedule</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/map'">Floor Plan</button>
-        </div>
-      </div>
-    `;
-  }
   root.innerHTML = `
     <div class="container-glass fade-in">
       <div class="text-center mb-6">
@@ -74,14 +12,36 @@ export default function More(root) {
           ${state.isAdmin ? `<div class="mt-1 text-xs text-green-400">Admin privileges enabled</div>` : ``}
         ` : ``}
       </div>
-      ${menu}
+      ${state.isAdmin ? `
+        <div class="glass-card p-6 mb-6">
+          <h3 class="text-lg font-semibold text-glass mb-2">Admin Tools</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <button class="glass-button p-3" onclick="window.location.hash='/admin'">Admin Dashboard</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/vendors'">Vendor Directory</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/vendor-login'">Vendor Login</button>
+          </div>
+          <div class="border-t border-white/10 pt-4">
+            <div class="font-semibold mb-2">Admin Management</div>
+            <form id="addAdminForm" class="flex gap-2 mb-3">
+              <input type="email" required placeholder="Add admin email" class="glass-input flex-1 p-2 rounded border border-white/15 bg-white/10 text-glass" name="email">
+              <button class="brand-bg px-3 py-2 rounded">Add</button>
+            </form>
+            <div id="adminList" class="grid gap-2 text-sm text-glass-secondary">Loading admins…</div>
+          </div>
+        </div>
+      ` : `
+        <div class="glass-card p-6 mb-6">
+          <div class="text-sm text-glass-secondary mb-2">Quick Links</div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button class="glass-button p-3" onclick="window.location.hash='/vendor-login'">Vendor Login</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/saved-vendors'">Saved Vendors</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/cards'">My Cards</button>
+          </div>
+        </div>
+      `}
       <div class="glass-card p-6">
         <h3 class="text-lg font-semibold text-glass mb-2">Account</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-          <button class="glass-button p-3" id="switchRoleBtn">Switch Role</button>
-          <button class="glass-button p-3" onclick="window.location.hash='/vendor-login'">Vendor Login</button>
-          <button class="glass-button p-3" id="resetBtn">Reset Role & Logout</button>
-        </div>
+        ${state.isAdmin ? `` : `<div class="text-xs text-glass-secondary mb-3">Role switching is disabled.</div>`}
         ${state.user ? `
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <button class="brand-bg p-3" id="signOutBtn">Sign out</button>
@@ -113,31 +73,8 @@ export default function More(root) {
       </div>
     </div>
   `;
-  if (state.role === "vendor") {
-    root.querySelector("#onlineToggle").onchange = e => {
-      setOnline(e.target.checked);
-      Toast(e.target.checked ? "Online" : "Offline");
-    };
-    root.querySelector("#syncBtn").onclick = () => {
-      dequeueAll();
-      Toast("Queue synced");
-    };
-    root.querySelector("#logoutBtn").onclick = () => {
-      vendorLogout();
-      navigate("/role");
-    };
-  }
-  root.querySelector("#switchRoleBtn").onclick = () => {
-    vendorLogout();
-    setRole(null);
-    navigate("/role");
-  };
-  root.querySelector("#resetBtn").onclick = () => {
-    vendorLogout();
-    setRole(null);
-    navigate("/role");
-  };
-  const theme = getTheme();
+
+  // Theme
   const setActive = (mode) => {
     const lightBtn = root.querySelector('#lightThemeBtn');
     const darkBtn = root.querySelector('#darkThemeBtn');
@@ -145,23 +82,19 @@ export default function More(root) {
     lightBtn.classList.toggle('brand-bg', mode === 'light');
     darkBtn.classList.toggle('brand-bg', mode === 'dark');
   };
-  setActive(theme);
+  setActive(getTheme());
   root.querySelector('#lightThemeBtn').onclick = () => { setTheme('light'); setActive('light'); };
   root.querySelector('#darkThemeBtn').onclick = () => { setTheme('dark'); setActive('dark'); };
+
   // Auth buttons
-  import("../firebase.js").then(({ signInWithGoogle, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser }) => {
+  import("../firebase.js").then(({ signInWithGoogle, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser, listAdminEmails, addAdminEmail, removeAdminEmail }) => {
     const signInBtn = root.querySelector('#googleSignInBtn');
     const signOutBtn = root.querySelector('#signOutBtn');
     const anonBtn = root.querySelector('#anonSignInBtn');
-    if (signInBtn) signInBtn.onclick = async () => {
-      try { await signInWithGoogle(); } catch {}
-    };
-    if (signOutBtn) signOutBtn.onclick = async () => {
-      try { await signOutUser(); } catch {}
-    };
-    if (anonBtn) anonBtn.onclick = async () => {
-      try { await signInAnonymouslyUser(); } catch {}
-    };
+    if (signInBtn) signInBtn.onclick = async () => { try { await signInWithGoogle(); } catch {} };
+    if (signOutBtn) signOutBtn.onclick = async () => { try { await signOutUser(); } catch {} };
+    if (anonBtn) anonBtn.onclick = async () => { try { await signInAnonymouslyUser(); } catch {} };
+
     const emailForm = root.querySelector('#emailAuthForm');
     if (emailForm) {
       emailForm.onsubmit = async (e) => {
@@ -186,6 +119,42 @@ export default function More(root) {
           import("../utils/ui.js").then(({ Toast }) => Toast('Sign-up failed'));
         }
       };
+    }
+
+    // Admin management
+    if (state.isAdmin) {
+      const listEl = root.querySelector('#adminList');
+      const refreshAdmins = async () => {
+        if (!listEl) return;
+        try {
+          const admins = await listAdminEmails();
+          if (!admins.length) { listEl.textContent = 'No admin emails yet.'; return; }
+          listEl.innerHTML = admins.map(a => `
+            <div class='flex items-center justify-between p-2 rounded bg-white/10 border border-white/10'>
+              <span>${a.id}</span>
+              <button class='glass-button px-2 py-1 text-xs remove-admin' data-email='${a.id}'>Remove</button>
+            </div>
+          `).join("");
+          listEl.querySelectorAll('.remove-admin').forEach(btn => {
+            btn.onclick = async () => { await removeAdminEmail(btn.dataset.email); refreshAdmins(); };
+          });
+        } catch {
+          listEl.textContent = 'Failed to load admin emails';
+        }
+      };
+      refreshAdmins();
+      const addForm = root.querySelector('#addAdminForm');
+      if (addForm) {
+        addForm.onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(addForm);
+          const email = String(fd.get('email')||'').trim().toLowerCase();
+          if (!email) return;
+          await addAdminEmail(email, state.user?.uid || null);
+          addForm.reset();
+          refreshAdmins();
+        };
+      }
     }
   });
 }

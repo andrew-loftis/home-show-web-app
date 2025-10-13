@@ -56,16 +56,29 @@ function renderTabbar(state) {
   return tabbar;
 }
 
+// Coalesce renders to avoid multiple flashes during boot/auth hydration
+let renderQueued = false;
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderShell();
+    renderCurrentView();
+  });
+}
+
 function boot() {
   hydrateStore();
   // Expose getState globally for some views
   window.getState = getState;
-  renderShell();
+  // Initialize router; let it render on hash changes
   initRouter(renderShell);
-  // On any state change (e.g., theme toggle), re-render shell and current view
+  // Render once after boot
+  scheduleRender();
+  // On any state change (e.g., theme toggle), coalesce renders
   subscribe(() => {
-    renderShell();
-    renderCurrentView();
+    scheduleRender();
   });
   // Onboarding gate
   const state = getState();

@@ -112,10 +112,8 @@ function hydrateStore() {
   try {
     Promise.all([
       import("./firebase.js"),
-      import("./config.js").catch(() => ({ ADMIN_EMAILS: [] }))
-    ]).then(async ([firebaseMod, cfg]) => {
-      const { initFirebase, observeAuth, loadUserPreferences, createOrUpdateUserDoc, getDb } = firebaseMod;
-      const ADMIN_EMAILS = (cfg && cfg.ADMIN_EMAILS) || [];
+    ]).then(async ([firebaseMod]) => {
+      const { initFirebase, observeAuth, loadUserPreferences, createOrUpdateUserDoc, getDb, isAdminEmail } = firebaseMod;
       try { initFirebase(); } catch {}
       try {
         observeAuth(async (user) => {
@@ -126,7 +124,12 @@ function hydrateStore() {
               email: user.email,
               photoURL: user.photoURL
             };
-            state.isAdmin = !!(state.user.email && ADMIN_EMAILS.includes(state.user.email));
+            // Determine admin via Firestore (adminEmails collection)
+            try {
+              state.isAdmin = await isAdminEmail(state.user.email);
+            } catch {
+              state.isAdmin = false;
+            }
             // Ensure user doc exists/updated
             try {
               await createOrUpdateUserDoc(user.uid, {
@@ -261,6 +264,11 @@ function getState() {
   return state;
 }
 function setRole(role) {
+  // Only admins can set organizer; non-admins cannot escalate to vendor unless they own one
+  if (role === 'organizer' && !state.isAdmin) return;
+  if (role === 'vendor' && !state.isAdmin) {
+    if (!state.myVendor) return; // require ownership
+  }
   state.role = role;
   persist();
   notify();
