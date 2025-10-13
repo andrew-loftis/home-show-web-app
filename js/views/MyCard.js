@@ -33,6 +33,8 @@ export default function MyCard(root) {
   if (form) {
     form.onsubmit = handleFormSubmit;
   }
+  // Wire up file upload handlers if present
+  wireCardUploads(root);
 }
 
 function renderRoleGate(state) {
@@ -103,13 +105,27 @@ function renderAttendeeCardEditor(state) {
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-medium text-glass">ZIP Code</label>
-            <input name="zip" placeholder="12345" value="${attendee?.zip || ''}" class="w-full">
+                <label class="block text-sm font-medium text-glass">Profile Image</label>
+                <div class="flex gap-2">
+                  <input name="profileImage" placeholder="https://your-image-url.com" value="${attendee?.card?.profileImage || ''}" class="w-full">
+                  <label class="glass-button px-3 py-2 cursor-pointer">
+                    Upload
+                    <input type="file" accept="image/*" class="hidden" id="uploadProfileImage">
+                  </label>
+                </div>
+                <div class="text-xs text-glass-secondary">Paste a URL or upload a file from your device.</div>
           </div>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Background Image</label>
+                <div class="flex gap-2">
+                  <input name="backgroundImage" placeholder="https://your-background.com" value="${attendee?.card?.backgroundImage || ''}" class="w-full">
+                  <label class="glass-button px-3 py-2 cursor-pointer">
+                    Upload
+                    <input type="file" accept="image/*" class="hidden" id="uploadBackgroundImage">
+                  </label>
+                </div>
+                <div class="text-xs text-glass-secondary">Paste a URL or upload a file from your device.</div>
             <label class="block text-sm font-medium text-glass">Profile Image URL</label>
             <input name="profileImage" placeholder="https://your-image-url.com" value="${attendee?.card?.profileImage || ''}" class="w-full">
           </div>
@@ -118,6 +134,8 @@ function renderAttendeeCardEditor(state) {
             <label class="block text-sm font-medium text-glass">Background Image URL</label>
             <input name="backgroundImage" placeholder="https://your-background.com" value="${attendee?.card?.backgroundImage || ''}" class="w-full">
           </div>
+            // Wire uploads
+            wireCardUploads(root);
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -213,7 +231,7 @@ function handleFormSubmit(e) {
   
   try {
     upsertAttendee(payload);
-    Toast.show("Business card saved successfully!", "success");
+    Toast("Business card saved successfully!");
     
     // Refresh the view to show the updated card
     setTimeout(() => {
@@ -222,7 +240,7 @@ function handleFormSubmit(e) {
     
   } catch (error) {
     console.error("Error saving card:", error);
-    Toast.show("Failed to save business card. Please try again.", "error");
+    Toast("Failed to save business card. Please try again.");
   }
 }
 
@@ -288,4 +306,36 @@ function renderAttendeeCard(attendee, compact = false) {
       </div>
     </div>
   `;
+}
+
+function wireCardUploads(root) {
+  import('../firebase.js').then(({ uploadImage }) => {
+    const profileFile = root.querySelector('#uploadProfileImage');
+    const backgroundFile = root.querySelector('#uploadBackgroundImage');
+    const profileInput = root.querySelector('input[name="profileImage"]');
+    const bgInput = root.querySelector('input[name="backgroundImage"]');
+    const withProgress = (btnEl) => (pct) => {
+      if (!btnEl) return;
+      const span = btnEl.querySelector('.upload-label-text');
+      if (!span) return;
+      span.textContent = pct >= 100 ? 'Processing…' : `Uploading ${pct}%`;
+      if (pct >= 100) setTimeout(()=>{ span.textContent='Upload'; }, 800);
+    };
+    if (profileFile) profileFile.onchange = async () => {
+      const file = profileFile.files?.[0]; if (!file) return;
+      const btn = profileFile.closest('label');
+      try {
+        const url = await uploadImage(file, 'attendees', withProgress(btn));
+        profileInput.value = url;
+      } catch {}
+    };
+    if (backgroundFile) backgroundFile.onchange = async () => {
+      const file = backgroundFile.files?.[0]; if (!file) return;
+      const btn = backgroundFile.closest('label');
+      try {
+        const url = await uploadImage(file, 'attendees', withProgress(btn));
+        bgInput.value = url;
+      } catch {}
+    };
+  });
 }

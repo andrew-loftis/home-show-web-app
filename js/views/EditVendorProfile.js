@@ -22,13 +22,27 @@ export default function EditVendorProfile(root) {
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Background Image URL</label>
-            <input name="backgroundImage" placeholder="https://..." value="${profile.backgroundImage||''}" class="w-full px-3 py-2 border rounded">
+            <label class="block text-sm font-medium mb-1">Background Image</label>
+            <div class="flex gap-2 items-center">
+              <input name="backgroundImage" placeholder="https://..." value="${profile.backgroundImage||''}" class="w-full px-3 py-2 border rounded">
+              <label class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer inline-flex items-center gap-2">
+                <span class="upload-label-text">Upload</span>
+                <input type="file" accept="image/*" class="hidden" id="vendorUploadBackground">
+              </label>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Paste a URL or upload a file from your device.</div>
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Profile Image URL</label>
-            <input name="profileImage" placeholder="https://..." value="${profile.profileImage||''}" class="w-full px-3 py-2 border rounded">
+            <label class="block text-sm font-medium mb-1">Profile Image</label>
+            <div class="flex gap-2 items-center">
+              <input name="profileImage" placeholder="https://..." value="${profile.profileImage||''}" class="w-full px-3 py-2 border rounded">
+              <label class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer inline-flex items-center gap-2">
+                <span class="upload-label-text">Upload</span>
+                <input type="file" accept="image/*" class="hidden" id="vendorUploadProfile">
+              </label>
+            </div>
+            <div class="text-xs text-gray-500 mt-1">Paste a URL or upload a file from your device.</div>
           </div>
           
           <div class="mb-4">
@@ -41,13 +55,25 @@ export default function EditVendorProfile(root) {
           <input name="specialOffer" placeholder="Special Offer" value="${profile.specialOffer||''}" class="w-full mb-2 px-3 py-2 border rounded">
           
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Business Card Front URL</label>
-            <input name="businessCardFront" placeholder="https://..." value="${profile.businessCardFront||''}" class="w-full px-3 py-2 border rounded">
+            <label class="block text-sm font-medium mb-1">Business Card Front</label>
+            <div class="flex gap-2 items-center">
+              <input name="businessCardFront" placeholder="https://..." value="${profile.businessCardFront||''}" class="w-full px-3 py-2 border rounded">
+              <label class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer inline-flex items-center gap-2">
+                <span class="upload-label-text">Upload</span>
+                <input type="file" accept="image/*" class="hidden" id="vendorUploadCardFront">
+              </label>
+            </div>
           </div>
           
           <div class="mb-4">
-            <label class="block text-sm font-medium mb-1">Business Card Back URL</label>
-            <input name="businessCardBack" placeholder="https://..." value="${profile.businessCardBack||''}" class="w-full px-3 py-2 border rounded">
+            <label class="block text-sm font-medium mb-1">Business Card Back</label>
+            <div class="flex gap-2 items-center">
+              <input name="businessCardBack" placeholder="https://..." value="${profile.businessCardBack||''}" class="w-full px-3 py-2 border rounded">
+              <label class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded cursor-pointer inline-flex items-center gap-2">
+                <span class="upload-label-text">Upload</span>
+                <input type="file" accept="image/*" class="hidden" id="vendorUploadCardBack">
+              </label>
+            </div>
           </div>
           
           <div class="mb-4">
@@ -77,7 +103,7 @@ export default function EditVendorProfile(root) {
         </form>
       </div>
     `;
-    root.querySelector("#profileForm").oninput = () => { dirty = true; render(); };
+  root.querySelector("#profileForm").oninput = () => { dirty = true; };
     root.querySelector("#profileForm").onsubmit = async e => {
       e.preventDefault();
       const fd = new FormData(e.target);
@@ -108,6 +134,44 @@ export default function EditVendorProfile(root) {
     root.querySelector("#previewBtn").onclick = () => {
       window.location.hash = `/vendor/${vendor.id}`;
     };
+    // Wire upload handlers
+    wireVendorUploads(root, vendor.id);
   }
   render();
+}
+
+function wireVendorUploads(root, vendorId) {
+  import('../firebase.js').then(({ uploadImage }) => {
+    const bgFile = root.querySelector('#vendorUploadBackground');
+    const profileFile = root.querySelector('#vendorUploadProfile');
+    const cardFrontFile = root.querySelector('#vendorUploadCardFront');
+    const cardBackFile = root.querySelector('#vendorUploadCardBack');
+    const bgInput = root.querySelector('input[name="backgroundImage"]');
+    const profileInput = root.querySelector('input[name="profileImage"]');
+    const cardFrontInput = root.querySelector('input[name="businessCardFront"]');
+    const cardBackInput = root.querySelector('input[name="businessCardBack"]');
+    const withProgress = (labelEl) => (pct) => {
+      if (!labelEl) return;
+      const span = labelEl.querySelector('.upload-label-text');
+      if (!span) return;
+      span.textContent = pct >= 100 ? 'Processing…' : `Uploading ${pct}%`;
+      if (pct >= 100) setTimeout(()=>{ span.textContent='Upload'; }, 800);
+    };
+    const doUpload = async (fileInputEl, targetInputEl) => {
+      const file = fileInputEl.files?.[0]; if (!file) return;
+      const label = fileInputEl.closest('label');
+      try {
+        const url = await uploadImage(file, `vendors/${vendorId}`, withProgress(label));
+        targetInputEl.value = url;
+        // mark form dirty but avoid re-render loop
+        targetInputEl.dispatchEvent(new Event('input', { bubbles: true }));
+      } catch (e) {
+        Toast('Upload failed');
+      }
+    };
+    if (bgFile) bgFile.onchange = () => doUpload(bgFile, bgInput);
+    if (profileFile) profileFile.onchange = () => doUpload(profileFile, profileInput);
+    if (cardFrontFile) cardFrontFile.onchange = () => doUpload(cardFrontFile, cardFrontInput);
+    if (cardBackFile) cardBackFile.onchange = () => doUpload(cardBackFile, cardBackInput);
+  });
 }

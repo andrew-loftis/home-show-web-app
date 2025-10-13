@@ -5,6 +5,7 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit as qLimit, connectFirestoreEmulator, arrayUnion, arrayRemove, getCountFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
 
 let initialized = false;
 
@@ -38,6 +39,7 @@ function connectEmulatorsIfEnabled() {
   if (!useEmu || !isLocal) return;
   try { connectAuthEmulator(getAuth(), 'http://localhost:9099', { disableWarnings: true }); } catch {}
   try { connectFirestoreEmulator(getFirestore(), 'localhost', 8080); } catch {}
+  try { connectStorageEmulator(getStorage(), 'localhost', 9199); } catch {}
 }
 
 export function observeAuth(callback) {
@@ -81,6 +83,42 @@ export function getDb() {
 }
 export function getAuthInstance() {
   return getAuth();
+}
+
+// Storage helpers
+export function getStorageInstance() {
+  return getStorage();
+}
+
+/**
+ * Upload a File/Blob to Firebase Storage and return a download URL.
+ * @param {File|Blob} file
+ * @param {string} pathPrefix e.g. 'attendees', 'vendors'
+ * @param {(progress:number)=>void} onProgress optional progress callback 0..100
+ * @returns {Promise<string>} downloadURL
+ */
+export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
+  if (!file) throw new Error('No file');
+  const auth = getAuth();
+  const uid = auth?.currentUser?.uid || 'anon';
+  const safeName = String(file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${pathPrefix}/${uid}/${Date.now()}_${safeName}`;
+  const st = getStorage();
+  const ref = storageRef(st, path);
+  const task = uploadBytesResumable(ref, file);
+  return await new Promise((resolve, reject) => {
+    task.on('state_changed', (snap) => {
+      if (typeof onProgress === 'function') {
+        const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        try { onProgress(pct); } catch {}
+      }
+    }, reject, async () => {
+      try {
+        const url = await getDownloadURL(task.snapshot.ref);
+        resolve(url);
+      } catch (e) { reject(e); }
+    });
+  });
 }
 
 export async function loadUserPreferences(uid) {
