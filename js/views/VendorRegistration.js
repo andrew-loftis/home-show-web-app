@@ -10,6 +10,23 @@ export default function VendorRegistration(root) {
   }
   let step = 1;
   let data = {};
+  // Expanded categories
+  const categories = [
+    "Kitchen","Bath","Landscaping","Windows","Doors","Solar","Roofing","Flooring","HVAC","Painting",
+    "Plumbing","Electrical","Decks & Patios","Pools & Spas","Siding","Gutters","Insulation","Smart Home",
+    "Security","Cabinets","Countertops","Tile & Stone","Appliances","Furniture","Interior Design","Lighting",
+    "Garage","Fencing","Masonry","Concrete","Pest Control","Water Treatment","Home Cleaning","Remodeling",
+    "General Contractor","Real Estate","Mortgage","Insurance","Energy Efficiency","Outdoor Living",
+    "Garden/Nursery","Home Theater/AV","Other"
+  ];
+  // Booth options (example layout A1-A10, B1-B10, C1-C10)
+  const boothOptions = (() => {
+    const rows = ['A','B','C'];
+    const out = [];
+    rows.forEach(r => { for (let i=1;i<=10;i++) out.push(`${r}${i}`); });
+    return out;
+  })();
+  const BOOTH_PRICE = 950;
   function render() {
     root.innerHTML = `
       <div class="p-6 fade-in">
@@ -27,12 +44,27 @@ export default function VendorRegistration(root) {
             <input name="email" required type="email" placeholder="Email" class="w-full mb-2 px-3 py-2 border rounded">
             <input name="phone" placeholder="Phone" class="w-full mb-2 px-3 py-2 border rounded">
           `:step===3?`
-            <div class="mb-2">Category</div>
-            <div class="flex flex-wrap gap-1 mb-2">
-              ${["Kitchen","Bath","Landscaping","Windows","Solar","Roofing","Flooring","HVAC","Painting"].map(i => `<label class='inline-flex items-center gap-1'><input type='radio' name='category' value='${i}' required> <span>${i}</span></label>`).join("")}
+            <div class="mb-3">
+              <div class="mb-1 font-medium">Category</div>
+              <select name="category" required class="w-full mb-2 px-3 py-2 border rounded">
+                <option value="" disabled selected>Select a category</option>
+                ${categories.map(c => `<option value="${c}">${c}</option>`).join("")}
+              </select>
+              <input name="customCategory" placeholder="If Other, enter your category" class="w-full mb-2 px-3 py-2 border rounded hidden">
             </div>
-            <input name="boothPreference" placeholder="Booth Preference" class="w-full mb-2 px-3 py-2 border rounded">
-            <div class="text-xs text-gray-500 mb-2">Standard booth: $500. Premium: $900.</div>
+            <div class="mb-3">
+              <div class="mb-1 font-medium">Select Booth(s)</div>
+              <div class="text-xs text-gray-500 mb-2">$${BOOTH_PRICE.toLocaleString()} per booth. Select multiple to request additional space.</div>
+              <div class="grid grid-cols-3 md:grid-cols-6 gap-2" id="boothGrid">
+                ${boothOptions.map(b => `
+                  <label class="glass-button px-2 py-2 text-center text-sm flex items-center justify-center gap-2">
+                    <input type="checkbox" class="booth-choice" value="${b}">
+                    <span>${b}</span>
+                  </label>
+                `).join("")}
+              </div>
+              <div class="mt-3 text-sm"><span class="font-medium">Selected:</span> <span id="selectedCount">0</span> booth(s) — <span class="font-medium">Total:</span> $<span id="totalPrice">0</span></div>
+            </div>
           `:""}
           <div class="flex gap-2 mt-2">
             ${step>1?'<button type="button" class="px-3 py-1 bg-gray-100 rounded" id="backBtn">Back</button>':''}
@@ -56,8 +88,17 @@ export default function VendorRegistration(root) {
         step++;
         render();
       } else if (step===3) {
-        data.category = fd.get("category");
-        data.boothPreference = fd.get("boothPreference");
+        const selectedCategory = fd.get("category");
+        const customCategory = root.querySelector('input[name="customCategory"]').value.trim();
+        const finalCategory = selectedCategory === 'Other' && customCategory ? customCategory : selectedCategory;
+        const booths = Array.from(root.querySelectorAll('.booth-choice:checked')).map(cb => cb.value);
+        const boothCount = booths.length;
+        const totalPrice = boothCount * BOOTH_PRICE;
+        if (!boothCount) { Toast('Please select at least one booth'); return; }
+        data.category = finalCategory;
+        data.booths = booths;
+        data.boothCount = boothCount;
+        data.totalPrice = totalPrice;
         // Submit to Firestore: vendors with approved=false
         import("../firebase.js").then(async ({ getDb }) => {
           try {
@@ -66,12 +107,16 @@ export default function VendorRegistration(root) {
             await addDoc(collection(db, 'vendors'), {
               name: data.companyName,
               category: data.category,
-              booth: data.boothPreference || '',
+              booth: data.booths.join(', '),
+              booths: data.booths,
+              boothCount: data.boothCount,
+              totalPrice: data.totalPrice,
               contactEmail: data.email,
               contactPhone: data.phone || '',
               logoUrl: '',
               ownerUid: state.user.uid,
               approved: false,
+              status: 'pending',
               verified: false,
               profile: {},
               createdAt: serverTimestamp(),
@@ -85,6 +130,26 @@ export default function VendorRegistration(root) {
         });
       }
     };
+    // dynamic UI hooks for step 3
+    if (step===3) {
+      const sel = root.querySelector('select[name="category"]');
+      const custom = root.querySelector('input[name="customCategory"]');
+      if (sel && custom) {
+        sel.onchange = () => {
+          custom.classList.toggle('hidden', sel.value !== 'Other');
+        };
+      }
+      const updatePricing = () => {
+        const count = root.querySelectorAll('.booth-choice:checked').length;
+        const total = count * BOOTH_PRICE;
+        const sc = root.querySelector('#selectedCount');
+        const tp = root.querySelector('#totalPrice');
+        if (sc) sc.textContent = String(count);
+        if (tp) tp.textContent = total.toLocaleString();
+      };
+      root.querySelectorAll('.booth-choice').forEach(cb => { cb.onchange = updatePricing; });
+      updatePricing();
+    }
   }
   render();
 }

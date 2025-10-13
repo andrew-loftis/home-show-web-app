@@ -64,15 +64,32 @@ export default function AdminDashboard(root) {
           container.innerHTML = `<div class='text-gray-400 text-xs'>No pending vendors.</div>`;
         } else {
           container.innerHTML = list.map(v => `
-            <div class='card p-3 flex items-center gap-3'>
-              <div class='flex-1'>${v.name || 'Untitled'} <span class='text-xs text-gray-500'>${v.ownerUid ? 'by ' + v.ownerUid : ''}</span></div>
-              <button class='brand-bg px-3 py-1 rounded approve-btn' data-id='${v.id}'>Approve</button>
+            <div class='card p-3'>
+              <div class='flex items-start gap-3'>
+                <img src='${v.logoUrl || './assets/splash.svg'}' class='w-10 h-10 rounded' onerror='this.style.display="none"'>
+                <div class='flex-1'>
+                  <div class='font-semibold'>${v.name || 'Untitled'} <span class='text-xs text-gray-500'>${v.ownerUid ? 'by ' + v.ownerUid : ''}</span></div>
+                  <div class='text-xs text-gray-500 mt-1'>Category: ${v.category || '-'} | Booths: ${(v.booths||[]).join(', ') || v.booth || '-'} | Total: $${(v.totalPrice||0).toLocaleString()}</div>
+                </div>
+                <div class='flex gap-2'>
+                  <button class='brand-bg px-3 py-1 rounded approve-btn' data-id='${v.id}'>Approve</button>
+                  <button class='glass-button px-3 py-1 rounded deny-btn' data-id='${v.id}'>Deny</button>
+                </div>
+              </div>
             </div>
           `).join("");
           container.querySelectorAll('.approve-btn').forEach(btn => {
             btn.onclick = async () => {
               try {
                 await updateDoc(doc(db, 'vendors', btn.dataset.id), { approved: true });
+                btn.closest('.card').remove();
+              } catch {}
+            };
+          });
+          container.querySelectorAll('.deny-btn').forEach(btn => {
+            btn.onclick = async () => {
+              try {
+                await updateDoc(doc(db, 'vendors', btn.dataset.id), { status: 'denied' });
                 btn.closest('.card').remove();
               } catch {}
             };
