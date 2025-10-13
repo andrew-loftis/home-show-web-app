@@ -16,126 +16,93 @@ export default function VendorLandingPage(root, params) {
       <!-- Hero Section -->
       <div class="relative">
         ${profile.backgroundImage ? `
-          <img src="${profile.backgroundImage}" class="w-full h-64 object-cover" onerror="this.style.display='none'">
+          <img src="${profile.backgroundImage}" class="w-full h-72 object-cover" onerror="this.style.display='none'">
         ` : `
-          <div class="w-full h-64 bg-gradient-to-br from-primary to-dark"></div>
+          <div class="w-full h-72 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900"></div>
         `}
-        
         ${profile.homeShowVideo ? `
           <div class="absolute inset-0 flex items-center justify-center">
-            <button class="w-20 h-20 bg-black bg-opacity-60 rounded-full flex items-center justify-center hover:bg-opacity-80 transition-all" onclick="window.open('${profile.homeShowVideo}', '_blank')">
-              <ion-icon name="play" class="text-white text-3xl ml-1"></ion-icon>
+            <button class="w-16 h-16 bg-black/60 backdrop-blur rounded-full flex items-center justify-center hover:bg-black/70 transition-all" onclick="window.open('${profile.homeShowVideo}', '_blank')">
+              <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
             </button>
           </div>
         ` : ""}
-        
-        <div class="absolute inset-0 bg-black bg-opacity-20"></div>
+        <div class="absolute inset-0 bg-black/30"></div>
       </div>
-      
-      <!-- Profile Section -->
+
+      <!-- Profile Header -->
       <div class="relative px-6 pb-6">
-        <div class="flex items-end gap-4 -mt-12 mb-4">
-          ${profile.profileImage ? `
-            <img src="${profile.profileImage}" class="w-24 h-24 rounded-lg border-4 border-white shadow-lg" onerror="this.style.display='none'">
-          ` : `
-            <img src="${vendor.logoUrl || './assets/splash.svg'}" class="w-24 h-24 rounded-lg border-4 border-white shadow-lg" onerror="this.style.display='none'">
-          `}
+        <div class="flex items-end gap-4 -mt-12 mb-3">
+          <img src="${profile.profileImage || vendor.logoUrl || './assets/splash.svg'}" class="w-24 h-24 rounded-xl border-4 border-white shadow-lg object-cover" onerror="this.style.display='none'">
           <div class="flex-1 pb-2">
             <div class="font-bold text-2xl text-white">${vendor.name}</div>
-            <div class="text-white opacity-90">${vendor.category} • Booth ${vendor.booth}</div>
+            <div class="text-white/90">${vendor.category}${vendor.booth ? ` • Booth ${vendor.booth}` : ''}</div>
           </div>
         </div>
-        
+
         <!-- Action Buttons -->
         <div class="flex gap-3 mb-6">
-          <button class="flex-1 brand-bg text-white px-4 py-3 rounded font-semibold" id="shareCardBtn">
-            Share My Card
-          </button>
-          <button class="flex-1 px-4 py-3 bg-gray-100 rounded font-semibold" id="saveVendorBtn">
-            Save Vendor
-          </button>
+          <button class="flex-1 brand-bg text-white px-4 py-3 rounded font-semibold" id="shareCardBtn">Share My Card</button>
+          <button class="flex-1 px-4 py-3 bg-gray-100 rounded font-semibold" id="saveVendorBtn">Save Vendor</button>
         </div>
-        
-        <!-- Business Card Display -->
-        ${profile.businessCardFront ? `
+
+        <!-- Image-first Business Card Gallery -->
+        ${(profile.businessCardFront || profile.businessCardBack) ? `
           <div class="mb-6">
-            <div class="font-semibold mb-2">Business Card</div>
-            <div class="flex gap-2 overflow-x-auto">
-              <img src="${profile.businessCardFront}" class="h-32 rounded shadow" onerror="this.style.display='none'">
-              ${profile.businessCardBack ? `<img src="${profile.businessCardBack}" class="h-32 rounded shadow" onerror="this.style.display='none'">` : ""}
+            <div class="flex items-center gap-2 mb-3">
+              <ion-icon name="id-card-outline" class="text-primary"></ion-icon>
+              <div class="font-semibold">Business Card</div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              ${profile.businessCardFront ? `<img src="${profile.businessCardFront}" class="w-full aspect-[3/2] object-cover rounded-lg shadow cursor-pointer hover:opacity-95" data-lightbox="card-front" onerror="this.style.display='none'">` : ''}
+              ${profile.businessCardBack ? `<img src="${profile.businessCardBack}" class="w-full aspect-[3/2] object-cover rounded-lg shadow cursor-pointer hover:opacity-95" data-lightbox="card-back" onerror="this.style.display='none'">` : ''}
             </div>
           </div>
-        ` : ""}
-        
-        <!-- Description -->
-        ${profile.bio ? `<div class="mb-4 text-gray-700">${profile.bio}</div>` : ""}
-        ${profile.description ? `<div class="mb-4 text-gray-600">${profile.description}</div>` : ""}
-        
-        <!-- Special Offer -->
-        ${profile.specialOffer ? `
-          <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div class="flex items-center gap-2 mb-2">
-              <ion-icon name="gift-outline" class="text-yellow-600"></ion-icon>
-              <span class="font-semibold text-yellow-800">Home Show Special</span>
-            </div>
-            <div class="text-yellow-700">${profile.specialOffer}</div>
+        ` : ''}
+
+        <!-- About & Special -->
+        ${(profile.bio || profile.description || profile.specialOffer) ? `
+          <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            ${(profile.bio || profile.description) ? `
+              <div class="md:col-span-2 glass-card p-4">
+                ${profile.bio ? `<div class="text-glass mb-2">${profile.bio}</div>` : ''}
+                ${profile.description ? `<div class="text-glass-secondary">${profile.description}</div>` : ''}
+              </div>
+            ` : ''}
+            ${profile.specialOffer ? `
+              <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <ion-icon name="gift-outline" class="text-yellow-600"></ion-icon>
+                  <span class="font-semibold text-yellow-800">Home Show Special</span>
+                </div>
+                <div class="text-yellow-700">${profile.specialOffer}</div>
+              </div>
+            ` : ''}
           </div>
-        ` : ""}
-        
-        <!-- Social Media -->
+        ` : ''}
+
+        <!-- Social icons row -->
         ${profile.selectedSocials?.length ? `
           <div class="mb-6">
-            <div class="font-semibold mb-3">Connect With Us</div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="flex flex-wrap gap-2">
               ${profile.selectedSocials.map(social => {
                 const url = profile[social];
-                const socialLabels = {
-                  website: "Website",
-                  facebook: "Facebook", 
-                  instagram: "Instagram",
-                  twitter: "Twitter",
-                  linkedin: "LinkedIn",
-                  tiktok: "TikTok",
-                  youtube: "YouTube"
-                };
-                const iconMap = {
-                  website: "globe-outline",
-                  facebook: "logo-facebook",
-                  instagram: "logo-instagram",
-                  twitter: "logo-twitter", 
-                  linkedin: "logo-linkedin",
-                  tiktok: "logo-tiktok",
-                  youtube: "logo-youtube"
-                };
-                return url ? `
-                  <a href="${url}" target="_blank" class="flex items-center gap-3 p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                    <ion-icon name="${iconMap[social] || 'link-outline'}" class="text-xl text-primary"></ion-icon>
-                    <span class="font-medium">${socialLabels[social] || social}</span>
-                  </a>
-                ` : "";
-              }).join("")}
+                const iconMap = { website: 'globe-outline', facebook: 'logo-facebook', instagram: 'logo-instagram', twitter: 'logo-twitter', linkedin: 'logo-linkedin', tiktok: 'logo-tiktok', youtube: 'logo-youtube' };
+                return url ? `<a href="${url}" target="_blank" class="px-3 py-2 rounded-full bg-white/70 hover:bg-white/90 border border-white/60 inline-flex items-center gap-2">
+                  <ion-icon name="${iconMap[social] || 'link-outline'}" class="text-primary"></ion-icon>
+                  <span class="text-sm capitalize">${social}</span>
+                </a>` : '';
+              }).join('')}
             </div>
           </div>
-        ` : ""}
-        
-        <!-- Contact Information -->
-        <div class="border-t pt-4">
-          <div class="font-semibold mb-3">Contact Information</div>
-          <div class="space-y-2">
-            <div class="flex items-center gap-3">
-              <ion-icon name="mail-outline" class="text-gray-400"></ion-icon>
-              <a href="mailto:${vendor.contactEmail}" class="text-primary">${vendor.contactEmail}</a>
-            </div>
-            ${vendor.contactPhone ? `
-              <div class="flex items-center gap-3">
-                <ion-icon name="call-outline" class="text-gray-400"></ion-icon>
-                <a href="tel:${vendor.contactPhone}" class="text-primary">${vendor.contactPhone}</a>
-              </div>
-            ` : ""}
-            <div class="flex items-center gap-3">
-              <ion-icon name="location-outline" class="text-gray-400"></ion-icon>
-              <span>Booth ${vendor.booth}</span>
-            </div>
+        ` : ''}
+
+        <!-- Contact & Booth -->
+        <div class="glass-card p-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="flex items-center gap-2"><ion-icon name="mail-outline" class="text-gray-400"></ion-icon> <a href="mailto:${vendor.contactEmail}" class="text-primary">${vendor.contactEmail}</a></div>
+            ${vendor.contactPhone ? `<div class="flex items-center gap-2"><ion-icon name="call-outline" class="text-gray-400"></ion-icon> <a href="tel:${vendor.contactPhone}" class="text-primary">${vendor.contactPhone}</a></div>` : ''}
+            ${vendor.booth ? `<div class="flex items-center gap-2"><ion-icon name="location-outline" class="text-gray-400"></ion-icon> <span>Booth ${vendor.booth}</span></div>` : ''}
           </div>
         </div>
       </div>

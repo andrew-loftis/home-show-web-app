@@ -1,11 +1,19 @@
 import { getState, upsertAttendee, currentVendor } from "../store.js";
 import { Toast } from "../utils/ui.js";
 
+// Local UI state for this module
+let cardEditMode; // undefined on first load; we'll decide based on saved data
+
 export default function MyCard(root) {
   console.log("MyCard view loading...");
   const state = getState();
   console.log("Current state:", state);
   console.log("Current role:", state.role);
+  const attendee = state.attendees[0];
+  const hasSavedCard = !!(attendee && (attendee.name || attendee.card?.profileImage || attendee.card?.backgroundImage || attendee.card?.bio || (attendee.card?.visitingReasons||[]).length));
+  if (typeof cardEditMode === 'undefined') {
+    cardEditMode = !hasSavedCard; // default to edit if nothing saved; else view mode
+  }
   
   root.innerHTML = `
     <div class="container-glass fade-in">
@@ -24,7 +32,7 @@ export default function MyCard(root) {
         </div>
       </div>
       
-      ${state.role === "attendee" ? renderAttendeeCardEditor(state) : renderRoleGate(state)}
+      ${state.role === "attendee" ? (cardEditMode ? renderAttendeeCardEditor(state) : renderAttendeeCardView(state)) : renderRoleGate(state)}
     </div>
   `;
   
@@ -34,9 +42,16 @@ export default function MyCard(root) {
     form.onsubmit = handleFormSubmit;
   }
   // Wire up file upload handlers if present
-  wireCardUploads(root);
-  // Initialize live preview
-  updateCardPreview(root);
+  if (form) {
+    wireCardUploads(root);
+    // Initialize live preview
+    updateCardPreview(root);
+  }
+  // Attach Edit button if present
+  const editBtn = root.querySelector('#editCardBtn');
+  if (editBtn) {
+    editBtn.onclick = () => { cardEditMode = true; MyCard(root); };
+  }
 }
 
 function renderRoleGate(state) {
@@ -204,6 +219,19 @@ function renderAttendeeCardEditor(state) {
   `;
 }
 
+function renderAttendeeCardView(state) {
+  const attendee = state.attendees[0] || { card: {} };
+  return `
+    ${renderAttendeeCard(attendee)}
+    <div class="mt-6 text-center">
+      <button id="editCardBtn" class="glass-button px-6 py-3 text-glass font-medium">
+        <ion-icon name="create-outline" class="mr-2"></ion-icon>
+        Edit Business Card
+      </button>
+    </div>
+  `;
+}
+
 function handleFormSubmit(e) {
   e.preventDefault();
   console.log("Form submitted");
@@ -233,11 +261,12 @@ function handleFormSubmit(e) {
   try {
     upsertAttendee(payload);
     Toast("Business card saved successfully!");
-    
-    // Refresh the view to show the updated card
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    // Switch to view mode and re-render without reloading
+    const root = document.getElementById('app');
+    cardEditMode = false;
+    if (root) {
+      MyCard(root);
+    }
     
   } catch (error) {
     console.error("Error saving card:", error);
