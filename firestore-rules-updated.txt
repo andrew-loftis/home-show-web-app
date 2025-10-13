@@ -2,87 +2,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null && request.auth.uid != null;
+    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/adminEmails/$(request.auth.token.email)); }
+
+    // Admin directory
+    match /adminEmails/{emailId} {
+      allow read, create, update, delete: if isAdmin();
     }
 
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
-    }
-
-    function isAdmin() {
-      // Check if user email is in admin list (you can set this via custom claims or check against a hardcoded list)
-      return isSignedIn() && (
-        request.auth.token.email == 'andrew@houseofkna.com' ||
-        request.auth.token.admin == true
-      );
-    }
-
-    // Users can manage their own user document
+    // Users
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      // delete forbidden except admin via console; omit explicit delete rule
     }
 
-    // Vendors - public can read approved vendors, admins can manage all
+    // Vendors
     match /vendors/{vendorId} {
-      allow read: if resource.data.approved == true || isAdmin();
-      // Vendor owners can update their own vendor profile
-      allow update: if isSignedIn() && (
+      allow read: if resource.data.approved == true || (isSignedIn() && (
+        get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerUid == request.auth.uid || isAdmin()
+      ));
+      allow create: if isSignedIn() && (request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update, delete: if isSignedIn() && (
         request.auth.uid == resource.data.ownerUid || isAdmin()
       );
-      // Only admins can create/delete vendors
-      allow create, delete: if isAdmin();
     }
 
-    // Attendees - users can manage their own attendee records
+    // Attendees
     match /attendees/{attendeeId} {
-      // Owner can read/write their own attendee document
-      allow read, write: if isSignedIn() && (
-        request.auth.uid == resource.data.ownerUid ||
-        isAdmin()
-      );
-      // Allow creation when setting ownerUid to self
+      allow read, update, delete: if isSignedIn() && request.auth.uid == resource.data.ownerUid;
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    // Leads - both attendee and vendor owners can read/write leads they're involved in
+    // Leads
     match /leads/{leadId} {
       allow read: if isSignedIn() && (
-        isAdmin() ||
-        // Attendee owner can read
-        (exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
-         get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid) ||
-        // Vendor owner can read
-        (exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
-         get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid)
+        (
+          exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
+          get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid
+        ) || (
+          exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
+          get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid
+        ) || isAdmin()
       );
-      
       allow create, update: if isSignedIn() && (
-        isAdmin() ||
-        // Creator must be attendee owner or vendor owner
-        (request.resource.data.createdByUid == request.auth.uid && (
+        request.resource.data.createdByUid == request.auth.uid && (
           (exists(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)) &&
            get(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)).data.ownerUid == request.auth.uid) ||
           (exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
            get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.ownerUid == request.auth.uid)
-        ))
-      );
+        )
+      ) || isAdmin();
     }
 
-    // Public documents - read-only for everyone
-    match /public/{document=**} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Test documents - for development/testing only
-    match /test/{document=**} {
-      allow read, write: if isSignedIn();
-    }
-
-    // Default deny all other documents
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

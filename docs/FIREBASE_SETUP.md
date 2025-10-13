@@ -59,73 +59,91 @@ Notes:
 - You can also mirror leads under vendor or attendee subcollections for faster reads, but start with a single `leads` collection and add composite indexes.
 
 ## Security rules (Firestore)
-Paste into Firestore rules. These rules are deliberately strict and assume:
-- Public read of approved vendors only
-- Users can read/write their own user doc
-- Vendor owners can edit their vendor doc
-- Attendee owners can edit their attendee doc
-- Leads readable by parties involved; writable by either party
+Paste into Firestore rules. These are strict, map to current code, and use the `adminEmails` collection for admin privileges. Bootstrap your first admin by creating a document in `adminEmails/{your-email}` via the Firebase Console, then manage others from the in-app Admin panel.
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() { return request.auth != null; }
+    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+    // Admins are users whose email exists as a document ID in adminEmails
+    // Note: our app stores admin emails lowercased; most providers return lowercased emails.
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/adminEmails/$(request.auth.token.email)); }
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
-    // Users
+    // Admin registry
+    match /adminEmails/{emailId} {
+      // Only admins can read the list and modify it
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Users: owners can read; owners can update safe fields; only admins can set role=organizer
     match /users/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) && (
+        // Prevent privilege escalation: role cannot change to organizer unless caller is admin
+        (request.resource.data.role == resource.data.role) ||
+        (isAdmin())
+      );
     }
 
     // Vendors directory
     match /vendors/{vendorId} {
-      // Public can read approved vendors; admins can read all
-      allow read: if resource.data.approved == true || (
-        isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'organizer'
+      // Public can read approved vendors; vendor owners and admins can read all
+      allow read: if resource.data.approved == true ||
+                  (isSignedIn() && (
+                    get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerUid == request.auth.uid ||
+                    isAdmin()
+                  ));
+      // Create if setting yourself as owner; admins can also create
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerUid == request.auth.uid || isAdmin()
       );
-      // Owner or admin can write
-      allow write: if isSignedIn() && (
-        request.auth.uid == request.resource.data.ownerUid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'organizer'
+      // Update/delete by owner or admin
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.ownerUid || isAdmin()
       );
     }
 
-    // Attendees
+    // Attendees: owner-only; allow create when ownerUid == self
     match /attendees/{attendeeId} {
-      // Owner-only access; anonymous auth is OK
-      allow read, write: if isSignedIn() && request.auth.uid == resource.data.ownerUid;
-      // Allow create when setting ownerUid to self
+      allow read, update, delete: if isSignedIn() && request.auth.uid == resource.data.ownerUid;
       allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
-    // Leads
+    // Leads: visible to the attendee owner and the vendor owner; writable by either party who is the creator
     match /leads/{leadId} {
       allow read: if isSignedIn() && (
-        // Attendee owner
-        exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
-        get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid
-        ||
-        // Vendor owner
-        exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
-        get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid
+        (
+          exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
+          get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid
+        ) || (
+          exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
+          get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid
+        ) || isAdmin()
       );
       allow create, update: if isSignedIn() && (
         request.resource.data.createdByUid == request.auth.uid && (
-          // Creator is attendee owner
           (exists(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)) &&
-           get(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)).data.ownerUid == request.auth.uid)
-          ||
-          // Creator is vendor owner
+           get(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)).data.ownerUid == request.auth.uid) ||
           (exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
            get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.ownerUid == request.auth.uid)
         )
-      );
+      ) || isAdmin();
     }
+
+    // Default deny
+    match /{document=**} { allow read, write: if false; }
   }
 }
 ```
+
+### Admin bootstrap
+- First time only: in Firestore, create `adminEmails` collection and add a doc with ID equal to your admin email (e.g., `you@example.com`).
+- After that, use the in-app Admin panel (Profile > Admin Tools) to add/remove emails.
 
 ## Composite indexes (Firestore)
 Add these to support UI queries efficiently:
