@@ -14,6 +14,9 @@ export default function Cards(root) {
       ${role === "vendor" ? renderVendorCards(state) : renderAttendeeCards(state)}
     </div>
   `;
+
+  // Wire up enhanced wallet carousel snapping if present
+  setupSavedVendorsWallet(root);
 }
 
 function renderVendorCards(state) {
@@ -135,7 +138,7 @@ function renderSavedVendorsWallet(list) {
           <ion-icon name="chevron-forward-outline"></ion-icon>
         </button>
       </div>
-      <div class="wallet-carousel" id="savedWallet">
+      <div class="wallet-carousel" id="savedWallet" tabindex="0" aria-label="Saved vendors carousel">
         ${slides}
       </div>
     </div>
@@ -179,3 +182,71 @@ window.scrollWallet = function(id, direction) {
   const amount = Math.max(320, Math.floor(el.clientWidth * 0.9));
   el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
 };
+
+// Enhanced snapping and active-state styling for wallet carousel
+function setupSavedVendorsWallet(root) {
+  const el = root.querySelector('#savedWallet');
+  if (!el) return;
+
+  // Hide focus outline on mouse, show on keyboard
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') { e.preventDefault(); window.scrollWallet('savedWallet','left'); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); window.scrollWallet('savedWallet','right'); }
+  });
+
+  // Make vertical wheel scroll pan horizontally for nicer feel
+  el.addEventListener('wheel', (e) => {
+    const dy = Math.abs(e.deltaY);
+    const dx = Math.abs(e.deltaX);
+    if (dy > dx) {
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+
+  let snapTimer = null;
+  const setActive = (card) => {
+    if (!card) return;
+    el.querySelectorAll('.wallet-card.is-active').forEach(n => n.classList.remove('is-active'));
+    card.classList.add('is-active');
+  };
+  const nearestCard = () => {
+    const center = el.scrollLeft + el.clientWidth / 2;
+    let best = null; let bestDist = Infinity;
+    el.querySelectorAll('.wallet-card').forEach(card => {
+      const rectLeft = card.offsetLeft;
+      const rectCenter = rectLeft + card.offsetWidth / 2;
+      const d = Math.abs(rectCenter - center);
+      if (d < bestDist) { bestDist = d; best = card; }
+    });
+    return best;
+  };
+  const snapToNearest = () => {
+    const card = nearestCard();
+    if (!card) return;
+    const target = card.offsetLeft + card.offsetWidth / 2 - el.clientWidth / 2;
+    el.scrollTo({ left: target, behavior: 'smooth' });
+    setActive(card);
+  };
+  const onScroll = () => {
+    clearTimeout(snapTimer);
+    // Update active highlight continuously
+    setActive(nearestCard());
+    // Snap shortly after user stops scrolling
+    snapTimer = setTimeout(snapToNearest, 120);
+  };
+  el.addEventListener('scroll', onScroll, { passive: true });
+
+  // Initial activation and snap into place on first render
+  requestAnimationFrame(() => {
+    setActive(nearestCard());
+    // Small delay to allow layout
+    setTimeout(snapToNearest, 80);
+  });
+
+  // Re-snap on resize
+  window.addEventListener('resize', () => {
+    clearTimeout(snapTimer);
+    snapTimer = setTimeout(snapToNearest, 150);
+  });
+}
