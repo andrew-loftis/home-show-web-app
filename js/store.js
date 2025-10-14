@@ -362,7 +362,10 @@ function clearUser() {
 }
 function vendorLogin(vendorId) {
   state.vendorLoginId = vendorId;
-  state.role = "vendor";
+  // Only switch role for non-admins; admins keep their role while editing
+  if (!state.isAdmin) {
+    state.role = "vendor";
+  }
   persist();
   notify();
 }

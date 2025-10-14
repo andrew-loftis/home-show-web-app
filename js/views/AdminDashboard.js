@@ -28,7 +28,10 @@ export default function AdminDashboard(root) {
       <div class="grid gap-2 mb-4">
         ${topVendors.map(v => `<div class='card p-2 flex items-center gap-3'><img src='${v.logoUrl || './assets/splash.svg'}' class='w-8 h-8 rounded' onerror='this.style.display="none"'><div class='flex-1'>${v.name}</div><div class='text-xs text-gray-500'>${v.leadCount} leads</div></div>`).join("")}
       </div>
-      <div class="font-semibold mb-2">Approvals</div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="font-semibold">Approvals</div>
+        <button class="glass-button px-3 py-1 text-xs" id="refreshApprovalsBtn">Refresh</button>
+      </div>
       <div id="pendingVendors" class="grid gap-2 mb-4">
         <div class="text-gray-400 text-xs">Loading pending vendors…</div>
       </div>
@@ -56,7 +59,8 @@ export default function AdminDashboard(root) {
   }
   // If admin, load pending vendors
   if (state.isAdmin) {
-    import("../firebase.js").then(async ({ getDb, initFirebase }) => {
+    const loadApprovals = async () => {
+      const { getDb, initFirebase } = await import("../firebase.js");
       try {
         try { initFirebase(); } catch {}
         const db = getDb();
@@ -127,10 +131,15 @@ export default function AdminDashboard(root) {
             <button class='glass-button px-3 py-1 text-xs' id='retryPendingBtn'>Retry</button>
           `;
           const retry = container.querySelector('#retryPendingBtn');
-          if (retry) retry.onclick = () => { AdminDashboard(root); };
+          if (retry) retry.onclick = () => { loadApprovals(); };
         }
       }
-    });
+    };
+    // Initial load
+    loadApprovals();
+    // Wire refresh button
+    const refBtn = root.querySelector('#refreshApprovalsBtn');
+    if (refBtn) refBtn.onclick = () => loadApprovals();
   }
 
   // User management
