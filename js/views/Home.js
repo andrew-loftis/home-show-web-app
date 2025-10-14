@@ -42,23 +42,55 @@ export default function Home(root) {
       </div>
     `;
   } else if (state.role === "attendee") {
+    const attendee = (state.attendees && state.attendees[0]) || null;
+    const hasCard = !!(attendee && attendee.card && (attendee.name || attendee.card.profileImage || attendee.card.backgroundImage || attendee.card.bio || (attendee.card.visitingReasons||[]).length));
+    const renderCard = () => {
+      const card = attendee?.card || {};
+      const initials = (attendee?.name||'A').charAt(0).toUpperCase();
+      const bg = card.backgroundImage ? `background-image:url('${card.backgroundImage}')` : '';
+      return `
+        <div class="glass-card p-6 mb-6">
+          <div class="relative rounded-xl overflow-hidden border border-white/15" style="${bg}; background-size:cover; background-position:center;">
+            <div class="backdrop-blur-sm bg-black/30 p-4 flex items-center gap-3">
+              ${card.profileImage ? `<img src='${card.profileImage}' class='w-14 h-14 rounded-full object-cover border border-white/20' onerror="this.style.display='none'">` : `
+                <div class='w-14 h-14 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center border border-white/20'>
+                  <span class='text-white font-bold text-xl'>${initials}</span>
+                </div>
+              `}
+              <div>
+                <div class="text-white font-semibold text-lg">${attendee?.name || 'Your Name'}</div>
+                <div class="text-white/80 text-sm">${attendee?.email || ''}${attendee?.phone ? ' • ' + attendee.phone : ''}</div>
+                ${card.location ? `<div class='text-white/80 text-xs mt-1'>${card.location}</div>` : ''}
+              </div>
+            </div>
+          </div>
+          ${card.bio ? `<div class='text-glass mt-3 text-sm'>${card.bio}</div>` : ''}
+          ${(card.visitingReasons||[]).length ? `<div class='mt-2 text-xs text-glass-secondary'>Reasons: ${(card.visitingReasons||[]).join(', ')}</div>` : ''}
+          <div class='mt-4 flex gap-2'>
+            <button class='glass-button px-4 py-2' onclick="window.location.hash='/cards'">View Card</button>
+            <button class='brand-bg px-4 py-2' onclick="window.location.hash='/my-card'">Edit Card</button>
+          </div>
+        </div>
+      `;
+    };
     html = `
       <div class="container-glass fade-in">
         <div class="text-center mb-8">
           <h1 class="text-4xl font-bold mb-3 text-glass">Welcome Back</h1>
-          <p class="text-xl text-glass-secondary">Create your digital business card and connect with amazing vendors</p>
+          <p class="text-xl text-glass-secondary">${hasCard ? 'Here’s your card. You can share it with vendors on the floor.' : 'Create your digital business card and connect with amazing vendors'}</p>
         </div>
-        
-        <div class="glass-card p-8 mb-8 text-center">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-teal-500 mx-auto mb-4 flex items-center justify-center">
-            <ion-icon name="card-outline" class="text-white text-2xl"></ion-icon>
+        ${hasCard ? renderCard() : `
+          <div class="glass-card p-8 mb-8 text-center">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-teal-500 mx-auto mb-4 flex items-center justify-center">
+              <ion-icon name="card-outline" class="text-white text-2xl"></ion-icon>
+            </div>
+            <h3 class="text-xl font-semibold mb-2 text-glass">Your Digital Business Card</h3>
+            <p class="text-glass-secondary mb-6">Share your information instantly with vendors you're interested in</p>
+            <button class="brand-bg px-8 py-4 text-lg font-semibold" onclick="window.location.hash='/cards'">
+              Create My Business Card
+            </button>
           </div>
-          <h3 class="text-xl font-semibold mb-2 text-glass">Your Digital Business Card</h3>
-          <p class="text-glass-secondary mb-6">Share your information instantly with vendors you're interested in</p>
-          <button class="brand-bg px-8 py-4 text-lg font-semibold" onclick="window.location.hash='/cards'">
-            Create My Business Card
-          </button>
-        </div>
+        `}
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">

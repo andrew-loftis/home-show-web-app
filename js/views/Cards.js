@@ -1,4 +1,5 @@
 import { getState, leadsForVendor, currentVendor } from "../store.js";
+import { renderAttendeeCard } from "./MyCard.js";
 import { Toast } from "../utils/ui.js";
 
 export default function Cards(root) {
@@ -71,12 +72,15 @@ function renderAttendeeCards(state) {
   return `
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="glass-card p-6 mb-2">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-3">
           <div>
             <div class="text-glass font-semibold">My Card</div>
             <div class="text-xs text-glass-secondary">Create or edit your card</div>
           </div>
           <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/my-card'">Open</button>
+        </div>
+        <div class="mt-2">
+          ${renderMyCardPreview(attendee)}
         </div>
       </div>
       <div class="glass-card p-6">
@@ -182,6 +186,31 @@ window.scrollWallet = function(id, direction) {
   const amount = Math.max(320, Math.floor(el.clientWidth * 0.9));
   el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
 };
+
+// Helper: My Card compact preview for Cards page
+function renderMyCardPreview(attendee) {
+  if (!attendee) {
+    return `<div class='text-glass-secondary text-sm'>Create your card to get started.</div>`;
+  }
+  // Use shared renderer in compact mode
+  try {
+    return renderAttendeeCard(attendee, true);
+  } catch {
+    // Fallback minimal preview
+    const name = attendee.name || attendee.email || 'My Card';
+    return `
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center">
+          ${attendee.card?.profileImage ? `<img src="${attendee.card.profileImage}" class="w-full h-full object-cover">` : `<span class="text-glass font-semibold">${name.charAt(0)}</span>`}
+        </div>
+        <div>
+          <div class="text-glass font-medium">${name}</div>
+          ${attendee.card?.location ? `<div class="text-xs text-glass-secondary">${attendee.card.location}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+}
 
 // Enhanced snapping and active-state styling for wallet carousel
 function setupSavedVendorsWallet(root) {

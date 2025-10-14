@@ -43,6 +43,21 @@ export default function AdminDashboard(root) {
       <div id="userManagement" class="grid gap-2">
         <div class="text-gray-400 text-xs">Loading users…</div>
       </div>
+
+      <div class="mt-6">
+        <div class="font-semibold mb-2">Setup (Bootstrap)</div>
+        <div class="grid gap-2">
+          <div class="card p-3 flex items-center justify-between">
+            <div class="text-sm">Create required collections/documents</div>
+            <div class="flex gap-2">
+              <button class="glass-button px-3 py-1 text-xs" id="bootstrapAdminBtn">Add My Admin Email</button>
+              <button class="glass-button px-3 py-1 text-xs" id="bootstrapUserDocBtn">Ensure My User Doc</button>
+              <button class="glass-button px-3 py-1 text-xs" id="bootstrapSeedVendorBtn">Seed Pending Vendor</button>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500">Tip: If rules block writes, temporarily relax rules per docs and retry; then restore strict rules.</div>
+        </div>
+      </div>
     </div>
   `;
   // Server-side counts (admins only)
@@ -241,5 +256,53 @@ export default function AdminDashboard(root) {
         if (container) container.innerHTML = `<div class='text-red-500 text-xs'>Failed to load users</div>`;
       }
     });
+  }
+
+  // Setup (Bootstrap) buttons
+  if (state.isAdmin) {
+    const addAdminBtn = root.querySelector('#bootstrapAdminBtn');
+    const ensureUserBtn = root.querySelector('#bootstrapUserDocBtn');
+    const seedVendorBtn = root.querySelector('#bootstrapSeedVendorBtn');
+    if (addAdminBtn) addAdminBtn.onclick = async () => {
+      const { addAdminEmail } = await import('../firebase.js');
+      await addAdminEmail((state.user?.email||'').toLowerCase(), state.user?.uid||null);
+      import('../utils/ui.js').then(({ Toast }) => Toast('Admin email added'));
+    };
+    if (ensureUserBtn) ensureUserBtn.onclick = async () => {
+      const { createOrUpdateUserDoc } = await import('../firebase.js');
+      if (!state.user?.uid) return;
+      await createOrUpdateUserDoc(state.user.uid, { email: state.user.email||null, displayName: state.user.displayName||null, role: state.isAdmin ? 'organizer' : 'visitor' });
+      import('../utils/ui.js').then(({ Toast }) => Toast('User doc ensured'));
+    };
+    if (seedVendorBtn) seedVendorBtn.onclick = async () => {
+      // Reuse same logic as Approvals seed button
+      const refBtn = root.querySelector('#seedPendingBtn');
+      if (refBtn) refBtn.click();
+      else {
+        // Fallback to inline creation
+        try {
+          const [{ getDb, initFirebase }, firestore] = await Promise.all([
+            import("../firebase.js"),
+            import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")
+          ]);
+          try { initFirebase(); } catch {}
+          const db = getDb();
+          const { addDoc, collection, serverTimestamp } = firestore;
+          const name = `Test Vendor ${new Date().toLocaleString()}`;
+          await addDoc(collection(db, 'vendors'), {
+            name,
+            category: 'Testing',
+            contactEmail: state.user?.email || '',
+            ownerUid: state.user?.uid || null,
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          import('../utils/ui.js').then(({ Toast }) => Toast('Seeded pending vendor'));
+        } catch (e) {
+          import('../utils/ui.js').then(({ Toast }) => Toast('Seed failed: ' + (e?.message||'')));
+        }
+      }
+    };
   }
 }

@@ -266,7 +266,7 @@ async function handleFormSubmit(e) {
   }
 }
 
-function renderAttendeeCard(attendee, compact = false) {
+export function renderAttendeeCard(attendee, compact = false) {
   
   const card = attendee.card;
   return `
