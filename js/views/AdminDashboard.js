@@ -56,15 +56,23 @@ export default function AdminDashboard(root) {
   }
   // If admin, load pending vendors
   if (state.isAdmin) {
-    import("../firebase.js").then(async ({ getDb }) => {
+    import("../firebase.js").then(async ({ getDb, initFirebase }) => {
       try {
+        try { initFirebase(); } catch {}
         const db = getDb();
-        const { collection, query, where, getDocs, doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-        const q = query(collection(db, 'vendors'), where('approved', '==', false));
-        const snap = await getDocs(q);
+        const { collection, query, where, getDocs, doc, updateDoc, or, and } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+        // Try both approval flags and status to be robust to schema
+        // Primary: approved == false
+        const q1 = query(collection(db, 'vendors'), where('approved', '==', false));
+        // Secondary: status == 'pending'
+        const q2 = query(collection(db, 'vendors'), where('status', '==', 'pending'));
+        const [snap1, snap2] = await Promise.all([getDocs(q1).catch(()=>null), getDocs(q2).catch(()=>null)]);
         const container = root.querySelector('#pendingVendors');
+        const byId = {};
         const list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        const push = (d) => { const v = { id: d.id, ...d.data() }; if (!byId[v.id]) { byId[v.id] = true; list.push(v); } };
+        if (snap1) snap1.forEach(push);
+        if (snap2) snap2.forEach(push);
         if (!list.length) {
           container.innerHTML = `<div class='text-gray-400 text-xs'>No pending vendors.</div>`;
         } else {
@@ -102,7 +110,14 @@ export default function AdminDashboard(root) {
         }
       } catch (e) {
         const container = root.querySelector('#pendingVendors');
-        if (container) container.innerHTML = `<div class='text-red-500 text-xs'>Failed to load pending vendors</div>`;
+        if (container) {
+          container.innerHTML = `
+            <div class='text-red-500 text-xs mb-2'>Failed to load pending vendors</div>
+            <button class='glass-button px-3 py-1 text-xs' id='retryPendingBtn'>Retry</button>
+          `;
+          const retry = container.querySelector('#retryPendingBtn');
+          if (retry) retry.onclick = () => { AdminDashboard(root); };
+        }
       }
     });
   }
