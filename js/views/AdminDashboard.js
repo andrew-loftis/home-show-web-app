@@ -30,7 +30,10 @@ export default function AdminDashboard(root) {
       </div>
       <div class="flex items-center justify-between mb-2">
         <div class="font-semibold">Approvals</div>
-        <button class="glass-button px-3 py-1 text-xs" id="refreshApprovalsBtn">Refresh</button>
+        <div class="flex items-center gap-2">
+          <button class="glass-button px-3 py-1 text-xs" id="seedPendingBtn">Seed Test Vendor</button>
+          <button class="glass-button px-3 py-1 text-xs" id="refreshApprovalsBtn">Refresh</button>
+        </div>
       </div>
       <div id="pendingVendors" class="grid gap-2 mb-4">
         <div class="text-gray-400 text-xs">Loading pending vendors…</div>
@@ -140,6 +143,37 @@ export default function AdminDashboard(root) {
     // Wire refresh button
     const refBtn = root.querySelector('#refreshApprovalsBtn');
     if (refBtn) refBtn.onclick = () => loadApprovals();
+    // Wire seed button (creates a pending vendor doc for quick testing)
+    const seedBtn = root.querySelector('#seedPendingBtn');
+    if (seedBtn) seedBtn.onclick = async () => {
+      try {
+        const [{ getDb, initFirebase }, firestore] = await Promise.all([
+          import("../firebase.js"),
+          import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")
+        ]);
+        try { initFirebase(); } catch {}
+        const db = getDb();
+        const { addDoc, collection, serverTimestamp } = firestore;
+        const name = `Test Vendor ${new Date().toLocaleString()}`;
+        const stateNow = getState();
+        await addDoc(collection(db, 'vendors'), {
+          name,
+          category: 'Testing',
+          contactEmail: stateNow.user?.email || '',
+          ownerUid: stateNow.user?.uid || null,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        // Refresh list
+        loadApprovals();
+      } catch (e) {
+        const container = root.querySelector('#pendingVendors');
+        if (container) {
+          container.insertAdjacentHTML('afterbegin', `<div class='text-red-500 text-xs'>Seed failed: ${e?.message || ''}</div>`);
+        }
+      }
+    };
   }
 
   // User management
