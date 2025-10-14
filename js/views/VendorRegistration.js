@@ -174,11 +174,13 @@ export default function VendorRegistration(root) {
         data.grandTotal = grandTotal;
         data.agreedToContract = agree;
         data.agreedAt = Date.now();
-        // Submit to Firestore: vendors with approved=false
-        import("../firebase.js").then(async ({ getDb }) => {
+        // Submit to Firestore
+        import("../firebase.js").then(async ({ getDb, initFirebase }) => {
           try {
+            try { initFirebase(); } catch {}
             const db = getDb();
             const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+            // Create vendor doc as pending; avoid restricted fields like 'approved' on create
             await addDoc(collection(db, 'vendors'), {
               name: data.companyName,
               category: data.category,
@@ -200,9 +202,7 @@ export default function VendorRegistration(root) {
               contactPhone: data.phone || '',
               logoUrl: '',
               ownerUid: state.user.uid,
-              approved: false,
               status: 'pending',
-              verified: false,
               profile: {},
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
@@ -210,7 +210,7 @@ export default function VendorRegistration(root) {
             Modal(document.createTextNode("Registration submitted! Waiting for admin approval."));
             setTimeout(() => { Modal(null); navigate("/home"); }, 1400);
           } catch (e) {
-            Toast("Failed to submit registration");
+            Toast("Failed to submit registration: " + (e?.message || ''));
           }
         });
       }

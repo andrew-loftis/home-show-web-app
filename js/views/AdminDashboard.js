@@ -94,7 +94,7 @@ export default function AdminDashboard(root) {
           container.querySelectorAll('.approve-btn').forEach(btn => {
             btn.onclick = async () => {
               try {
-                await updateDoc(doc(db, 'vendors', btn.dataset.id), { approved: true });
+                await updateDoc(doc(db, 'vendors', btn.dataset.id), { approved: true, status: 'approved', updatedAt: (await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")).serverTimestamp() });
                 btn.closest('.card').remove();
               } catch {}
             };
