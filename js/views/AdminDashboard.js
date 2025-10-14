@@ -87,6 +87,7 @@ export default function AdminDashboard(root) {
                 <div class='flex gap-2'>
                   <button class='brand-bg px-3 py-1 rounded approve-btn' data-id='${v.id}'>Approve</button>
                   <button class='glass-button px-3 py-1 rounded deny-btn' data-id='${v.id}'>Deny</button>
+                  <button class='glass-button px-3 py-1 rounded update-btn' data-id='${v.id}'>Update</button>
                 </div>
               </div>
             </div>
@@ -104,6 +105,16 @@ export default function AdminDashboard(root) {
               try {
                 await updateDoc(doc(db, 'vendors', btn.dataset.id), { status: 'denied' });
                 btn.closest('.card').remove();
+              } catch {}
+            };
+          });
+          // Update button: jump into EditVendorProfile with this vendor selected
+          container.querySelectorAll('.update-btn').forEach(btn => {
+            btn.onclick = async () => {
+              try {
+                const { vendorLogin } = await import('../store.js');
+                vendorLogin(btn.dataset.id);
+                window.location.hash = '/edit-vendor';
               } catch {}
             };
           });
