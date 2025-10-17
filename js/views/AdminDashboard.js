@@ -1,6 +1,7 @@
 import { getState, topVendorsByLeadCount } from "../store.js";
 
 export default function AdminDashboard(root) {
+  const REMOTE_COUNTS = false; // Toggle to true if Firestore rules allow getCountFromServer for this admin
   const state = getState();
   if (!state.isAdmin) {
     root.innerHTML = `<div class='p-8 text-center text-gray-400'>Admin access required.</div>`;
@@ -31,7 +32,6 @@ export default function AdminDashboard(root) {
       <div class="flex items-center justify-between mb-2">
         <div class="font-semibold">Approvals</div>
         <div class="flex items-center gap-2">
-          <button class="glass-button px-3 py-1 text-xs" id="seedPendingBtn">Seed Test Vendor</button>
           <button class="glass-button px-3 py-1 text-xs" id="refreshApprovalsBtn">Refresh</button>
         </div>
       </div>
@@ -43,25 +43,10 @@ export default function AdminDashboard(root) {
       <div id="userManagement" class="grid gap-2">
         <div class="text-gray-400 text-xs">Loading users…</div>
       </div>
-
-      <div class="mt-6">
-        <div class="font-semibold mb-2">Setup (Bootstrap)</div>
-        <div class="grid gap-2">
-          <div class="card p-3 flex items-center justify-between">
-            <div class="text-sm">Create required collections/documents</div>
-            <div class="flex gap-2">
-              <button class="glass-button px-3 py-1 text-xs" id="bootstrapAdminBtn">Add My Admin Email</button>
-              <button class="glass-button px-3 py-1 text-xs" id="bootstrapUserDocBtn">Ensure My User Doc</button>
-              <button class="glass-button px-3 py-1 text-xs" id="bootstrapSeedVendorBtn">Seed Pending Vendor</button>
-            </div>
-          </div>
-          <div class="text-xs text-gray-500">Tip: If rules block writes, temporarily relax rules per docs and retry; then restore strict rules.</div>
-        </div>
-      </div>
     </div>
   `;
-  // Server-side counts (admins only)
-  if (state.isAdmin) {
+  // Server-side counts (admins only) - disabled by default to avoid noisy 403 logs when rules deny aggregations
+  if (state.isAdmin && REMOTE_COUNTS) {
     import("../firebase.js").then(async ({ getCollectionCount }) => {
       const set = (id, val) => { const el = root.querySelector(id); if (el) el.textContent = String(val); };
       try { set('#count-attendees', await getCollectionCount('attendees')); } catch { set('#count-attendees', state.attendees.length); }
@@ -158,37 +143,7 @@ export default function AdminDashboard(root) {
     // Wire refresh button
     const refBtn = root.querySelector('#refreshApprovalsBtn');
     if (refBtn) refBtn.onclick = () => loadApprovals();
-    // Wire seed button (creates a pending vendor doc for quick testing)
-    const seedBtn = root.querySelector('#seedPendingBtn');
-    if (seedBtn) seedBtn.onclick = async () => {
-      try {
-        const [{ getDb, initFirebase }, firestore] = await Promise.all([
-          import("../firebase.js"),
-          import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")
-        ]);
-        try { initFirebase(); } catch {}
-        const db = getDb();
-        const { addDoc, collection, serverTimestamp } = firestore;
-        const name = `Test Vendor ${new Date().toLocaleString()}`;
-        const stateNow = getState();
-        await addDoc(collection(db, 'vendors'), {
-          name,
-          category: 'Testing',
-          contactEmail: stateNow.user?.email || '',
-          ownerUid: stateNow.user?.uid || null,
-          status: 'pending',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-        // Refresh list
-        loadApprovals();
-      } catch (e) {
-        const container = root.querySelector('#pendingVendors');
-        if (container) {
-          container.insertAdjacentHTML('afterbegin', `<div class='text-red-500 text-xs'>Seed failed: ${e?.message || ''}</div>`);
-        }
-      }
-    };
+    // Seed button removed per request; use external setup helpers instead if needed
   }
 
   // User management
@@ -258,51 +213,5 @@ export default function AdminDashboard(root) {
     });
   }
 
-  // Setup (Bootstrap) buttons
-  if (state.isAdmin) {
-    const addAdminBtn = root.querySelector('#bootstrapAdminBtn');
-    const ensureUserBtn = root.querySelector('#bootstrapUserDocBtn');
-    const seedVendorBtn = root.querySelector('#bootstrapSeedVendorBtn');
-    if (addAdminBtn) addAdminBtn.onclick = async () => {
-      const { addAdminEmail } = await import('../firebase.js');
-      await addAdminEmail((state.user?.email||'').toLowerCase(), state.user?.uid||null);
-      import('../utils/ui.js').then(({ Toast }) => Toast('Admin email added'));
-    };
-    if (ensureUserBtn) ensureUserBtn.onclick = async () => {
-      const { createOrUpdateUserDoc } = await import('../firebase.js');
-      if (!state.user?.uid) return;
-      await createOrUpdateUserDoc(state.user.uid, { email: state.user.email||null, displayName: state.user.displayName||null, role: state.isAdmin ? 'organizer' : 'visitor' });
-      import('../utils/ui.js').then(({ Toast }) => Toast('User doc ensured'));
-    };
-    if (seedVendorBtn) seedVendorBtn.onclick = async () => {
-      // Reuse same logic as Approvals seed button
-      const refBtn = root.querySelector('#seedPendingBtn');
-      if (refBtn) refBtn.click();
-      else {
-        // Fallback to inline creation
-        try {
-          const [{ getDb, initFirebase }, firestore] = await Promise.all([
-            import("../firebase.js"),
-            import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")
-          ]);
-          try { initFirebase(); } catch {}
-          const db = getDb();
-          const { addDoc, collection, serverTimestamp } = firestore;
-          const name = `Test Vendor ${new Date().toLocaleString()}`;
-          await addDoc(collection(db, 'vendors'), {
-            name,
-            category: 'Testing',
-            contactEmail: state.user?.email || '',
-            ownerUid: state.user?.uid || null,
-            status: 'pending',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-          import('../utils/ui.js').then(({ Toast }) => Toast('Seeded pending vendor'));
-        } catch (e) {
-          import('../utils/ui.js').then(({ Toast }) => Toast('Seed failed: ' + (e?.message||'')));
-        }
-      }
-    };
-  }
+  // Setup (Bootstrap) controls removed; use standalone HTML helpers if necessary
 }

@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null && request.auth.uid != null; }
+    // Admins are users whose email exists as a document ID in adminEmails (lowercased)
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/adminEmails/$(request.auth.token.email)); }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // Admin registry
+    match /adminEmails/{emailId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Users: owners can read; owners can update safe fields; only admins can change role arbitrarily
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) && (
+        (request.resource.data.role == resource.data.role) || isAdmin()
+      );
+    }
+
+    // Vendors directory
+    match /vendors/{vendorId} {
+      allow read: if resource.data.approved == true ||
+                  (isSignedIn() && (
+                    get(/databases/$(database)/documents/vendors/$(vendorId)).data.ownerUid == request.auth.uid ||
+                    isAdmin()
+                  ));
+      allow create: if isSignedIn() && (
+        request.resource.data.ownerUid == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        request.auth.uid == resource.data.ownerUid || isAdmin()
+      );
+    }
+
+    // Attendees: owner-only; allow create when ownerUid == self
+    match /attendees/{attendeeId} {
+      allow read, update, delete: if isSignedIn() && request.auth.uid == resource.data.ownerUid;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Leads: visible to attendee owner, vendor owner, or admin; write by creator who is one of those owners or admin
+    match /leads/{leadId} {
+      allow read: if isSignedIn() && (
+        (
+          exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
+          get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid
+        ) || (
+          exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
+          get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid
+        ) || isAdmin()
+      );
+      allow create, update: if isSignedIn() && (
+        request.resource.data.createdByUid == request.auth.uid && (
+          (exists(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)) &&
+           get(/databases/$(database)/documents/attendees/$(request.resource.data.attendeeId)).data.ownerUid == request.auth.uid) ||
+          (exists(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)) &&
+           get(/databases/$(database)/documents/vendors/$(request.resource.data.vendorId)).data.ownerUid == request.auth.uid)
+        )
+      ) || isAdmin();
+    }
+
+    // Public bucket for small global metadata (categories, event-info)
+    match /public/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} { allow read, write: if false; }
+  }
+}

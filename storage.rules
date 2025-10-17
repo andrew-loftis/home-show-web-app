@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() { return request.auth != null; }
+
+    // User uploads: limit writes to the owner uid
+    match /users/{uid}/{allPaths=**} {
+      allow read: if true; // Could be restricted to owner if needed
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Vendor uploads: allow reads publicly; writes only when signed in (optionally tighten to vendor owner later)
+    match /vendors/{vendorId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Default
+    match /{allPaths=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}

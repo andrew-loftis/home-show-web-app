@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom layer for project-specific utilities/components if needed */
+@layer utilities {
+  .text-glass { color: rgba(255,255,255,0.95); }
+  .text-glass-secondary { color: rgba(255,255,255,0.7); }
+  .brand-bg { @apply bg-primary text-white; }
+  .glass-button { @apply bg-white/10 border border-white/20 hover:bg-white/20 transition-colors; }
+}
