@@ -20,12 +20,7 @@ function renderShell() {
 function renderHeader(state) {
   const header = document.createElement("header");
   header.className = "flex items-center justify-between px-6 py-4 nav-glass shadow-glass sticky top-0 z-20";
-  // Prefer showing Admin for admins regardless of persisted role value
-  const roleLabel = state.user
-    ? (state.isAdmin
-        ? 'Admin'
-        : (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Attendee'))
-    : 'Guest';
+  const roleLabel = state.user ? (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Select Role') : 'Guest';
   header.innerHTML = `
     <div class="flex items-center gap-3">
       <div class="w-8 h-8 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
@@ -74,12 +69,6 @@ function scheduleRender() {
     renderQueued = false;
     renderShell();
     renderCurrentView();
-    // After first render, consider showing walkthrough if first time
-    try {
-      import('./utils/tour.js').then(({ ensureFirstTimeWalkthrough }) => {
-        setTimeout(() => ensureFirstTimeWalkthrough(), 200);
-      });
-    } catch {}
   });
 }
 
@@ -95,10 +84,19 @@ function boot() {
   subscribe(() => {
     scheduleRender();
   });
-  // Onboarding gate
+  // Onboarding gate and role selection
   const state = getState();
-  if (!state.hasOnboarded) navigate("/onboarding");
-  else navigate("/home");
+  if (!state.hasOnboarded) {
+    navigate("/onboarding");
+  } else if (state.user && !state.user.isAnonymous && !state.role) {
+    // User is signed in but hasn't selected a role
+    navigate("/role");
+  } else {
+    navigate("/home");
+  }
 }
+
+// Force cache refresh by adding timestamp
+console.log('App.js loaded at:', new Date().toISOString());
 
 window.addEventListener("DOMContentLoaded", boot);

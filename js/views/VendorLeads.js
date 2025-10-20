@@ -1,10 +1,10 @@
-import { getState, leadsForVendor } from "../store.js";
+import { getState, leadsForVendor, currentVendor } from "../store.js";
 import { formatDate } from "../utils/format.js";
 
 export default function VendorLeads(root) {
-  const { vendorLoginId, vendors } = getState();
-  const vendor = vendors.find(v => v.id === vendorLoginId);
-  const leads = leadsForVendor(vendorLoginId);
+  const { vendorLoginId } = getState();
+  const vendor = currentVendor();
+  const leads = leadsForVendor(vendor?.id || vendorLoginId);
   root.innerHTML = `
     <div class="p-6 fade-in">
       <h2 class="text-xl font-bold mb-4">My Leads</h2>

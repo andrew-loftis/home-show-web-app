@@ -24,6 +24,7 @@ const routes = {
   "/schedule": "Schedule",
   "/sponsors": "Sponsors",
   "/admin": "AdminDashboard",
+  "/data-manager": "AdminDataManager",
   "/more": "More"
 };
 
@@ -58,15 +59,26 @@ function back() {
 
 function initRouter(renderShell) {
   window.addEventListener("hashchange", () => {
+    try { localStorage.setItem('lastRoute', window.location.hash || '#/'); } catch {}
     window.scrollTo(0, 0);
     renderShell();
     renderView();
   });
+  // If no hash, attempt to restore last route
+  if (!window.location.hash) {
+    try {
+      const last = localStorage.getItem('lastRoute');
+      if (last && typeof last === 'string') {
+        window.location.hash = last.startsWith('#') ? last : `#${last}`;
+      }
+    } catch {}
+  }
   renderView();
 }
 
 async function renderView() {
   const hash = window.location.hash || "#/";
+  try { localStorage.setItem('lastRoute', hash); } catch {}
   const { view, params } = parseRoute(hash);
   const main = document.querySelector("main");
   if (!main) return;

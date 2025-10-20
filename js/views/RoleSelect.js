@@ -15,9 +15,9 @@ const roles = [
     desc: "Scan leads, manage your booth, and view stats."
   },
   {
-    key: "organizer",
+    key: "admin",
     icon: "ribbon-outline",
-    title: "Organizer",
+    title: "Admin",
     desc: "Manage the event, vendors, and schedule."
   }
 ];
@@ -52,7 +52,7 @@ export default function RoleSelect(root) {
           return;
         }
       }
-      setRole(role === 'attendee' ? 'attendee' : (role === 'vendor' ? 'vendor' : 'organizer'));
+      setRole(role === 'attendee' ? 'attendee' : (role === 'vendor' ? 'vendor' : 'admin'));
       if (role === "vendor") navigate(state.myVendor ? "/home" : "/vendor-login");
       else navigate("/home");
     };

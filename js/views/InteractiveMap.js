@@ -12,8 +12,8 @@ export default function InteractiveMap(root) {
   const occupied = vendors.reduce((acc, v) => { acc[v.booth] = v; return acc; }, {});
   root.innerHTML = `
     <div class="p-4 fade-in">
-      <h2 class="text-xl font-bold mb-2">Interactive Map</h2>
-      <div class="relative w-full max-w-md mx-auto h-72 bg-gray-100 rounded shadow mb-4 overflow-hidden">
+      <h2 class="text-xl font-bold mb-2 text-glass">Interactive Map</h2>
+      <div class="relative w-full max-w-md mx-auto h-72 glass-card rounded shadow mb-4 overflow-hidden">
         <svg viewBox="0 0 300 220" class="absolute inset-0 w-full h-full">
           <rect x="10" y="10" width="280" height="200" rx="16" fill="#f3f4f6" stroke="#e5e7eb" stroke-width="2" />
           <circle cx="20" cy="210" r="10" fill="#1E63B5" />

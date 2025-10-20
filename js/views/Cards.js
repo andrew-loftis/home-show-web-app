@@ -1,6 +1,80 @@
 import { getState, leadsForVendor, currentVendor } from "../store.js";
-import { renderAttendeeCard } from "./MyCard.js";
 import { Toast } from "../utils/ui.js";
+
+// Import renderAttendeeCard function for card preview
+function renderAttendeeCard(attendee, compact = false) {
+  if (!attendee.card) return "";
+  
+  const card = attendee.card;
+  return `
+    <div class="glass-card overflow-hidden ${compact ? 'max-w-xs' : 'mb-8 max-w-md mx-auto'} shadow-glass ${compact ? '' : 'floating'}">
+      ${card.backgroundImage ? `
+        <div class="${compact ? 'h-24' : 'h-40'} bg-cover bg-center relative" style="background-image: url('${card.backgroundImage}')">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+        </div>
+      ` : `<div class="${compact ? 'h-24' : 'h-40'} bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>`}
+      
+      <div class="${compact ? 'p-3' : 'p-6'} relative">
+        ${card.profileImage ? `
+          <div class="${compact ? 'w-12 h-12 -top-6 left-3' : 'w-20 h-20 -top-10 left-6'} rounded-full border-4 border-white/50 absolute overflow-hidden backdrop-blur-sm bg-white/20">
+            <img src="${card.profileImage}"
+                 style="width:100%;height:100%;object-fit:cover;object-position:${(card.profileImageX ?? 50)}% ${(card.profileImageY ?? 50)}%;transform:scale(${(card.profileImageZoom ?? 100) / 100})"
+                 onerror="this.style.display='none'"/>
+          </div>
+        ` : `
+          <div class="${compact ? 'w-12 h-12 -top-6 left-3' : 'w-20 h-20 -top-10 left-6'} rounded-full border-4 border-white/50 absolute bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center">
+            <span class="text-white font-bold ${compact ? 'text-sm' : 'text-xl'}">${(attendee.name || 'A').charAt(0)}</span>
+          </div>
+        `}
+        
+        <div class="${compact ? 'mt-8' : 'mt-12'}">
+          <div class="font-bold ${compact ? 'text-sm' : 'text-xl'} text-glass mb-1">${attendee.name}</div>
+          ${card.location && !compact ? `<div class="text-sm text-glass-secondary mb-2 flex items-center gap-1">
+            <ion-icon name="location-outline" class="text-xs"></ion-icon>${card.location}
+          </div>` : ""}
+          ${card.familySize && !compact ? `<div class="text-sm text-glass-secondary mb-3 flex items-center gap-1">
+            <ion-icon name="people-outline" class="text-xs"></ion-icon>Family of ${card.familySize}
+          </div>` : ""}
+          
+          ${card.bio && !compact ? `<div class="text-sm text-glass-secondary mb-4 leading-relaxed">${card.bio}</div>` : ""}
+          
+          ${card.visitingReasons?.length && !compact ? `
+            <div class="mb-4">
+              <div class="text-xs text-glass-secondary mb-2 font-medium">Here for:</div>
+              <div class="flex flex-wrap gap-2">
+                ${card.visitingReasons.slice(0, compact ? 2 : 6).map(reason => `
+                  <span class="px-3 py-1 bg-white/20 backdrop-blur-sm text-white rounded-full text-xs font-medium border border-white/20">${reason}</span>
+                `).join("")}
+                ${compact && card.visitingReasons.length > 2 ? `<span class="text-xs text-glass-secondary">+${card.visitingReasons.length - 2} more</span>` : ""}
+              </div>
+            </div>
+          ` : ""}
+          
+          ${compact && card.visitingReasons?.length ? `
+            <div class="text-xs text-glass-secondary mt-2">
+              ${card.visitingReasons.slice(0, 2).join(", ")}${card.visitingReasons.length > 2 ? ` +${card.visitingReasons.length - 2} more` : ""}
+            </div>
+          ` : ""}
+          
+          ${!compact ? `
+            <div class="flex flex-col gap-2 pt-4 border-t border-white/20">
+              <div class="flex items-center gap-2 text-sm text-glass-secondary">
+                <ion-icon name="mail-outline" class="text-sm"></ion-icon>
+                <span>${attendee.email}</span>
+              </div>
+              ${attendee.phone ? `
+                <div class="flex items-center gap-2 text-sm text-glass-secondary">
+                  <ion-icon name="call-outline" class="text-sm"></ion-icon>
+                  <span>${attendee.phone}</span>
+                </div>
+              ` : ""}
+            </div>
+          ` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 export default function Cards(root) {
   const state = getState();
@@ -15,9 +89,6 @@ export default function Cards(root) {
       ${role === "vendor" ? renderVendorCards(state) : renderAttendeeCards(state)}
     </div>
   `;
-
-  // Wire up enhanced wallet carousel snapping if present
-  setupSavedVendorsWallet(root);
 }
 
 function renderVendorCards(state) {
@@ -69,20 +140,45 @@ function renderAttendeeCards(state) {
     : (state.savedVendorsByAttendee[attendee.id] || []);
   const saved = state.vendors.filter(v => savedVendorIds.includes(v.id));
 
+  // Better card detection - check if card exists and has meaningful content
+  const hasCard = attendee.card && (
+    attendee.name || 
+    attendee.card.profileImage || 
+    attendee.card.backgroundImage || 
+    attendee.card.bio || 
+    attendee.card.location ||
+    (attendee.card.visitingReasons && attendee.card.visitingReasons.length > 0)
+  );
+
+  console.log('Cards page debug:', { attendee, hasCard, card: attendee.card });
+
   return `
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="glass-card p-6 mb-2">
-        <div class="flex items-center justify-between mb-3">
+    <div class="space-y-6">
+      <div class="glass-card p-6">
+        <div class="flex items-center justify-between mb-4">
           <div>
-            <div class="text-glass font-semibold">My Card</div>
-            <div class="text-xs text-glass-secondary">Create or edit your card</div>
+            <div class="text-glass font-semibold">My Business Card</div>
+            <div class="text-xs text-glass-secondary">${hasCard ? 'Your digital business card' : 'Create your card to start sharing'}</div>
           </div>
-          <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/my-card'">Open</button>
+          <button class="brand-bg px-4 py-2 text-sm" onclick="window.location.hash='/my-card'">
+            ${hasCard ? 'Edit Card' : 'Create Card'}
+          </button>
         </div>
-        <div class="mt-2">
-          ${renderMyCardPreview(attendee)}
-        </div>
+        
+        ${hasCard ? `
+          <div class="mt-4">
+            ${renderAttendeeCard(attendee, true)}
+          </div>
+        ` : `
+          <div class="border-2 border-dashed border-white/20 rounded-lg p-8 text-center text-glass-secondary">
+            <ion-icon name="card-outline" class="text-4xl mb-2"></ion-icon>
+            <div class="font-medium mb-1">No Business Card Yet</div>
+            <div class="text-xs">Create your card to share with vendors</div>
+          </div>
+        `}
       </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="glass-card p-6">
         <div class="flex items-center gap-2 mb-4">
           <ion-icon name="paper-plane-outline" class="text-white"></ion-icon>
@@ -96,7 +192,7 @@ function renderAttendeeCards(state) {
           <ion-icon name="bookmark-outline" class="text-white"></ion-icon>
           <h3 class="text-lg font-semibold text-glass">Saved Vendors</h3>
         </div>
-        ${saved.length ? renderSavedVendorsWallet(saved) : `<div class='text-glass-secondary'>No saved vendors yet.</div>`}
+        ${saved.length ? saved.map(v => renderSavedVendor(v)).join("") : `<div class='text-glass-secondary'>No saved vendors yet.</div>`}
       </div>
     </div>
   `;
@@ -126,156 +222,4 @@ function renderSavedVendor(vendor) {
       <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/vendor/${vendor.id}'">Open</button>
     </div>
   `;
-}
-
-// New: Apple Wallet-like horizontal carousel for saved vendors
-function renderSavedVendorsWallet(list) {
-  // Each vendor becomes a card: prioritize businessCardFront, then back, else a fallback branded card
-  const slides = list.map(v => renderWalletCard(v)).join("");
-  return `
-    <div class="wallet-wrapper">
-      <div class="wallet-nav">
-        <button class="wallet-btn" aria-label="Previous" onclick="window.scrollWallet('savedWallet','left')">
-          <ion-icon name="chevron-back-outline"></ion-icon>
-        </button>
-        <button class="wallet-btn" aria-label="Next" onclick="window.scrollWallet('savedWallet','right')">
-          <ion-icon name="chevron-forward-outline"></ion-icon>
-        </button>
-      </div>
-      <div class="wallet-carousel" id="savedWallet" tabindex="0" aria-label="Saved vendors carousel">
-        ${slides}
-      </div>
-    </div>
-  `;
-}
-
-function renderWalletCard(vendor) {
-  const profile = vendor.profile || {};
-  const img = profile.businessCardFront || profile.businessCardBack || "";
-  const fallbackLogo = (profile.profileImage) || (vendor.logoUrl) || `https://i.pravatar.cc/192?u=${encodeURIComponent(vendor.id || vendor.name || 'vendor')}`;
-  const bg = (profile.backgroundImage) || `https://picsum.photos/seed/${encodeURIComponent(vendor.id || vendor.name || 'bg')}/1200/640`;
-  const hasRealCard = !!img;
-  // Card body: image if provided; else a tasteful fallback card
-  const body = hasRealCard
-    ? `<img src="${img}" alt="${vendor.name} business card" class="wallet-img" onerror="this.style.display='none'">`
-    : `
-      <div class="wallet-fallback">
-        <div class="wallet-fallback-bg" style="background-image:url('${bg}')"></div>
-        <div class="wallet-fallback-inner">
-          <div class="wallet-logo">
-            <img src="${fallbackLogo}" alt="${vendor.name} logo" onerror="this.onerror=null; this.src='./assets/splash.svg'">
-          </div>
-          <div class="wallet-meta">
-            <div class="wallet-title">${vendor.name}</div>
-            <div class="wallet-sub">${vendor.category || ''}${vendor.booth ? ` • Booth ${vendor.booth}` : ''}</div>
-          </div>
-        </div>
-      </div>`;
-  return `
-    <div class="wallet-card" role="button" tabindex="0" aria-label="Open ${vendor.name}" onclick="window.location.hash='/vendor/${vendor.id}'">
-      ${body}
-      <div class="wallet-chip">${vendor.name}</div>
-    </div>
-  `;
-}
-
-// Global helper for nav buttons (horizontal scroll)
-window.scrollWallet = function(id, direction) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const amount = Math.max(320, Math.floor(el.clientWidth * 0.9));
-  el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
-};
-
-// Helper: My Card compact preview for Cards page
-function renderMyCardPreview(attendee) {
-  if (!attendee) {
-    return `<div class='text-glass-secondary text-sm'>Create your card to get started.</div>`;
-  }
-  // Use shared renderer in compact mode
-  try {
-    return renderAttendeeCard(attendee, true);
-  } catch {
-    // Fallback minimal preview
-    const name = attendee.name || attendee.email || 'My Card';
-    return `
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center">
-          ${attendee.card?.profileImage ? `<img src="${attendee.card.profileImage}" class="w-full h-full object-cover">` : `<span class="text-glass font-semibold">${name.charAt(0)}</span>`}
-        </div>
-        <div>
-          <div class="text-glass font-medium">${name}</div>
-          ${attendee.card?.location ? `<div class="text-xs text-glass-secondary">${attendee.card.location}</div>` : ''}
-        </div>
-      </div>
-    `;
-  }
-}
-
-// Enhanced snapping and active-state styling for wallet carousel
-function setupSavedVendorsWallet(root) {
-  const el = root.querySelector('#savedWallet');
-  if (!el) return;
-
-  // Hide focus outline on mouse, show on keyboard
-  el.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') { e.preventDefault(); window.scrollWallet('savedWallet','left'); }
-    if (e.key === 'ArrowRight') { e.preventDefault(); window.scrollWallet('savedWallet','right'); }
-  });
-
-  // Make vertical wheel scroll pan horizontally for nicer feel
-  el.addEventListener('wheel', (e) => {
-    const dy = Math.abs(e.deltaY);
-    const dx = Math.abs(e.deltaX);
-    if (dy > dx) {
-      e.preventDefault();
-      el.scrollLeft += e.deltaY;
-    }
-  }, { passive: false });
-
-  let snapTimer = null;
-  const setActive = (card) => {
-    if (!card) return;
-    el.querySelectorAll('.wallet-card.is-active').forEach(n => n.classList.remove('is-active'));
-    card.classList.add('is-active');
-  };
-  const nearestCard = () => {
-    const center = el.scrollLeft + el.clientWidth / 2;
-    let best = null; let bestDist = Infinity;
-    el.querySelectorAll('.wallet-card').forEach(card => {
-      const rectLeft = card.offsetLeft;
-      const rectCenter = rectLeft + card.offsetWidth / 2;
-      const d = Math.abs(rectCenter - center);
-      if (d < bestDist) { bestDist = d; best = card; }
-    });
-    return best;
-  };
-  const snapToNearest = () => {
-    const card = nearestCard();
-    if (!card) return;
-    const target = card.offsetLeft + card.offsetWidth / 2 - el.clientWidth / 2;
-    el.scrollTo({ left: target, behavior: 'smooth' });
-    setActive(card);
-  };
-  const onScroll = () => {
-    clearTimeout(snapTimer);
-    // Update active highlight continuously
-    setActive(nearestCard());
-    // Snap shortly after user stops scrolling
-    snapTimer = setTimeout(snapToNearest, 120);
-  };
-  el.addEventListener('scroll', onScroll, { passive: true });
-
-  // Initial activation and snap into place on first render
-  requestAnimationFrame(() => {
-    setActive(nearestCard());
-    // Small delay to allow layout
-    setTimeout(snapToNearest, 80);
-  });
-
-  // Re-snap on resize
-  window.addEventListener('resize', () => {
-    clearTimeout(snapTimer);
-    snapTimer = setTimeout(snapToNearest, 150);
-  });
 }

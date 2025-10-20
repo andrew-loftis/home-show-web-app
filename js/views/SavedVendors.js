@@ -17,7 +17,7 @@ export default function SavedVendors(root) {
           </div>
           <button class="brand-bg px-3 py-1 rounded" onclick="window.location.hash='/vendor/${v.id}'">Open</button>
         </div>
-      `).join("") : `<div class='text-gray-400 text-center py-8'>No saved vendors yet.<br><span class='text-xs'>Tap 'Exchange Info' on a vendor page to save.</span></div>`}
+      `).join("") : `<div class='text-gray-400 text-center py-8'>No saved vendors yet.<br><span class='text-xs'>Tap 'Exchange Info' on a vendor page to save.</span><div class='mt-4'><button class='glass-button px-4 py-2' onclick=\"window.location.hash='/vendors'\">Browse Vendors</button></div></div>`}
     </div>
   `;
 }

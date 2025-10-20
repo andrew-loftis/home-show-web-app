@@ -18,7 +18,7 @@ export default function More(root) {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
             <button class="glass-button p-3" onclick="window.location.hash='/admin'">Admin Dashboard</button>
             <button class="glass-button p-3" onclick="window.location.hash='/vendors'">Vendor Directory</button>
-            <button class="glass-button p-3" onclick="window.location.hash='/vendor-login'">Vendor Login</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/vendor-registration'">Vendor Registration</button>
           </div>
           <div class="border-t border-white/10 pt-4">
             <div class="font-semibold mb-2">Admin Management</div>
@@ -33,20 +33,12 @@ export default function More(root) {
         <div class="glass-card p-6 mb-6">
           <div class="text-sm text-glass-secondary mb-2">Quick Links</div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button class="glass-button p-3" onclick="window.location.hash='/vendor-login'">Vendor Login</button>
+            <button class="glass-button p-3" onclick="window.location.hash='/vendor-registration'">Vendor Registration</button>
             <button class="glass-button p-3" onclick="window.location.hash='/saved-vendors'">Saved Vendors</button>
             <button class="glass-button p-3" onclick="window.location.hash='/cards'">My Cards</button>
           </div>
         </div>
       `}
-      <div class="glass-card p-6 mb-6">
-        <h3 class="text-lg font-semibold text-glass mb-2">App Walkthrough</h3>
-        <div class="text-sm text-glass-secondary mb-4">View a guided tour any time. We tailor it to your current role.</div>
-        <div class="flex flex-wrap gap-2">
-          <button class="glass-button px-4 py-2" id="tourGeneralBtn">General Tour</button>
-          <button class="glass-button px-4 py-2" id="tourRoleBtn">${state.isAdmin ? 'Admin Tour' : (state.role === 'vendor' ? 'Vendor Tour' : 'Attendee Tour')}</button>
-        </div>
-      </div>
       <div class="glass-card p-6">
         <h3 class="text-lg font-semibold text-glass mb-2">Account</h3>
         ${state.isAdmin ? `` : `<div class="text-xs text-glass-secondary mb-3">Role switching is disabled.</div>`}
@@ -78,6 +70,19 @@ export default function More(root) {
           </div>
         </div>
       </div>
+      
+      ${state.user && !state.user.isAnonymous ? `
+        <div class="glass-card p-6 mt-6 border-red-500/20">
+          <div class="text-center">
+            <h3 class="text-lg font-semibold text-red-400 mb-2">Danger Zone</h3>
+            <p class="text-sm text-glass-secondary mb-4">Permanently delete your account and all associated data. This action cannot be undone.</p>
+            <button class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded font-semibold transition-colors" id="deleteAccountBtn">
+              <ion-icon name="trash-outline" class="mr-2"></ion-icon>
+              Delete Account
+            </button>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -161,13 +166,85 @@ export default function More(root) {
         };
       }
     }
-  });
-
-  // Walkthrough launchers
-  import('../utils/tour.js').then(({ startWalkthrough, startRoleTour }) => {
-    const gen = root.querySelector('#tourGeneralBtn');
-    const roleBtn = root.querySelector('#tourRoleBtn');
-    if (gen) gen.onclick = () => startWalkthrough('general');
-    if (roleBtn) roleBtn.onclick = () => startRoleTour(state.isAdmin ? 'admin' : (state.role === 'vendor' ? 'vendor' : 'attendee'));
+    
+    // Delete account functionality
+    const deleteBtn = root.querySelector('#deleteAccountBtn');
+    if (deleteBtn) {
+      deleteBtn.onclick = async () => {
+        const { Modal } = await import("../utils/ui.js");
+        
+        // Create confirmation modal
+        const confirmModal = document.createElement('div');
+        confirmModal.innerHTML = `
+          <div class="space-y-4">
+            <div class="text-lg font-semibold text-red-400">Delete Account</div>
+            <div class="text-glass-secondary">
+              <p class="mb-2">This will permanently delete:</p>
+              <ul class="text-sm list-disc list-inside space-y-1">
+                <li>Your business card and profile</li>
+                <li>All saved vendors and interactions</li>
+                <li>Any vendor applications or profiles</li>
+                <li>All account data</li>
+              </ul>
+              <p class="mt-3 font-semibold text-red-400">This action cannot be undone.</p>
+            </div>
+            <div class="border border-white/20 rounded p-3">
+              <label class="text-sm text-glass-secondary">Type "DELETE" to confirm:</label>
+              <input type="text" id="confirmDeleteInput" class="w-full mt-1 p-2 rounded border border-white/15 bg-white/10 text-glass" placeholder="DELETE">
+            </div>
+            <div class="flex justify-end gap-2">
+              <button class="glass-button px-4 py-2" id="cancelDelete">Cancel</button>
+              <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" id="confirmDelete" disabled>Delete Account</button>
+            </div>
+          </div>
+        `;
+        
+        Modal(confirmModal);
+        
+        const confirmInput = confirmModal.querySelector('#confirmDeleteInput');
+        const confirmDeleteBtn = confirmModal.querySelector('#confirmDelete');
+        const cancelBtn = confirmModal.querySelector('#cancelDelete');
+        
+        // Enable delete button only when "DELETE" is typed
+        confirmInput.oninput = () => {
+          confirmDeleteBtn.disabled = confirmInput.value !== 'DELETE';
+          confirmDeleteBtn.classList.toggle('opacity-50', confirmInput.value !== 'DELETE');
+        };
+        
+        cancelBtn.onclick = () => Modal(null);
+        
+        confirmDeleteBtn.onclick = async () => {
+          try {
+            confirmDeleteBtn.disabled = true;
+            confirmDeleteBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Deleting...';
+            
+            // Import Firebase functions
+            const { purgeCurrentUser } = await import("../firebase.js");
+            const result = await purgeCurrentUser();
+            
+            if (!result.ok) {
+              throw new Error(result.message || 'Failed to delete account');
+            }
+            
+            Modal(null);
+            const { Toast } = await import("../utils/ui.js");
+            Toast('Account deleted successfully');
+            
+            // Redirect to home after deletion
+            setTimeout(() => {
+              window.location.hash = '/home';
+              window.location.reload();
+            }, 1000);
+            
+          } catch (error) {
+            console.error('Delete account failed:', error);
+            const { Toast } = await import("../utils/ui.js");
+            Toast('Failed to delete account: ' + error.message);
+            confirmDeleteBtn.disabled = false;
+            confirmDeleteBtn.innerHTML = '<ion-icon name="trash-outline" class="mr-2"></ion-icon>Delete Account';
+          }
+        };
+      };
+    }
   });
 }

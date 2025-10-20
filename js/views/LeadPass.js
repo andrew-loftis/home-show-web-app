@@ -82,7 +82,7 @@ export default function MyCard(root) {
         
         ${attendee?.card ? `
           <div class="mt-4 text-center">
-            <button class="px-4 py-2 bg-gray-100 rounded" onclick="window.location.hash='/saved-vendors'">My Saved Vendors</button>
+            <button class="px-4 py-2 glass-button rounded" onclick="window.location.hash='/saved-vendors'">My Saved Vendors</button>
           </div>
         ` : ""}
       </div>
@@ -134,15 +134,15 @@ export default function MyCard(root) {
           }).join("") || `<div class='text-gray-400 text-center py-8'>No business cards shared yet.<br><span class='text-xs'>Attendees can share their cards with you at your booth.</span></div>`}
         </div>
         
-        <div class="font-semibold mb-2">Quick Actions</div>
+        <div class="font-semibold mb-2 text-glass">Quick Actions</div>
         <div class="flex gap-2">
-          <button class="px-3 py-1 bg-gray-100 rounded" onclick="window.location.hash='/vendor-leads'">View All Leads</button>
-          <button class="px-3 py-1 bg-gray-100 rounded" onclick="window.location.hash='/edit-vendor'">Edit My Profile</button>
+          <button class="px-3 py-1 glass-button rounded" onclick="window.location.hash='/vendor-leads'">View All Leads</button>
+          <button class="px-3 py-1 glass-button rounded" onclick="window.location.hash='/edit-vendor'">Edit My Profile</button>
         </div>
       </div>
     `;
     
-  } else if (state.role === "organizer") {
+  } else if (state.role === "admin") {
     root.innerHTML = `
       <div class='p-8 text-center text-gray-400'>
         <h2 class="text-xl font-bold mb-4">Business Card System</h2>

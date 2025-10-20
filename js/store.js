@@ -1,5 +1,5 @@
 /**
- * @typedef {"attendee"|"vendor"|"organizer"|null} Role
+ * @typedef {"attendee"|"vendor"|"admin"|null} Role
  * @typedef {"Kitchen"|"Bath"|"Landscaping"|"Windows"|"Solar"|"Roofing"|"Flooring"|"HVAC"|"Painting"} Interest
  * @typedef {"Building a home"|"Renovating"|"Needing new gutters"|"Floor plans"|"Kitchen remodel"|"Bathroom remodel"|"Solar installation"|"Roofing repair"|"HVAC upgrade"|"Landscaping"|"Windows replacement"|"Just browsing"} VisitingReason
  * @typedef {Object} AttendeeCard
@@ -69,14 +69,13 @@ const OLD_LS_KEY = "leadpass:v1";
 let listeners = [];
 let state = {
   role: null,
+  walkthroughs: { general: false, attendee: false, vendor: false, admin: false },
   hasOnboarded: false,
   isOnline: true,
   vendorLoginId: null,
   theme: "light",
   user: null, // { uid, displayName, email, photoURL }
   isAdmin: false,
-  // Track per-role walkthrough completion locally; we'll sync to user.preferences when signed in
-  walkthroughs: { general: false, attendee: false, vendor: false, admin: false },
   myVendor: null, // { id, approved } if user owns a vendor
   attendees: [],
   vendors: [],
@@ -127,37 +126,23 @@ function hydrateStore() {
               photoURL: user.photoURL,
               isAnonymous: !!user.isAnonymous
             };
-            // Determine admin via (1) users doc role/security OR (2) adminEmails allowlist
-            let userDocRole = null;
-            let userDocSecurityAdmin = false;
+            // Determine admin via Firestore (adminEmails collection)
             try {
-              const db = getDb();
-              const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-              const ref = doc(db, 'users', user.uid);
-              const snap = await getDoc(ref);
-              if (snap.exists()) {
-                const ud = snap.data() || {};
-                userDocRole = ud.role || null;
-                userDocSecurityAdmin = !!ud.security?.isAdmin || ud.role === 'super_admin';
-                // Pull in walkthrough preferences if present
-                if (ud.preferences?.walkthroughs) {
-                  state.walkthroughs = { ...state.walkthroughs, ...ud.preferences.walkthroughs };
-                }
-              }
-            } catch {}
-            try {
-              const allowlist = await isAdminEmail(state.user.email);
-              state.isAdmin = Boolean(userDocSecurityAdmin || allowlist || userDocRole === 'organizer' || userDocRole === 'admin' || userDocRole === 'super_admin');
-            } catch {
-              state.isAdmin = Boolean(userDocSecurityAdmin || userDocRole === 'organizer' || userDocRole === 'admin' || userDocRole === 'super_admin');
+              state.isAdmin = await isAdminEmail(state.user.email);
+              console.log('Auth - Admin check result:', { 
+                email: state.user.email, 
+                isAdmin: state.isAdmin 
+              });
+            } catch (error) {
+              console.log('Auth - Admin check failed:', error);
+              state.isAdmin = false;
             }
-            // Ensure user doc exists/updated (preserve existing admin roles)
+            // Ensure user doc exists/updated
             try {
-              const nextRole = userDocRole || (state.isAdmin ? 'organizer' : 'visitor');
               await createOrUpdateUserDoc(user.uid, {
                 email: user.email || null,
                 displayName: user.displayName || null,
-                role: nextRole
+                role: state.isAdmin ? 'admin' : 'visitor'
               });
             } catch {}
             // Determine if user owns a vendor
@@ -169,18 +154,9 @@ function hydrateStore() {
               let mine = null;
               snap.forEach(d => { mine = { id: d.id, approved: !!d.data().approved }; });
               state.myVendor = mine;
-              // Normalize role based on privileges to avoid stale persisted role
-              if (!state.role) {
-                state.role = state.isAdmin ? 'organizer' : (mine ? 'vendor' : 'attendee');
-              } else {
-                if (state.role === 'organizer' && !state.isAdmin) {
-                  state.role = mine ? 'vendor' : 'attendee';
-                } else if (state.role === 'vendor' && !mine && !state.isAdmin) {
-                  state.role = 'attendee';
-                }
-              }
             } catch {}
             // Load attendee data owned by this user
+            let attendeeRole = null;
             try {
               const db = getDb();
               const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
@@ -190,16 +166,26 @@ function hydrateStore() {
               snap.forEach(d => { att = { id: d.id, ...d.data() }; });
               if (att) {
                 state.attendees = [att];
+                attendeeRole = att.role; // Check if role is stored in attendee record
               }
             } catch {}
-            // Load per-user preferences (e.g., theme + walkthroughs)
+            
+            // Update role assignment to respect stored role in attendee record
+            if (state.isAdmin) {
+              state.role = 'admin';
+            } else if (attendeeRole && (attendeeRole === 'vendor' || attendeeRole === 'attendee')) {
+              // Use stored role from attendee record if valid
+              state.role = attendeeRole;
+            } else {
+              // Fallback to automatic detection
+              state.role = mine ? 'vendor' : 'attendee';
+            }
+            
+            // Load per-user preferences (e.g., theme)
             try {
               const prefs = await loadUserPreferences(user.uid);
               if (prefs && prefs.theme && prefs.theme !== state.theme) {
                 state.theme = prefs.theme;
-              }
-              if (prefs?.walkthroughs) {
-                state.walkthroughs = { ...state.walkthroughs, ...prefs.walkthroughs };
               }
             } catch {}
           } else {
@@ -280,7 +266,6 @@ function persist() {
     isOnline: state.isOnline,
     vendorLoginId: state.vendorLoginId,
     theme: state.theme,
-    walkthroughs: state.walkthroughs,
     attendees: state.attendees,
     vendors: state.vendors,
     leads: state.leads,
@@ -297,13 +282,32 @@ function subscribe(fn) {
 function getState() {
   return state;
 }
-function setRole(role) {
-  // Only admins can set organizer; non-admins cannot escalate to vendor unless they own one
-  if (role === 'organizer' && !state.isAdmin) return;
+async function setRole(role) {
+  // Only admins can set admin role; non-admins cannot escalate to vendor unless they own one
+  if (role === 'admin' && !state.isAdmin) return;
   if (role === 'vendor' && !state.isAdmin) {
-    if (!state.myVendor) return; // require ownership
+    if (!state.myVendor || !state.myVendor.approved) return; // require approved vendor ownership
   }
+  
   state.role = role;
+  
+  // Persist role to attendee record if user is logged in
+  if (state.user && !state.user.isAnonymous && state.attendees.length > 0) {
+    try {
+      const { getDb } = await import("./firebase.js");
+      const db = getDb();
+      const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      
+      const attendeeId = state.attendees[0].id;
+      await updateDoc(doc(db, 'attendees', attendeeId), {
+        role: role,
+        roleUpdatedAt: new Date()
+      });
+    } catch (error) {
+      console.warn('Could not persist role to attendee record:', error);
+    }
+  }
+  
   persist();
   notify();
 }
@@ -311,24 +315,6 @@ function setOnboarded() {
   state.hasOnboarded = true;
   persist();
   notify();
-}
-// Walkthrough helpers
-async function markWalkthrough(roleKey, done = true) {
-  state.walkthroughs[roleKey] = !!done;
-  persist();
-  notify();
-  // Sync to user preferences when signed in
-  if (state.user?.uid) {
-    try {
-      const { saveUserPreferences, loadUserPreferences } = await import('./firebase.js');
-      const current = await loadUserPreferences(state.user.uid);
-      const next = { ...(current||{}), walkthroughs: { ...(current?.walkthroughs||{}), [roleKey]: !!done } };
-      await saveUserPreferences(state.user.uid, next);
-    } catch {}
-  }
-}
-function hasSeenWalkthrough(roleKey) {
-  return !!state.walkthroughs[roleKey];
 }
 function setOnline(val) {
   state.isOnline = val;
@@ -349,6 +335,24 @@ function setTheme(theme) {
 function getTheme() {
   return state.theme || "light";
 }
+// Walkthrough helpers
+function hasSeenWalkthrough(key = 'general') {
+  try { return !!(state.walkthroughs && state.walkthroughs[key]); } catch { return false; }
+}
+function setWalkthroughSeen(key = 'general', seen = true) {
+  try {
+    state.walkthroughs = { ...(state.walkthroughs || {}), [key]: !!seen };
+    persist();
+    notify();
+    // Persist to user preferences if signed in
+    if (state.user && state.user.uid) {
+      import('./firebase.js').then(({ saveUserPreferences }) => {
+        const prefs = { walkthroughs: state.walkthroughs };
+        saveUserPreferences(state.user.uid, prefs).catch(()=>{});
+      }).catch(()=>{});
+    }
+  } catch {}
+}
 // Auth/user management
 function setUser(user) {
   state.user = user;
@@ -362,10 +366,7 @@ function clearUser() {
 }
 function vendorLogin(vendorId) {
   state.vendorLoginId = vendorId;
-  // Only switch role for non-admins; admins keep their role while editing
-  if (!state.isAdmin) {
-    state.role = "vendor";
-  }
+  state.role = "vendor";
   persist();
   notify();
 }
@@ -386,6 +387,8 @@ async function upsertAttendee(payload) {
       const ensureShort = (v) => v || genShortCode();
       const card = {
         profileImage: payload.card?.profileImage ?? att?.card?.profileImage ?? "",
+        profileImageX: payload.card?.profileImageX ?? att?.card?.profileImageX ?? 50,
+        profileImageY: payload.card?.profileImageY ?? att?.card?.profileImageY ?? 50,
         backgroundImage: payload.card?.backgroundImage ?? att?.card?.backgroundImage ?? "",
         familySize: payload.card?.familySize ?? att?.card?.familySize ?? 1,
         visitingReasons: payload.card?.visitingReasons ?? att?.card?.visitingReasons ?? [],
@@ -444,6 +447,8 @@ async function upsertAttendee(payload) {
       ...payload,
       card: payload.card || {
         profileImage: "",
+        profileImageX: 50,
+        profileImageY: 50,
         backgroundImage: "",
         familySize: 1,
         visitingReasons: [],
@@ -615,11 +620,11 @@ export {
   getState,
   setRole,
   setOnboarded,
-  markWalkthrough,
-  hasSeenWalkthrough,
   setOnline,
   setTheme,
   getTheme,
+  hasSeenWalkthrough,
+  setWalkthroughSeen,
   setUser,
   clearUser,
   vendorLogin,

@@ -48,6 +48,23 @@ We’ll start with four top-level collections. You can add subcollections later 
   - createdAt, updatedAt
 
 - leads/{leadId}
+### Booths collection
+- booths/{boothId}
+  - number: string (e.g., A12)
+  - size: string (e.g., 8x8, 8x16)
+  - label?: string (e.g., Corner L)
+  - price: number
+  - status: 'available' | 'reserved' | 'sold' | 'held'
+  - vendorId?: string (assigned vendor id)
+  - createdAt, updatedAt
+
+Rules snippet (admins manage stock):
+```
+match /booths/{boothId} {
+  allow read: if true;
+  allow create, update, delete: if isAdmin();
+}
+```
   - attendeeId, vendorId
   - createdAt (server timestamp), timestamp (number) [redundant but used in UI]
   - exchangeMethod: "card_share" | "manual"
@@ -232,3 +249,17 @@ Update `js/firebase.js` to connect to emulators by calling `connectAuthEmulator`
 ---
 
 Keep this doc updated as we evolve roles, approvals, and data flows.
+
+## Stripe webhook -> Firestore payment sync
+To automatically mark vendors as paid when Stripe invoices are paid, the Netlify Function `stripe-webhook.js` listens for `invoice.payment_succeeded` and updates `vendors/{vendorId}`. Configure these environment variables in Netlify Site settings:
+
+- STRIPE_SECRET_KEY: Your Stripe secret key
+- STRIPE_WEBHOOK_SECRET: The webhook signing secret from your Stripe endpoint
+- FIREBASE_PROJECT_ID: Firebase project id
+- FIREBASE_CLIENT_EMAIL: Service account client email
+- FIREBASE_PRIVATE_KEY: Service account private key (paste with escaped newlines, Netlify will pass as `\n`)
+
+Notes
+- The create-invoice function sets `metadata.vendorId` on the invoice, which the webhook uses to identify which vendor to update.
+- The webhook writes the following fields on success: `paymentStatus: 'paid'`, `paid: true`, `paymentPaidAt`, `lastInvoiceId`, `lastInvoiceStatus`, `paymentProvider: 'stripe'`, and `invoicePaidAmount`.
+- On failure/void/uncollectible events, it updates `paymentStatus: 'not_paid'` and `lastInvoiceStatus` accordingly.

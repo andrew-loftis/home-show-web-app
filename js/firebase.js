@@ -4,8 +4,9 @@
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit as qLimit, connectFirestoreEmulator, arrayUnion, arrayRemove, getCountFromServer } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
-import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit as qLimit, connectFirestoreEmulator, arrayUnion, arrayRemove, getCountFromServer, setLogLevel } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+import { deleteUser as fbDeleteUser } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { getStorage, ref as storageRef, uploadBytesResumable, uploadBytes, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
 
 let initialized = false;
 
@@ -22,6 +23,8 @@ export function initFirebase() {
     // Ensure we can get the app
     getApp();
     initialized = true;
+  // Quiet noisy Firestore logs in production
+  try { setLogLevel('error'); } catch {}
     // Optional: connect to local emulators when enabled
     try { connectEmulatorsIfEnabled(); } catch {}
     return { initialized: true };
@@ -100,25 +103,96 @@ export function getStorageInstance() {
 export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
   if (!file) throw new Error('No file');
   const auth = getAuth();
+  // Ensure we have an authenticated user (anonymous is fine) before uploading
+  try {
+    if (!auth.currentUser) {
+      await signInAnonymouslyUser();
+      // wait briefly for auth state to settle
+      const start = Date.now();
+      while (!auth.currentUser && Date.now() - start < 2000) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+    }
+  } catch (e) {
+    console.warn('Anonymous sign-in failed before upload', e);
+  }
+  if (!auth.currentUser) {
+    try {
+      const { Toast } = await import('./utils/ui.js');
+      Toast('Please sign in (or enable Anonymous Auth) to upload images.');
+    } catch {}
+    throw new Error('Auth required for upload');
+  }
   const uid = auth?.currentUser?.uid || 'anon';
   const safeName = String(file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `${pathPrefix}/${uid}/${Date.now()}_${safeName}`;
+  // Determine path layout for attendee uploads based on global flag
+  // 'attendees-root' => attendees/{uid}/...
+  // default           => users/{uid}/attendees/...
+  const layout = (typeof window !== 'undefined' && window.STORAGE_ATTENDEE_LAYOUT) || 'users-attendees';
+  const basePrefix = (pathPrefix === 'attendees')
+    ? (layout === 'attendees-root' ? `attendees/${uid}` : `users/${uid}/attendees`)
+    : pathPrefix;
+  const path = `${basePrefix}/${Date.now()}_${safeName}`;
   const st = getStorage();
   const ref = storageRef(st, path);
-  const task = uploadBytesResumable(ref, file);
-  return await new Promise((resolve, reject) => {
+  const metadata = { contentType: file.type || 'application/octet-stream' };
+
+  const startResumable = () => new Promise((resolve, reject) => {
+    const task = uploadBytesResumable(ref, file, metadata);
     task.on('state_changed', (snap) => {
       if (typeof onProgress === 'function') {
         const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
         try { onProgress(pct); } catch {}
       }
-    }, reject, async () => {
+    }, (err) => reject(err), async () => {
       try {
         const url = await getDownloadURL(task.snapshot.ref);
         resolve(url);
       } catch (e) { reject(e); }
     });
   });
+
+  const startSimple = async () => {
+    // Fallback: simple upload without resumable header (often passes with stricter CORS)
+    await uploadBytes(ref, file, metadata);
+    return await getDownloadURL(ref);
+  };
+
+  // If a global flag is set, bypass resumable uploads to avoid CORS preflight
+  const forceSimple = (typeof window !== 'undefined' && window.FORCE_SIMPLE_UPLOAD === true);
+  try {
+    if (forceSimple) {
+      if (typeof onProgress === 'function') { try { onProgress(0); } catch {} }
+      const url = await startSimple();
+      if (typeof onProgress === 'function') { try { onProgress(100); } catch {} }
+      return url;
+    }
+    return await startResumable();
+  } catch (err) {
+    // Detect likely CORS/preflight issues and fallback to simple upload
+    const m = String(err && (err.message || err.code || err)).toLowerCase();
+    const looksLikeCors = m.includes('preflight') || m.includes('cors') || m.includes('err_failed') || m.includes('blocked');
+    if (looksLikeCors) {
+      try {
+        if (typeof onProgress === 'function') { try { onProgress(0); } catch {} }
+        const url = await startSimple();
+        if (typeof onProgress === 'function') { try { onProgress(100); } catch {} }
+        return url;
+      } catch (e2) {
+        try {
+          const { Toast } = await import('./utils/ui.js');
+          Toast(`Upload failed (CORS/simple): ${e2.message || e2.code || 'error'}`);
+        } catch {}
+        throw e2;
+      }
+    }
+    try {
+      const { Toast } = await import('./utils/ui.js');
+      const msg = (err && (err.message || err.code)) ? `Upload failed: ${err.message || err.code}` : 'Upload failed.';
+      Toast(msg);
+    } catch {}
+    throw err;
+  }
 }
 
 export async function loadUserPreferences(uid) {
@@ -335,6 +409,22 @@ export async function getCollectionCount(path) {
 // --- Admin management (by email) ---
 export async function isAdminEmail(email) {
   if (!email) return false;
+  
+  // First check config.js admin emails
+  try {
+    const { ADMIN_EMAILS } = await import('./config.js');
+    if (ADMIN_EMAILS && Array.isArray(ADMIN_EMAILS)) {
+      const lowerEmail = email.toLowerCase();
+      const hasConfigAdmin = ADMIN_EMAILS.some(adminEmail => 
+        adminEmail && adminEmail.toLowerCase() === lowerEmail
+      );
+      if (hasConfigAdmin) {
+        return true;
+      }
+    }
+  } catch {}
+  
+  // Then check Firestore admin emails
   try {
     const db = getFirestore();
     const ref = doc(db, 'adminEmails', String(email).toLowerCase());
@@ -379,5 +469,153 @@ export async function listAdminEmails() {
     return out;
   } catch {
     return [];
+  }
+}
+
+// Admin-only: purge an arbitrary user's data
+// Deletes attendees (and their leads), deletes leads created by the user, deletes vendors owned by the user,
+// removes adminEmails entry for the user's email, and deletes the users/{uid} document.
+// Options: { deleteVendorsByEmail?: boolean } also deletes vendors where contactEmail == email (use with caution).
+export async function adminPurgeUser(uid, email = null, options = {}) {
+  const db = getFirestore();
+  const fsm = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+  const out = { attendeesDeleted: 0, leadsDeleted: 0, vendorsDeleted: 0, userDeleted: false, adminEmailRemoved: false };
+  // 1) Attendees owned by user
+  try {
+    const qAtt = fsm.query(fsm.collection(db, 'attendees'), fsm.where('ownerUid', '==', uid));
+    const asnap = await fsm.getDocs(qAtt);
+    const attendeeIds = [];
+    asnap.forEach(d => attendeeIds.push(d.id));
+    // Delete leads for each attendee, then the attendee
+    for (const attId of attendeeIds) {
+      try {
+        const qLeads = fsm.query(fsm.collection(db, 'leads'), fsm.where('attendeeId','==', attId));
+        const lsnap = await fsm.getDocs(qLeads);
+        const deletes = [];
+        lsnap.forEach(d => { deletes.push(fsm.deleteDoc(fsm.doc(db, 'leads', d.id))); out.leadsDeleted++; });
+        await Promise.allSettled(deletes);
+      } catch {}
+      try { await fsm.deleteDoc(fsm.doc(db, 'attendees', attId)); out.attendeesDeleted++; } catch {}
+    }
+  } catch {}
+  // 2) Leads created by user (idempotent if already removed above)
+  try {
+    const qCreated = fsm.query(fsm.collection(db, 'leads'), fsm.where('createdByUid','==', uid));
+    const csnap = await fsm.getDocs(qCreated);
+    const deletes = [];
+    csnap.forEach(d => { deletes.push(fsm.deleteDoc(fsm.doc(db, 'leads', d.id))); out.leadsDeleted++; });
+    await Promise.allSettled(deletes);
+  } catch {}
+  // 3) Vendors owned by user
+  try {
+    const qVen = fsm.query(fsm.collection(db, 'vendors'), fsm.where('ownerUid','==', uid));
+    const vsnap = await fsm.getDocs(qVen);
+    const deletes = [];
+    vsnap.forEach(d => { deletes.push(fsm.deleteDoc(fsm.doc(db, 'vendors', d.id))); out.vendorsDeleted++; });
+    await Promise.allSettled(deletes);
+  } catch {}
+  // 3b) Optional: delete vendors by contactEmail match
+  try {
+    if (options.deleteVendorsByEmail && email) {
+      const e = String(email).trim();
+      const variants = Array.from(new Set([e, e.toLowerCase(), e.toUpperCase()]));
+      for (const v of variants) {
+        const q = fsm.query(fsm.collection(db, 'vendors'), fsm.where('contactEmail','==', v));
+        const snap = await fsm.getDocs(q).catch(()=>null);
+        if (!snap) continue;
+        const dels = [];
+        snap.forEach(d => { dels.push(fsm.deleteDoc(fsm.doc(db, 'vendors', d.id))); out.vendorsDeleted++; });
+        await Promise.allSettled(dels);
+      }
+    }
+  } catch {}
+  // 4) Remove adminEmails entry
+  try {
+    if (email) {
+      await fsm.deleteDoc(fsm.doc(db, 'adminEmails', String(email).toLowerCase()));
+      out.adminEmailRemoved = true;
+    }
+  } catch {}
+  // 5) Delete users/{uid}
+  try { await fsm.deleteDoc(fsm.doc(db, 'users', uid)); out.userDeleted = true; } catch {}
+  return out;
+}
+
+// Danger zone: fully purge the currently signed-in user's app data, unlink any owned vendors, and attempt to delete the Auth user.
+// This will:
+// - Delete attendees owned by the user (and their leads)
+// - Delete leads created by the user
+// - Unlink vendors (clear ownerUid) owned by the user
+// - Delete the users/{uid} document
+// - Attempt to delete the Auth user (may require recent login)
+// - Finally, sign the user out
+export async function purgeCurrentUser() {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) return { ok: false, message: 'Not signed in' };
+    // Signal to the app to skip auto user upserts during purge
+    try { window.__PURGING_ACCOUNT__ = true; } catch {}
+    const db = getFirestore();
+    const fsm = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+    const uid = user.uid;
+    // 1) Collect attendees for this user
+    let attendeeIds = [];
+    try {
+      const qAtt = fsm.query(fsm.collection(db, 'attendees'), fsm.where('ownerUid', '==', uid));
+      const asnap = await fsm.getDocs(qAtt);
+      asnap.forEach(d => attendeeIds.push(d.id));
+    } catch {}
+    // 2) Delete leads tied to these attendees
+    for (const attId of attendeeIds) {
+      try {
+        const qLeads = fsm.query(fsm.collection(db, 'leads'), fsm.where('attendeeId','==', attId));
+        const lsnap = await fsm.getDocs(qLeads);
+        const deletions = [];
+        lsnap.forEach(d => deletions.push(fsm.deleteDoc(fsm.doc(db, 'leads', d.id))));
+        await Promise.allSettled(deletions);
+      } catch {}
+    }
+    // 3) Delete leads created by this user (may overlap with above; deletions are idempotent)
+    try {
+      const qCreated = fsm.query(fsm.collection(db, 'leads'), fsm.where('createdByUid','==', uid));
+      const csnap = await fsm.getDocs(qCreated);
+      const deletions = [];
+      csnap.forEach(d => deletions.push(fsm.deleteDoc(fsm.doc(db, 'leads', d.id))));
+      await Promise.allSettled(deletions);
+    } catch {}
+    // 4) Delete attendees
+    for (const attId of attendeeIds) {
+      try { await fsm.deleteDoc(fsm.doc(db, 'attendees', attId)); } catch {}
+    }
+    // 5) Unlink any vendors owned by this user
+    try {
+      const qVen = fsm.query(fsm.collection(db, 'vendors'), fsm.where('ownerUid','==', uid));
+      const vsnap = await fsm.getDocs(qVen);
+      const updates = [];
+      vsnap.forEach(d => updates.push(fsm.updateDoc(fsm.doc(db, 'vendors', d.id), { ownerUid: null, ownerRemovedAt: fsm.serverTimestamp() })));
+      await Promise.allSettled(updates);
+    } catch {}
+    // 6) Remove from admin allowlist if present
+    try {
+      const email = String(user.email||'').toLowerCase();
+      if (email) {
+        const ref = fsm.doc(db, 'adminEmails', email);
+        await (await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js")).deleteDoc(ref).catch(()=>{});
+      }
+    } catch {}
+    // 7) Delete users/{uid}
+    try { await fsm.deleteDoc(fsm.doc(db, 'users', uid)); } catch {}
+    // 8) Attempt to delete the Auth user; may require recent login
+    let authDeleted = false;
+    try { await fbDeleteUser(user); authDeleted = true; } catch (e) { authDeleted = false; }
+    // 9) Sign out regardless
+    try { await signOut(getAuth()); } catch {}
+    return { ok: true, authDeleted };
+  } catch (e) {
+    return { ok: false, message: e?.message || 'Unknown error' };
+  } finally {
+    // Allow future upserts after purge completes
+    try { setTimeout(() => { window.__PURGING_ACCOUNT__ = false; }, 3000); } catch {}
   }
 }

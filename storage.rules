@@ -1,24 +1,30 @@
 rules_version = '2';
 service firebase.storage {
-  match /b/{bucket}/o {
-    function isSignedIn() { return request.auth != null; }
+	match /b/{bucket}/o {
+		function isSignedIn() { return request.auth != null && request.auth.uid != null; }
 
-    // User uploads: limit writes to the owner uid
-    match /users/{uid}/{allPaths=**} {
-      allow read: if true; // Could be restricted to owner if needed
-      allow write: if isSignedIn() && request.auth.uid == uid;
-    }
+		// Primary: owner-scoped uploads under users/{uid}/...
+		match /users/{uid}/{allPaths=**} {
+			allow read: if true; // Publicly readable assets (tighten later if needed)
+			allow write: if isSignedIn() && request.auth.uid == uid;
+		}
 
-    // Vendor uploads: allow reads publicly; writes only when signed in (optionally tighten to vendor owner later)
-    match /vendors/{vendorId}/{allPaths=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
+		// Temporary compatibility: legacy attendee path attendees/{uid}/...
+		// This allows older builds to continue uploading without CORS/auth confusion.
+		match /attendees/{uid}/{allPaths=**} {
+			allow read: if true;
+			allow write: if isSignedIn() && request.auth.uid == uid;
+		}
 
-    // Default
-    match /{allPaths=**} {
-      allow read: if false;
-      allow write: if false;
-    }
-  }
+		// Vendor uploads: readable by public; writes allowed when signed in
+		match /vendors/{vendorId}/{allPaths=**} {
+			allow read: if true;
+			allow write: if isSignedIn();
+		}
+
+		// Default deny
+		match /{allPaths=**} {
+			allow read, write: if false;
+		}
+	}
 }
