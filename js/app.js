@@ -110,6 +110,7 @@ function scheduleRender() {
 }
 
 function boot() {
+  console.log('[App] Booting V-1.5...');
   hydrateStore();
   // Expose getState globally for some views
   window.getState = getState;
@@ -127,6 +128,7 @@ function boot() {
   
   // Onboarding gate and role selection
   const state = getState();
+  console.log('[App] State:', { hasOnboarded: state.hasOnboarded, user: !!state.user, role: state.role });
   if (!state.hasOnboarded) {
     navigate("/onboarding");
   } else if (state.user && !state.user.isAnonymous && !state.role) {
@@ -135,6 +137,7 @@ function boot() {
   } else {
     navigate("/home");
   }
+  console.log('[App] Boot complete');
 }
 
 window.addEventListener("DOMContentLoaded", boot);
