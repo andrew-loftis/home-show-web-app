@@ -1,9 +1,9 @@
 // HomeShow Service Worker
 // Provides offline caching and PWA functionality
 
-const CACHE_NAME = 'homeshow-v1.6';
-const STATIC_CACHE = 'homeshow-static-v1.6';
-const DYNAMIC_CACHE = 'homeshow-dynamic-v1.6';
+const CACHE_NAME = 'homeshow-v2';
+const STATIC_CACHE = 'homeshow-static-v2';
+const DYNAMIC_CACHE = 'homeshow-dynamic-v2';
 
 // Debug logging (only on localhost)
 const DEBUG = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   '/js/utils/skeleton.js',
   '/js/utils/dom.js',
   '/js/utils/format.js',
+  '/js/utils/errorBoundary.js',
   '/js/views/Home.js',
   '/js/views/Vendors.js',
   '/js/views/Cards.js',
