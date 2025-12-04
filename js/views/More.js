@@ -143,6 +143,11 @@ export default async function More(root) {
           </div>
         </div>
       ` : ''}
+      
+      <!-- Version Stamp -->
+      <div class="text-right mt-6 mb-4 pr-2">
+        <span class="text-xs text-glass-secondary opacity-50">V-1.1</span>
+      </div>
     </div>
   `;
 
