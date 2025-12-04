@@ -70,35 +70,75 @@
   </div>
   <div id="modal-root"></div>
   <div id="toast-root"></div>
-  <script type="module" src="./js/app.js?v=20241204-002"></script>
+  <script type="module" src="./js/app.js?v=20241204-003"></script>
   
-  <!-- Service Worker Registration -->
+  <!-- Service Worker Registration with Force Update -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((registration) => {
-            console.log('[App] Service Worker registered:', registration.scope);
-            
-            // Check for updates
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  // New content available, show update prompt
-                  if (confirm('New version available! Reload to update?')) {
+    const APP_VERSION = '1.9';
+    const STORED_VERSION_KEY = 'app_version';
+    
+    // Check if we need to force clear old service worker
+    (async function forceUpdateCheck() {
+      const storedVersion = localStorage.getItem(STORED_VERSION_KEY);
+      
+      // If version changed or first visit, clear everything
+      if (storedVersion !== APP_VERSION) {
+        console.log('[App] Version change detected:', storedVersion, '->', APP_VERSION);
+        
+        // Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+            console.log('[App] Unregistered old service worker');
+          }
+        }
+        
+        // Clear all caches
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          for (const cacheName of cacheNames) {
+            await caches.delete(cacheName);
+            console.log('[App] Deleted cache:', cacheName);
+          }
+        }
+        
+        // Store new version
+        localStorage.setItem(STORED_VERSION_KEY, APP_VERSION);
+        
+        // Reload if we had an old version (not first visit)
+        if (storedVersion) {
+          console.log('[App] Reloading for clean start...');
+          window.location.reload();
+          return;
+        }
+      }
+      
+      // Register fresh service worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('[App] Service Worker registered:', registration.scope);
+              
+              // Auto-update on new versions
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // Automatically activate new version
                     newWorker.postMessage({ type: 'SKIP_WAITING' });
                     window.location.reload();
                   }
-                }
+                });
               });
+            })
+            .catch((error) => {
+              console.warn('[App] Service Worker registration failed:', error);
             });
-          })
-          .catch((error) => {
-            console.warn('[App] Service Worker registration failed:', error);
-          });
-      });
-    }
+        });
+      }
+    })();
   </script>
 </body>
 </html>
