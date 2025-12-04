@@ -1,9 +1,9 @@
 // HomeShow Service Worker
 // Provides offline caching and PWA functionality
 
-const CACHE_NAME = 'homeshow-v1';
-const STATIC_CACHE = 'homeshow-static-v1';
-const DYNAMIC_CACHE = 'homeshow-dynamic-v1';
+const CACHE_NAME = 'homeshow-v1.6';
+const STATIC_CACHE = 'homeshow-static-v1.6';
+const DYNAMIC_CACHE = 'homeshow-dynamic-v1.6';
 
 // Debug logging (only on localhost)
 const DEBUG = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
