@@ -1,2 +1,28 @@
+# Dependencies
+node_modules/
+
 # Local Netlify folder
 .netlify
+
+# Build cache
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test and debug files (keep out of production)
+*-test.html
+*-debug.js
+firebase-verification.html
+firebase-test.html
+test-*.js
+temp-*.txt
+
+# Setup utilities (one-time use)
+setup-collections.html
+complete-collections-setup.html
+enhanced-collections-setup.html
+force-create-collections.html
+create-admin.html
+generate-icons.html

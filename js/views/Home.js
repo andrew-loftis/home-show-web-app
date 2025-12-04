@@ -1,6 +1,7 @@
 import { getState, currentVendor } from "../store.js";
 import { shouldShowTour, markTourComplete, maybeRunTour } from "../utils/tour.js";
 import { Toast } from "../utils/ui.js";
+import { initLazyBackgrounds } from "../utils/lazyImages.js";
 
 // Compact card renderer for preview
 function renderCompactCard(attendee) {
@@ -10,7 +11,7 @@ function renderCompactCard(attendee) {
   return `
     <div class="glass-card overflow-hidden max-w-xs shadow-glass">
       ${card.backgroundImage ? `
-        <div class="h-24 bg-cover bg-center relative" style="background-image: url('${card.backgroundImage}')">
+        <div class="h-24 lazy-bg bg-cover bg-center relative" data-bg="${card.backgroundImage}" style="background: linear-gradient(to bottom right, #334155, #1e293b);">
           <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
       ` : `<div class="h-24 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>`}
@@ -19,6 +20,8 @@ function renderCompactCard(attendee) {
         ${card.profileImage ? `
           <div class="w-12 h-12 -top-6 left-3 rounded-full border-4 border-white/50 absolute overflow-hidden backdrop-blur-sm bg-white/20">
             <img src="${card.profileImage}"
+                 class="lazy-img"
+                 loading="lazy"
                  style="width:100%;height:100%;object-fit:cover;object-position:${(card.profileImageX ?? 50)}% ${(card.profileImageY ?? 50)}%;transform:scale(${(card.profileImageZoom ?? 100) / 100})"
                  onerror="this.style.display='none'"/>
           </div>
@@ -49,40 +52,68 @@ export default function Home(root) {
     // Guest experience: sign-in/sign-up section prominent
     html = `
       <div class="container-glass fade-in">
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold mb-3 text-glass">Welcome</h1>
-          <p class="text-xl text-glass-secondary">Swap cards. Discover vendors. Connect fast.</p>
-          <button id="startTour" class="glass-button px-4 py-2 mt-2">
-            <ion-icon name="help-circle-outline" class="mr-2"></ion-icon>
-            Take a Quick Tour
-          </button>
+        <!-- Hero Section -->
+        <div class="relative overflow-hidden rounded-2xl glass-card mb-8 p-8">
+          <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-3xl -mr-12 -mt-12"></div>
+          <div class="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 rounded-full blur-2xl -ml-8 -mb-8"></div>
+          
+          <div class="relative text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 text-blue-300 text-xs font-medium mb-4">
+              <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              Live Event
+            </div>
+            <h1 class="text-3xl md:text-4xl font-bold mb-3 text-glass">Putnam County<br><span class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Home Show 2025</span></h1>
+            <p class="text-lg text-glass-secondary mb-4">Swap cards. Discover vendors. Connect fast.</p>
+            <button id="startTour" class="inline-flex items-center gap-2 glass-button px-4 py-2">
+              <ion-icon name="help-circle-outline"></ion-icon>
+              Take a Quick Tour
+            </button>
+          </div>
         </div>
-        <div class="glass-card p-8 mb-8">
-          <h3 class="text-xl font-semibold mb-3 text-glass text-center">Create your account</h3>
-          <p class="text-glass-secondary text-center mb-4">Sign in to create your card, save vendors, and share your info.</p>
+        
+        <!-- Sign Up CTA -->
+        <div class="glass-card p-6 md:p-8 mb-8">
+          <h3 class="text-xl font-semibold mb-2 text-glass text-center">Get Started</h3>
+          <p class="text-glass-secondary text-center mb-6">Sign in to create your card, save vendors, and share your info.</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button class="brand-bg p-3" id="homeGoogleSignIn">Continue with Google</button>
-            <button class="glass-button p-3" id="homeEmailSignIn">Sign in with Email</button>
-            <button class="glass-button p-3" id="homeSignUp">Create Account</button>
-          </div>
-          <div class="text-center mt-4">
-            <button class="glass-button px-4 py-2" id="goToMyCard">Create My Business Card</button>
+            <button class="brand-bg p-3 flex items-center justify-center gap-2" id="homeGoogleSignIn">
+              <ion-icon name="logo-google"></ion-icon>
+              Continue with Google
+            </button>
+            <button class="glass-button p-3 flex items-center justify-center gap-2" id="homeEmailSignIn">
+              <ion-icon name="mail-outline"></ion-icon>
+              Sign in with Email
+            </button>
+            <button class="glass-button p-3 flex items-center justify-center gap-2" id="homeSignUp">
+              <ion-icon name="person-add-outline"></ion-icon>
+              Create Account
+            </button>
           </div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-slate-600 to-slate-800 mb-4 flex items-center justify-center">
-              <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+        
+        <!-- Quick Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="glass-card p-6 group hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-transparent hover:border-blue-500/30" onclick="window.location.hash='/vendors'">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold mb-1 text-glass group-hover:text-blue-400 transition-colors">Browse Vendors</h3>
+                <p class="text-glass-secondary text-sm">Explore the directory and save your favorites</p>
+              </div>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-glass">Browse Vendors</h3>
-            <p class="text-glass-secondary text-sm">Explore the directory. Create an account to save favorites.</p>
           </div>
-          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/map'">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-gray-800 mb-4 flex items-center justify-center">
-              <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+          <div class="glass-card p-6 group hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-transparent hover:border-purple-500/30" onclick="window.location.hash='/map'">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+              </div>
+              <div>
+                <h3 class="text-lg font-semibold mb-1 text-glass group-hover:text-purple-400 transition-colors">Interactive Map</h3>
+                <p class="text-glass-secondary text-sm">Find booths and navigate the venue</p>
+              </div>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-glass">Interactive Map</h3>
-            <p class="text-glass-secondary text-sm">Find booths. An account lets you share your card on the floor.</p>
           </div>
         </div>
       </div>
@@ -156,7 +187,7 @@ export default function Home(root) {
         <div class="glass-card p-8 mb-8">
           <div class="flex items-center gap-6 mb-6">
             <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-              ${vendor?.logoUrl ? `<img src="${vendor.logoUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">` : `<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>`}
+              ${vendor?.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>'}
             </div>
             <div>
               <h1 class="text-2xl font-bold text-glass">${vendor?.name || "Vendor Dashboard"}</h1>
@@ -199,12 +230,12 @@ export default function Home(root) {
             <p class="text-glass-secondary text-sm">Track and analyze your leads and interactions</p>
           </div>
           
-          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/edit-vendor'">
+          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendor-dashboard'">
             <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-slate-700 mb-4 flex items-center justify-center">
               <ion-icon name="settings-outline" class="text-white text-xl"></ion-icon>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-glass">Profile Settings</h3>
-            <p class="text-glass-secondary text-sm">Update your vendor profile and preferences</p>
+            <h3 class="text-lg font-semibold mb-2 text-glass">Vendor Dashboard</h3>
+            <p class="text-glass-secondary text-sm">Manage your business info, profile, and settings</p>
           </div>
         </div>
       </div>

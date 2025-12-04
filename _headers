@@ -1,0 +1,44 @@
+# Netlify Headers
+# https://docs.netlify.com/routing/headers/
+
+# Service Worker - no cache
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Manifest - short cache
+/manifest.json
+  Cache-Control: public, max-age=3600
+
+# Static assets - long cache with revalidation
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# JavaScript files - cache with revalidation
+/js/*
+  Cache-Control: public, max-age=86400, must-revalidate
+
+# HTML files - no cache (SPA routing)
+/*.html
+  Cache-Control: no-cache
+
+# Security headers for all pages
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Block indexing of test/setup files
+/*-test.html
+  X-Robots-Tag: noindex, nofollow
+
+/*-setup.html
+  X-Robots-Tag: noindex, nofollow
+
+/create-admin.html
+  X-Robots-Tag: noindex, nofollow
+
+/firebase-verification.html
+  X-Robots-Tag: noindex, nofollow

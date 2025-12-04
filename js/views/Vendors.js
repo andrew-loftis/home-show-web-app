@@ -1,4 +1,6 @@
 import { getState } from "../store.js";
+import { SkeletonVendorCard, SkeletonVendorRow, EmptyVendors } from "../utils/skeleton.js";
+import { logoImg, cardImg } from "../utils/lazyImages.js";
 
 export default function Vendors(root) {
   const state = getState();
@@ -6,6 +8,10 @@ export default function Vendors(root) {
   let currentView = localStorage.getItem("vendors:view") || "gallery"; // 'gallery' | 'list'
   let searchTerm = "";
   let expandedId = null; // for list view inline preview
+  let isLoading = true; // Start in loading state
+
+  // Show skeleton immediately
+  renderSkeleton();
 
   const filter = (list) => {
     if (!searchTerm) return list;
@@ -17,13 +23,35 @@ export default function Vendors(root) {
     );
   };
 
-  const ph = (seed, w, h) => `https://picsum.photos/seed/${encodeURIComponent(seed)}/${w}/${h}`;
-  // People avatar placeholder: pravatar provides consistent faces via the `u` seed
-  const peoplePlaceholder = (seed, size = 192) => `https://i.pravatar.cc/${size}?u=${encodeURIComponent(seed || 'vendor')}`;
-  const vendorLogo = (v) => (v.logoUrl || (v.profile && v.profile.profileImage) || peoplePlaceholder(v.id, 192));
-  const vendorBg = (v) => ((v.profile && v.profile.backgroundImage) || ph(`${v.id}-bg`, 1200, 640));
+  function renderSkeleton() {
+    root.innerHTML = `
+      <div class="fade-in min-h-screen">
+        <div class="max-w-5xl mx-auto px-4 pt-4 pb-28">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex-1 relative">
+              <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-glass-secondary"></ion-icon>
+              <input type="text" placeholder="Search vendors, categories, booth…" class="w-full pl-10 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-glass placeholder:text-glass-secondary" disabled>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="glass-button px-3 py-2 opacity-50" disabled>
+                <ion-icon name="reorder-three-outline"></ion-icon>
+              </button>
+              <button class="glass-button px-3 py-2 opacity-50" disabled>
+                <ion-icon name="grid-outline"></ion-icon>
+              </button>
+            </div>
+          </div>
+          ${currentView === 'list' 
+            ? `<div class="grid gap-3">${Array(6).fill(0).map(() => SkeletonVendorRow()).join('')}</div>`
+            : `<div class="space-y-10">${Array(3).fill(0).map(() => SkeletonVendorCard()).join('')}</div>`
+          }
+        </div>
+      </div>
+    `;
+  }
 
   const render = (list) => {
+    isLoading = false;
     const filtered = filter(list);
     root.innerHTML = `
       <div class="fade-in min-h-screen">
@@ -96,18 +124,18 @@ export default function Vendors(root) {
   };
 
   const renderList = (list) => {
-    if (!list.length) return `<div class="text-center text-glass-secondary py-12">No vendors found.</div>`;
+    if (!list.length) return EmptyVendors(!!searchTerm);
     return `
       <div class="grid gap-3">
         ${list.map(v => `
           <div class="glass-card">
-            <div class="flex items-center gap-4 p-3 cursor-pointer vendor-row" data-id="${v.id}">
-              <img src="${vendorLogo(v)}" class="w-10 h-10 rounded object-cover" onerror="this.onerror=null; this.src='./assets/splash.svg'">
-              <div class="flex-1">
-                <div class="font-semibold">${v.name}</div>
+            <div class="flex items-center gap-4 p-3 cursor-pointer vendor-row touch-target" data-id="${v.id}">
+              ${logoImg(v.logoUrl, 'storefront-outline', 'w-10 h-10')}
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold truncate">${v.name}</div>
                 <div class="text-xs text-glass-secondary">${v.category} ${v.booth ? `• Booth ${v.booth}` : ''}</div>
               </div>
-              <ion-icon name="chevron-forward-outline" class="text-glass-secondary"></ion-icon>
+              <ion-icon name="chevron-forward-outline" class="text-glass-secondary flex-shrink-0"></ion-icon>
             </div>
             <div class="list-preview" data-id="${v.id}" style="height:0; overflow:hidden; opacity:0; transition: height 200ms ease, opacity 200ms ease;"></div>
           </div>
@@ -117,7 +145,7 @@ export default function Vendors(root) {
   };
 
   const renderGallery = (list) => {
-    if (!list.length) return `<div class="text-center text-glass-secondary py-12">No vendors found.</div>`;
+    if (!list.length) return EmptyVendors(!!searchTerm);
     return `
       <div class="space-y-10">
         ${list.map(v => renderVendorCard(v)).join('')}
@@ -132,7 +160,7 @@ export default function Vendors(root) {
       <div class="glass-card overflow-hidden slide-up border border-white/15 shadow-glass">
         <div class="flex items-center gap-4 p-6 border-b border-white/20">
           <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-            <img src="${vendorLogo(vendor)}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='./assets/splash.svg'">
+            ${vendor.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>'}
           </div>
           <div class="flex-1">
             <h3 class="text-xl font-bold text-glass">${vendor.name}</h3>
@@ -141,7 +169,16 @@ export default function Vendors(root) {
           <button class="brand-bg px-6 py-3 rounded-xl font-semibold" onclick="window.location.hash='/vendor/${vendor.id}'">Visit</button>
         </div>
         <div class="relative">
-          <img src="${vendorBg(vendor)}" class="w-full h-80 object-cover" onerror="this.style.display='none'">
+          ${profile.backgroundImage ? `
+            <img src="${profile.backgroundImage}" class="w-full h-80 object-cover lazy-img" loading="lazy" onerror="this.style.display='none'">
+          ` : `
+            <div class="w-full h-80 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900 flex items-center justify-center">
+              <div class="text-white text-center">
+                <ion-icon name="business-outline" class="text-6xl mb-4"></ion-icon>
+                <h4 class="text-2xl font-bold">${vendor.name}</h4>
+              </div>
+            </div>
+          `}
           ${profile.homeShowVideo ? `
             <div class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
               <button class="play-video w-16 h-16 rounded-full bg-white/30 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:scale-110 transition-transform duration-300" data-url="${profile.homeShowVideo}">
@@ -207,16 +244,22 @@ export default function Vendors(root) {
     const hasMedia = profile.backgroundImage || profile.homeShowVideo;
     return `
       <div class="border-t border-white/10 preview-inner">
-        <div class="relative">
-          <img src="${vendorBg(vendor)}" class="w-full h-56 object-cover" onerror="this.style.display='none'">
-          ${profile.homeShowVideo ? `
-            <div class="absolute inset-0 flex items-center justify-center">
-              <button class="play-video w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" data-url="${profile.homeShowVideo}">
-                <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
-              </button>
-            </div>
-          ` : ''}
-        </div>
+        ${hasMedia ? `
+          <div class="relative">
+            ${profile.backgroundImage ? `
+              <img src="${profile.backgroundImage}" class="w-full h-56 object-cover" onerror="this.style.display='none'">
+            ` : `
+              <div class=\"w-full h-40 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900\"></div>
+            `}
+            ${profile.homeShowVideo ? `
+              <div class="absolute inset-0 flex items-center justify-center">
+                <button class="play-video w-14 h-14 rounded-full bg-black/50 flex items-center justify-center" data-url="${profile.homeShowVideo}">
+                  <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        ` : ''}
         <div class="p-4">
           ${profile.description ? `<p class=\"text-glass-secondary text-sm mb-3\">${profile.description}</p>` : ''}
           ${profile.specialOffer ? `
@@ -332,18 +375,29 @@ export default function Vendors(root) {
     });
   }
 
-  // Initial render
-  render(initialList);
+  // If we have cached vendors, render them immediately (no skeleton wait)
+  if (initialList.length > 0) {
+    render(initialList);
+  }
 
-  // Hydrate with live approved vendors from Firestore if available
+  // Hydrate with live approved vendors from Firestore
   import("../firebase.js").then(async ({ initFirebase, fetchApprovedVendors }) => {
     try { initFirebase(); } catch {}
     try {
       const live = await fetchApprovedVendors();
       if (Array.isArray(live) && live.length) {
         render(live);
+      } else if (initialList.length === 0) {
+        // No cached data and no live data - show empty state
+        isLoading = false;
+        render([]);
       }
-    } catch {}
+    } catch (err) {
+      console.warn('Failed to fetch vendors:', err);
+      if (initialList.length === 0) {
+        render([]);
+      }
+    }
   });
 }
 

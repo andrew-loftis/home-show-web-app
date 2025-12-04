@@ -1,4 +1,6 @@
 // Lightweight hash router
+import { renderErrorUI, renderNotFoundError, logError } from './utils/errorBoundary.js';
+
 const routes = {
   "/": "Onboarding",
   "/onboarding": "Onboarding",
@@ -18,13 +20,13 @@ const routes = {
   "/vendor/:vendorId": "VendorLandingPage",
   "/share-card/:vendorId": "ShareCard",
   "/vendor-registration": "VendorRegistration",
+  "/vendor-dashboard": "VendorDashboard", 
   "/edit-vendor": "EditVendorProfile",
   "/saved-vendors": "SavedVendors",
   "/business-cards": "SavedBusinessCards",
   "/schedule": "Schedule",
   "/sponsors": "Sponsors",
   "/admin": "AdminDashboard",
-  "/data-manager": "AdminDataManager",
   "/more": "More"
 };
 
@@ -59,36 +61,64 @@ function back() {
 
 function initRouter(renderShell) {
   window.addEventListener("hashchange", () => {
-    try { localStorage.setItem('lastRoute', window.location.hash || '#/'); } catch {}
     window.scrollTo(0, 0);
     renderShell();
     renderView();
   });
-  // If no hash, attempt to restore last route
-  if (!window.location.hash) {
-    try {
-      const last = localStorage.getItem('lastRoute');
-      if (last && typeof last === 'string') {
-        window.location.hash = last.startsWith('#') ? last : `#${last}`;
-      }
-    } catch {}
-  }
   renderView();
 }
 
 async function renderView() {
   const hash = window.location.hash || "#/";
-  try { localStorage.setItem('lastRoute', hash); } catch {}
   const { view, params } = parseRoute(hash);
   const main = document.querySelector("main");
   if (!main) return;
-  main.innerHTML = "<div class='fade-in'></div>";
+  
+  // Show loading state
+  main.innerHTML = `
+    <div class="flex items-center justify-center min-h-[50vh] fade-in">
+      <div class="text-center">
+        <div class="relative mx-auto w-10 h-10 mb-3">
+          <div class="w-10 h-10 border-4 border-white/10 rounded-full"></div>
+          <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
+        </div>
+        <p class="text-sm text-glass-secondary">Loading...</p>
+      </div>
+    </div>
+  `;
+  
   try {
     const mod = await import(`./views/${view}.js`);
     main.innerHTML = "";
-    mod.default(main, params);
+    
+    // Wrap view execution in try-catch
+    try {
+      await mod.default(main, params);
+    } catch (viewError) {
+      console.error(`[Router] Error in view ${view}:`, viewError);
+      logError(viewError, { view, params });
+      renderErrorUI(main, {
+        title: "Page Error",
+        message: "Something went wrong loading this page. Please try again.",
+        error: viewError,
+        showDetails: localStorage.getItem('debug') === 'true',
+        retryAction: () => renderView()
+      });
+    }
   } catch (e) {
-    main.innerHTML = `<div class='p-8 text-center text-red-500'>View not found: ${view}</div>`;
+    console.error(`[Router] Failed to load view ${view}:`, e);
+    
+    // Check if it's a module not found error
+    if (e.message?.includes('Failed to fetch') || e.message?.includes('not found')) {
+      renderNotFoundError(main, "page");
+    } else {
+      renderErrorUI(main, {
+        title: "View Not Found",
+        message: `Could not load the "${view}" page. It may have been moved or doesn't exist.`,
+        error: e,
+        showDetails: localStorage.getItem('debug') === 'true'
+      });
+    }
   }
 }
 

@@ -1,51 +1,168 @@
-// Netlify Function (CommonJS): Create Stripe Checkout Session
-// Expects JSON body: { vendorId: string, price: number, name?: string, email?: string }
-// Returns: { url, id }
-const Stripe = require('stripe');
+/**
+ * Stripe Checkout Session Creation
+ * Creates a Stripe Checkout session for vendor booth payments
+ * 
+ * Environment Variables Required:
+ * - STRIPE_SECRET_KEY: Your Stripe secret key
+ * - SITE_URL: Base URL for success/cancel redirects (e.g., https://yoursite.netlify.app)
+ */
 
-exports.handler = async function handler(event) {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method not allowed' };
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Booth pricing tiers
+const BOOTH_PRICES = {
+  'standard': {
+    name: 'Standard Booth',
+    price: 50000, // $500 in cents
+    description: '10x10 Standard Booth Space'
+  },
+  'premium': {
+    name: 'Premium Booth',
+    price: 85000, // $850 in cents
+    description: '10x15 Premium Corner Booth'
+  },
+  'double': {
+    name: 'Double Booth',
+    price: 95000, // $950 in cents
+    description: '10x20 Double Booth Space'
+  },
+  'island': {
+    name: 'Island Booth',
+    price: 150000, // $1500 in cents
+    description: '20x20 Island Booth (4-sided)'
   }
+};
+
+exports.handler = async (event, context) => {
+  // CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
+  // Handle preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      console.error('Missing STRIPE_SECRET_KEY');
-      return { statusCode: 500, body: 'Stripe not configured' };
-    }
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
-    const data = JSON.parse(event.body || '{}');
-    const { vendorId, price, name, email } = data;
-    if (!vendorId || !price) {
-      return { statusCode: 400, body: 'vendorId and price are required' };
+    const { 
+      vendorId,
+      vendorEmail,
+      vendorName,
+      boothType = 'standard',
+      customAmount, // Optional: override price (in cents)
+      customDescription // Optional: override description
+    } = JSON.parse(event.body);
+
+    if (!vendorId || !vendorEmail) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Missing required fields: vendorId, vendorEmail' })
+      };
     }
 
-    const siteUrl = process.env.URL || process.env.DEPLOY_URL || (event.headers && (event.headers.origin || (event.headers.referer ? new URL(event.headers.referer).origin : ''))) || 'https://scintillating-youtiao-b7581b.netlify.app';
+    // Get booth pricing
+    const booth = BOOTH_PRICES[boothType] || BOOTH_PRICES['standard'];
+    const amount = customAmount || booth.price;
+    const description = customDescription || booth.description;
+    const productName = booth.name;
+
+    // Site URL for redirects
+    const siteUrl = process.env.SITE_URL || 'https://homeshow.app';
+
+    // Create or retrieve Stripe customer
+    let customer;
+    const existingCustomers = await stripe.customers.list({
+      email: vendorEmail,
+      limit: 1
+    });
+
+    if (existingCustomers.data.length > 0) {
+      customer = existingCustomers.data[0];
+    } else {
+      customer = await stripe.customers.create({
+        email: vendorEmail,
+        name: vendorName || 'Vendor',
+        metadata: {
+          vendorId,
+          source: 'home_show_app'
+        }
+      });
+    }
+
+    // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      // In production, use a predefined Price ID instead of passing dollars; this demo uses amount in cents
+      customer: customer.id,
+      payment_method_types: ['card'],
       line_items: [
         {
           price_data: {
             currency: 'usd',
-            product_data: { name: name || 'Home Show Vendor Invoice' },
-            unit_amount: Math.round(Number(price) * 100),
+            product_data: {
+              name: productName,
+              description: description,
+              metadata: {
+                vendorId,
+                boothType
+              }
+            },
+            unit_amount: amount
           },
-          quantity: 1,
-        },
+          quantity: 1
+        }
       ],
-      metadata: { vendorId },
-      customer_email: email || undefined,
-      success_url: `${siteUrl}/#/admin?checkout=success`,
-      cancel_url: `${siteUrl}/#/admin?checkout=cancel`,
+      mode: 'payment',
+      success_url: `${siteUrl}/#/vendor-dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${siteUrl}/#/vendor-dashboard?payment=cancelled`,
+      metadata: {
+        vendorId,
+        vendorEmail,
+        vendorName: vendorName || '',
+        boothType,
+        source: 'home_show_checkout'
+      },
+      payment_intent_data: {
+        metadata: {
+          vendorId,
+          boothType
+        }
+      },
+      // Allow promo codes
+      allow_promotion_codes: true,
+      // Collect billing address
+      billing_address_collection: 'required'
     });
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: session.url, id: session.id }),
+      headers,
+      body: JSON.stringify({
+        success: true,
+        sessionId: session.id,
+        url: session.url,
+        amount: amount / 100
+      })
     };
-  } catch (e) {
-    console.error('Create checkout failed', e?.message || e);
-    return { statusCode: 500, body: `Failed to create checkout: ${e?.message || 'unknown error'}` };
+
+  } catch (error) {
+    console.error('Checkout session error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error: error.message || 'Failed to create checkout session'
+      })
+    };
   }
-}
+};

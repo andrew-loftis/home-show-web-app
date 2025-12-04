@@ -421,36 +421,297 @@ export default function MyCard(root, forceEdit = false) {
     }
     
   } else if (state.role === "vendor") {
-    const vendor = currentVendor();
+    // Vendors can create their own personal business cards for swapping
+    let attendee = state.attendees[0];
+    
+    // If no attendee exists, create a default one for the vendor
+    if (!attendee) {
+      const defaultAttendee = {
+        id: `vendor_attendee_${Date.now()}`,
+        name: '',
+        email: '',
+        phone: '',
+        interests: [],
+        shortCode: Math.random().toString(36).substr(2, 8).toUpperCase(),
+        savedBusinessCards: []
+      };
+      upsertAttendee(defaultAttendee);
+      attendee = defaultAttendee;
+    }
+    
+    // Check if vendor has a personal business card
+    const hasCardContent = attendee?.card && (attendee.name || attendee.card.profileImage || attendee.card.bio || attendee.card.location);
+    
+    if (!forceEdit && hasCardContent) {
+      // Show vendor's personal business card (view mode)
+      root.innerHTML = `
+        <div class="container-glass fade-in">
+          <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-2 text-glass">My Personal Business Card</h1>
+            <p class="text-glass-secondary">For swapping with attendees • Create once, swap many times! 🔄</p>
+          </div>
+          
+          ${renderAttendeeCard(attendee)}
+          
+          <div class="text-center mb-8">
+            <button id="editCardBtn" class="glass-button px-6 py-3 text-glass font-medium">
+              <ion-icon name="create-outline" class="mr-2"></ion-icon>
+              Edit My Card
+            </button>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-lg font-semibold text-glass mb-4">📨 Cards Shared With Me</h3>
+            <div class="grid gap-3">
+              ${state.leads.filter(l => l.vendor_id === currentVendor()?.id && l.cardShared).map(lead => {
+                const sharedAttendee = state.attendees.find(a => a.id === lead.attendee_id);
+                return sharedAttendee?.card ? `
+                  <div class="glass-card p-4">
+                    ${renderAttendeeCard(sharedAttendee, true)}
+                    <div class="mt-2 text-xs text-glass-secondary">Shared: ${new Date(lead.timestamp).toLocaleDateString()}</div>
+                  </div>
+                ` : `
+                  <div class="glass-card p-4 text-glass-secondary">
+                    <div class="font-semibold">${sharedAttendee?.name || 'Unknown'}</div>
+                    <div class="text-xs">No business card available</div>
+                  </div>
+                `;
+              }).join("") || `<div class='text-glass-secondary text-center py-8'>No attendee cards shared yet.<br><span class='text-xs'>Attendees can share their cards with you when they visit your booth.</span></div>`}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // Add edit button handler
+      root.querySelector('#editCardBtn').onclick = () => {
+        MyCard(root, true); // Re-render in edit mode
+        setTimeout(() => {
+          const cardForm = root.querySelector('#cardForm');
+          if (cardForm) {
+            cardForm.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      };
+      return;
+    }
+    
+    // Show vendor card creation form (same as attendee but with vendor-specific messaging)
     root.innerHTML = `
-      <div class="p-6 fade-in">
-        <h2 class="text-xl font-bold mb-2 brand">My Business Cards</h2>
-        <div class="mb-4 text-gray-600">View attendee cards that have been shared with you</div>
-        
-        <div class="grid gap-3 mb-6">
-          ${state.leads.filter(l => l.vendor_id === vendor?.id && l.cardShared).map(lead => {
-            const attendee = state.attendees.find(a => a.id === lead.attendee_id);
-            return attendee?.card ? `
-              <div class="card p-4">
-                ${renderAttendeeCard(attendee, true)}
-                <div class="mt-2 text-xs text-gray-500">Shared: ${new Date(lead.timestamp).toLocaleDateString()}</div>
-              </div>
-            ` : `
-              <div class="card p-4 text-gray-400">
-                <div class="font-semibold">${attendee?.name || 'Unknown'}</div>
-                <div class="text-xs">No business card available</div>
-              </div>
-            `;
-          }).join("") || `<div class='text-gray-400 text-center py-8'>No business cards shared yet.<br><span class='text-xs'>Attendees can share their cards with you at your booth.</span></div>`}
+      <div class="container-glass fade-in">
+        <div class="text-center mb-8">
+          <h1 class="text-3xl font-bold mb-2 text-glass">Create My Personal Business Card</h1>
+          <p class="text-glass-secondary">Create your personal card to swap with attendees at your booth! 🔄</p>
+          <div class="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <p class="text-sm text-glass">💡 <strong>Vendor Tip:</strong> When attendees choose "Swap Cards," they'll save your business card too!</p>
+          </div>
         </div>
         
-        <div class="font-semibold mb-2 text-glass">Quick Actions</div>
-        <div class="flex gap-2">
-          <button class="px-3 py-1 glass-button rounded" onclick="window.location.hash='/vendor-leads'">View All Leads</button>
-          <button class="px-3 py-1 glass-button rounded" onclick="window.location.hash='/edit-vendor'">Edit My Profile</button>
+        <div id="cardPreview">
+          ${attendee?.card ? renderAttendeeCard(attendee) : `
+            <div class="glass-card overflow-hidden mb-8 max-w-md mx-auto shadow-glass">
+              <div class="h-40 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>
+              <div class="p-6 relative">
+                <div class="w-20 h-20 rounded-full border-4 border-white/50 absolute -top-10 left-6 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center">
+                  <span class="text-white font-bold text-xl">?</span>
+                </div>
+                <div class="mt-12">
+                  <div class="font-bold text-xl text-glass mb-1">Your Name</div>
+                  <div class="text-sm text-glass-secondary mb-4 leading-relaxed">Your bio will appear here...</div>
+                </div>
+              </div>
+            </div>
+          `}
+        </div>
+        
+        <div class="glass-card p-8 slide-up">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-slate-600 to-blue-600 flex items-center justify-center">
+              <ion-icon name="person-outline" class="text-white text-lg"></ion-icon>
+            </div>
+            <h3 class="text-xl font-semibold text-glass">Personal Information</h3>
+          </div>
+          
+          <form id="cardForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Profile Image</label>
+                <div class="space-y-2">
+                  <input name="profileImage" placeholder="https://your-image-url.com" value="${attendee?.card?.profileImage || ''}" class="w-full" placeholder="Image URL (optional)">
+                  <div class="flex items-center gap-2">
+                    <input type="file" id="profileImageFile" accept="image/*" class="w-full" style="display:none">
+                    <button type="button" id="uploadProfileImage" class="glass-button px-3 py-2">
+                      <ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon>
+                      Upload Image
+                    </button>
+                    <button type="button" id="editProfileImagePos" class="glass-button px-3 py-2 ${attendee?.card?.profileImage ? '' : 'opacity-50 cursor-not-allowed'}" ${attendee?.card?.profileImage ? '' : 'disabled'}>
+                      <ion-icon name="move-outline" class="mr-1"></ion-icon>
+                      Edit Position & Zoom
+                    </button>
+                  </div>
+                </div>
+                <!-- Hidden controls to persist position and zoom -->
+                <input type="hidden" name="profileImageX" value="${typeof attendee?.card?.profileImageX === 'number' ? attendee.card.profileImageX : 50}">
+                <input type="hidden" name="profileImageY" value="${typeof attendee?.card?.profileImageY === 'number' ? attendee.card.profileImageY : 50}">
+                <input type="hidden" name="profileImageZoom" value="${typeof attendee?.card?.profileImageZoom === 'number' ? attendee.card.profileImageZoom : 100}">
+              </div>
+              
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Background Image</label>
+                <div class="space-y-2">
+                  <input name="backgroundImage" placeholder="https://your-background-url.com" value="${attendee?.card?.backgroundImage || ''}" class="w-full" placeholder="Background URL (optional)">
+                  <div class="flex items-center gap-2">
+                    <input type="file" id="backgroundImageFile" accept="image/*" class="w-full" style="display:none">
+                    <button type="button" id="uploadBackgroundImage" class="glass-button px-3 py-2">
+                      <ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon>
+                      Upload Background
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Full Name *</label>
+                <input name="name" required value="${attendee?.name || ''}" placeholder="John Doe" class="w-full">
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Family Size</label>
+                <input name="familySize" type="number" min="1" max="10" value="${attendee?.card?.familySize || 1}" class="w-full">
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Email Address *</label>
+                <input name="email" required type="email" value="${attendee?.email || ''}" placeholder="john@example.com" class="w-full">
+              </div>
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-glass">Phone Number</label>
+                <input name="phone" value="${attendee?.phone || ''}" placeholder="(555) 123-4567" class="w-full">
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-glass">Location</label>
+              <input name="location" placeholder="Nashville, TN" value="${attendee?.card?.location || ''}" class="w-full">
+            </div>
+            
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-glass">About Me</label>
+              <textarea name="bio" rows="4" placeholder="Tell attendees about yourself and your business expertise..." class="w-full resize-none">${attendee?.card?.bio || ''}</textarea>
+            </div>
+            
+            <div class="flex gap-4 justify-center">
+              <button type="submit" class="brand-bg px-8 py-3 rounded-lg text-lg font-semibold text-white">
+                💾 Save My Business Card
+              </button>
+              <button type="button" class="glass-button px-6 py-3 rounded-lg" onclick="window.location.hash='/vendor-dashboard'">
+                Cancel
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     `;
+    
+    // Add form submission handler (reuse existing logic)
+    const cardForm = root.querySelector('#cardForm');
+    if (cardForm) {
+      // File upload handlers
+      const profileImageFile = root.querySelector('#profileImageFile');
+      const uploadProfileImage = root.querySelector('#uploadProfileImage');
+      const backgroundImageFile = root.querySelector('#backgroundImageFile');
+      const uploadBackgroundImage = root.querySelector('#uploadBackgroundImage');
+      
+      uploadProfileImage?.addEventListener('click', () => profileImageFile.click());
+      uploadBackgroundImage?.addEventListener('click', () => backgroundImageFile.click());
+      
+      profileImageFile?.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            root.querySelector('input[name="profileImage"]').value = event.target.result;
+            updatePreview();
+          };
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      });
+      
+      backgroundImageFile?.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            root.querySelector('input[name="backgroundImage"]').value = event.target.result;
+            updatePreview();
+          };
+          reader.readAsDataURL(e.target.files[0]);
+        }
+      });
+      
+      // Real-time preview updates
+      const updatePreview = () => {
+        const formData = new FormData(cardForm);
+        const cardData = {
+          profileImage: formData.get('profileImage'),
+          backgroundImage: formData.get('backgroundImage'), 
+          profileImageX: parseFloat(formData.get('profileImageX')),
+          profileImageY: parseFloat(formData.get('profileImageY')),
+          profileImageZoom: parseFloat(formData.get('profileImageZoom')),
+          familySize: parseInt(formData.get('familySize')),
+          visitingReasons: formData.getAll('visitingReasons'),
+          bio: formData.get('bio'),
+          location: formData.get('location')
+        };
+        
+        const previewAttendee = {
+          name: formData.get('name'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          interests: formData.getAll('interests'),
+          card: cardData
+        };
+        
+        root.querySelector('#cardPreview').innerHTML = renderAttendeeCard(previewAttendee);
+      };
+      
+      // Add input event listeners for real-time updates
+      cardForm.addEventListener('input', updatePreview);
+      cardForm.addEventListener('change', updatePreview);
+      
+      // Form submission
+      cardForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(cardForm);
+        
+        const payload = {
+          name: formData.get('name'),
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          interests: formData.getAll('interests'),
+          card: {
+            profileImage: formData.get('profileImage'),
+            backgroundImage: formData.get('backgroundImage'),
+            profileImageX: parseFloat(formData.get('profileImageX')) || 50,
+            profileImageY: parseFloat(formData.get('profileImageY')) || 50,
+            profileImageZoom: parseFloat(formData.get('profileImageZoom')) || 100,
+            familySize: parseInt(formData.get('familySize')) || 1,
+            visitingReasons: formData.getAll('visitingReasons'),
+            bio: formData.get('bio'),
+            location: formData.get('location')
+          }
+        };
+        
+        upsertAttendee(payload);
+        Toast("Personal business card saved! Ready for swapping! 🔄");
+        setTimeout(() => {
+          window.location.hash = '/vendor-dashboard';
+        }, 1500);
+      });
+      
+      // Initialize preview
+      setTimeout(updatePreview, 100);
+    }
     
   } else if (state.role === "admin") {
     root.innerHTML = `

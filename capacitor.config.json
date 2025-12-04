@@ -1,0 +1,61 @@
+{
+  "appId": "app.homeshow.mobile",
+  "appName": "Home Show",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "https",
+    "hostname": "homeshow.app"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0a0a1a",
+      "showSpinner": true,
+      "spinnerColor": "#3B82F6"
+    },
+    "StatusBar": {
+      "style": "Dark",
+      "backgroundColor": "#0a0a1a"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Camera": {
+      "saveToGallery": true
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "#3B82F6"
+    },
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false,
+    "loggingBehavior": "none",
+    "initialFocus": true,
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "releaseType": "APK"
+    }
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "allowsLinkPreview": true,
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": true,
+    "backgroundColor": "#0a0a1a"
+  }
+}

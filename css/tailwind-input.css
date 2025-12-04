@@ -2,10 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom layer for project-specific utilities/components if needed */
-@layer utilities {
-  .text-glass { color: rgba(255,255,255,0.95); }
-  .text-glass-secondary { color: rgba(255,255,255,0.7); }
-  .brand-bg { @apply bg-primary text-white; }
-  .glass-button { @apply bg-white/10 border border-white/20 hover:bg-white/20 transition-colors; }
+/* Custom component classes that Tailwind should include */
+@layer components {
+  .brand-bg {
+    @apply bg-gradient-to-r from-blue-500 to-teal-500 text-white font-semibold rounded-xl px-6 py-3 transition-all duration-300;
+  }
+  
+  .brand-bg:hover {
+    @apply shadow-lg shadow-blue-500/30 -translate-y-0.5;
+  }
+
+  .glass-button {
+    @apply bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2 font-medium transition-all duration-300;
+  }
+  
+  .glass-button:hover {
+    @apply bg-white/20 -translate-y-0.5;
+  }
+
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl shadow-lg;
+  }
+
+  .container-glass {
+    @apply bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-3xl p-6 m-4 border border-white/10;
+  }
+
+  .text-glass {
+    @apply text-slate-900;
+  }
+
+  .text-glass-secondary {
+    @apply text-slate-600;
+  }
+
+  .nav-glass {
+    @apply bg-white/70 backdrop-blur-xl border-t border-white/20;
+  }
+}
+
+/* Dark mode overrides */
+.theme-dark .text-glass {
+  @apply text-white;
+}
+
+.theme-dark .text-glass-secondary {
+  @apply text-slate-300;
+}
+
+.theme-dark .glass-card {
+  @apply bg-slate-900/60;
+}
+
+.theme-dark .container-glass {
+  @apply from-slate-900/60 to-slate-800/50;
+}
+
+.theme-dark .nav-glass {
+  @apply bg-slate-900/70;
 }

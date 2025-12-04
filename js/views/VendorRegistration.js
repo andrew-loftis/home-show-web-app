@@ -2,11 +2,43 @@ import { Modal, Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
 import { getState } from "../store.js";
 
-export default function VendorRegistration(root) {
+export default async function VendorRegistration(root) {
   const state = getState();
   if (!state.user) {
     root.innerHTML = `<div class='p-8 text-center text-glass-secondary'>Please sign in to register as a vendor.</div>`;
     return;
+  }
+
+  // Check if user is already an approved vendor
+  if (!state.user.isAnonymous) {
+    try {
+      const { getDb } = await import("../firebase.js");
+      const db = getDb();
+      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      
+      const vendorsRef = collection(db, 'vendors');
+      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        const vendorData = snapshot.docs[0].data();
+        // If vendor exists and is approved, show dashboard instead
+        if (vendorData.approved) {
+          const { default: VendorDashboard } = await import("./VendorDashboard.js");
+          VendorDashboard(root);
+          return;
+        }
+        // If vendor exists but not approved, show pending status
+        if (!vendorData.approved) {
+          const { default: VendorDashboard } = await import("./VendorDashboard.js");
+          VendorDashboard(root);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking vendor status:', error);
+      // Continue with registration form if error occurs
+    }
   }
   
   // Allow both guests and attendees to register as vendors

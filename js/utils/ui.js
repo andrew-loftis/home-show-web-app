@@ -152,3 +152,50 @@ export function AlertDialog(title, message, options = {}) {
     };
   });
 }
+
+/**
+ * Set a button to loading state during an async operation
+ * @param {HTMLButtonElement} btn - The button element
+ * @param {boolean} loading - Whether to show loading state
+ * @param {string} originalText - Original button text (optional, auto-captured)
+ */
+export function setButtonLoading(btn, loading, originalText = null) {
+  if (!btn) return;
+  
+  if (loading) {
+    // Store original content
+    if (!btn.dataset.originalHtml) {
+      btn.dataset.originalHtml = btn.innerHTML;
+    }
+    btn.disabled = true;
+    btn.classList.add('opacity-75', 'cursor-wait');
+    btn.innerHTML = `
+      <div class="flex items-center justify-center gap-2">
+        <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+        <span>${originalText || 'Loading...'}</span>
+      </div>
+    `;
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('opacity-75', 'cursor-wait');
+    if (btn.dataset.originalHtml) {
+      btn.innerHTML = btn.dataset.originalHtml;
+      delete btn.dataset.originalHtml;
+    }
+  }
+}
+
+/**
+ * Wrap an async function to show loading state on a button
+ * @param {HTMLButtonElement} btn - The button element  
+ * @param {Function} asyncFn - The async function to execute
+ * @param {string} loadingText - Text to show while loading
+ */
+export async function withButtonLoading(btn, asyncFn, loadingText = 'Processing...') {
+  setButtonLoading(btn, true, loadingText);
+  try {
+    return await asyncFn();
+  } finally {
+    setButtonLoading(btn, false);
+  }
+}

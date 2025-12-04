@@ -46,12 +46,33 @@ export default function ShareCard(root, params) {
         ${renderAttendeeCardPreview(attendee)}
       </div>
       
-      <div class="text-center">
-        <button id="shareBtn" class="brand-bg px-6 py-3 rounded text-lg font-semibold text-white mb-4 w-full">
-          Share My Business Card
+      <!-- Vendor Business Card Preview (if available) -->
+      ${vendor.profile?.businessCardFront || vendor.profile?.businessCardBack ? `
+        <div class="mb-6">
+          <div class="font-semibold mb-2">${vendor.name}'s Business Card:</div>
+          <div class="flex gap-2 justify-center">
+            ${vendor.profile.businessCardFront ? `<img src="${vendor.profile.businessCardFront}" class="h-32 rounded shadow border" onerror="this.style.display='none'">` : ''}
+            ${vendor.profile.businessCardBack ? `<img src="${vendor.profile.businessCardBack}" class="h-32 rounded shadow border" onerror="this.style.display='none'">` : ''}
+          </div>
+        </div>
+      ` : ''}
+      
+      <div class="text-center space-y-3">
+        <button id="shareBtn" class="brand-bg px-6 py-3 rounded text-lg font-semibold text-white w-full">
+          📤 Share My Card
         </button>
-        <div class="text-xs text-gray-500">
-          Your contact information will be shared with ${vendor.name}
+        
+        ${vendor.profile?.businessCardFront || vendor.profile?.businessCardBack ? `
+          <button id="swapBtn" class="glass-button px-6 py-3 rounded text-lg font-semibold w-full border-2 border-primary/50 bg-primary/10">
+            🔄 Swap Cards (Share + Save Theirs)
+          </button>
+        ` : ''}
+        
+        <div class="text-xs text-gray-500 mt-2">
+          ${vendor.profile?.businessCardFront || vendor.profile?.businessCardBack ? 
+            'Share: Send your card • Swap: Send your card AND save their business card' : 
+            'Your contact information will be shared with ' + vendor.name
+          }
         </div>
       </div>
     </div>
@@ -68,6 +89,28 @@ export default function ShareCard(root, params) {
       Toast("Unable to share business card");
     }
   };
+  
+  // Add swap button handler if it exists
+  const swapBtn = root.querySelector("#swapBtn");
+  if (swapBtn) {
+    swapBtn.onclick = async () => {
+      // First share the attendee's card
+      const shareSuccess = shareBusinessCard(attendee.id, vendor.id);
+      
+      if (shareSuccess) {
+        // Then save the vendor's business card
+        const { saveBusinessCard } = await import("../store.js");
+        saveBusinessCard(attendee.id, vendor.id);
+        
+        Toast("Cards swapped successfully! 🔄");
+        setTimeout(() => {
+          window.location.hash = `/vendor/${vendor.id}`;
+        }, 1200);
+      } else {
+        Toast("Unable to swap cards");
+      }
+    };
+  }
 }
 
 function renderAttendeeCardPreview(attendee) {

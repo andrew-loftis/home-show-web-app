@@ -1,19 +1,43 @@
 {
   "name": "home-show-web-app",
   "version": "1.0.0",
-  "private": true,
+  "description": "Home Show event app for vendors and attendees",
   "scripts": {
-    "dev:css": "tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
-    "build:css": "tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --minify",
-    "dev": "netlify dev"
+    "build:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --minify",
+    "watch:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
+    "dev": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
+    "build": "npm run build:css",
+    "cap:init": "npx cap init 'Home Show' app.homeshow.mobile --web-dir .",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "npx cap add ios",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:open:ios": "npx cap open ios",
+    "cap:run:android": "npx cap run android",
+    "cap:run:ios": "npx cap run ios",
+    "mobile:build": "npm run build:css && npx cap sync"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.13",
-    "postcss": "^8.4.47",
-    "autoprefixer": "^10.4.20"
+    "tailwindcss": "^3.4.0"
   },
   "dependencies": {
-    "stripe": "^16.6.0",
-    "firebase-admin": "^11.11.1"
-  }
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/camera": "^6.0.0",
+    "@capacitor/share": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/toast": "^6.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/device": "^6.0.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor-community/barcode-scanner": "^4.0.0",
+    "stripe": "^16.6.0"
+  },
+  "keywords": ["home-show", "event-app", "vendors", "mobile", "capacitor"],
+  "author": "Andrew Loftis",
+  "license": "MIT"
 }

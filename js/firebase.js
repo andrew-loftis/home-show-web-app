@@ -324,7 +324,7 @@ export async function findAttendeeByShortCode(shortCode) {
 }
 
 // Leads
-export async function createLead(attendeeId, vendorId, createdByUid, data = {}) {
+export async function createLead(attendeeId, vendorId, createdByUid, data = {}, options = {}) {
   try {
     const db = getFirestore();
     const col = collection(db, 'leads');
@@ -337,6 +337,23 @@ export async function createLead(attendeeId, vendorId, createdByUid, data = {}) 
       ...data
     };
     const res = await addDoc(col, payload);
+    
+    // Send email notification if enabled and vendor email provided
+    if (options.sendEmail !== false && options.vendorEmail) {
+      try {
+        const { sendNewLeadEmail } = await import('./utils/email.js');
+        sendNewLeadEmail(options.vendorEmail, {
+          vendorBusinessName: options.vendorBusinessName || 'Your Business',
+          attendeeName: data.attendeeName || data.name || 'A visitor',
+          attendeeEmail: data.attendeeEmail || data.email,
+          attendeePhone: data.attendeePhone || data.phone,
+          notes: data.notes
+        }).catch(err => console.warn('Lead email notification failed:', err));
+      } catch (emailErr) {
+        console.warn('Could not send lead email:', emailErr);
+      }
+    }
+    
     return { id: res.id, ...payload };
   } catch (e) {
     console.warn('Failed to create lead', e);

@@ -1,5 +1,6 @@
 import { getState, leadsForVendor, currentVendor } from "../store.js";
 import { Toast } from "../utils/ui.js";
+import { EmptyLeads, EmptyBusinessCard, EmptySentCards, EmptySavedVendors } from "../utils/skeleton.js";
 
 // Import renderAttendeeCard function for card preview
 function renderAttendeeCard(attendee, compact = false) {
@@ -81,9 +82,9 @@ export default function Cards(root) {
   const role = state.role;
   root.innerHTML = `
     <div class="container-glass fade-in">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-glass">Cards</h1>
-        <p class="text-glass-secondary">${role === "vendor" ? "Leads & card exchanges" : "Cards you've sent and saved"}</p>
+      <div class="text-center mb-6 md:mb-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-glass">Cards</h1>
+        <p class="text-glass-secondary text-sm md:text-base">${role === "vendor" ? "Leads & card exchanges" : "Cards you've sent and saved"}</p>
       </div>
 
       ${role === "vendor" ? renderVendorCards(state) : renderAttendeeCards(state)}
@@ -95,9 +96,9 @@ function renderVendorCards(state) {
   const vendor = currentVendor();
   if (!vendor) return `<div class="glass-card p-6 text-glass-secondary">Login as a vendor to view interactions.</div>`;
   const leads = leadsForVendor(vendor.id).sort((a,b)=>b.timestamp-a.timestamp);
-  if (!leads.length) return `<div class="glass-card p-8 text-center text-glass-secondary">No interactions yet.</div>`;
+  if (!leads.length) return EmptyLeads();
   return `
-    <div class="space-y-6">
+    <div class="space-y-4">
       ${leads.map(lead => renderLeadRow(lead, state)).join("")}
     </div>
   `;
@@ -109,28 +110,22 @@ function renderLeadRow(lead, state) {
   const card = attendee.card || {};
   const time = new Date(lead.timestamp).toLocaleString();
   return `
-    <div class="glass-card p-4 flex items-center gap-4">
-      <div class="w-12 h-12 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center">
+    <div class="glass-card p-3 md:p-4 flex items-center gap-3 md:gap-4">
+      <div class="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center flex-shrink-0">
         ${card.profileImage ? `<img src="${card.profileImage}" class="w-full h-full object-cover">` : `<span class="text-glass font-semibold">${attendee.name?.charAt(0) || "A"}</span>`}
       </div>
-      <div class="flex-1">
-        <div class="text-glass font-semibold">${attendee.name || attendee.email}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-glass font-semibold text-sm md:text-base truncate">${attendee.name || attendee.email}</div>
         <div class="text-xs text-glass-secondary">${lead.exchangeMethod === 'card_share' ? 'Card shared' : 'Manual lead'} • ${time}</div>
       </div>
-      <button class="glass-button px-3 py-2 text-sm" onclick="window.location.hash='/vendor-lead/${lead.id}'">View</button>
+      <button class="glass-button px-3 py-2 text-xs md:text-sm flex-shrink-0 touch-target" onclick="window.location.hash='/vendor-lead/${lead.id}'">View</button>
     </div>
   `;
 }
 
 function renderAttendeeCards(state) {
   const attendee = state.attendees[0];
-  if (!attendee) return `
-    <div class="space-y-4">
-      <div class="glass-card p-6 text-glass-secondary">Create your card and start sharing with vendors.</div>
-      <div>
-        <button class="brand-bg px-4 py-3 rounded" onclick="window.location.hash='/my-card'">Create My Business Card</button>
-      </div>
-    </div>`;
+  if (!attendee) return EmptyBusinessCard();
 
   const sent = state.leads
     .filter(l => l.attendee_id === attendee.id)
@@ -150,17 +145,15 @@ function renderAttendeeCards(state) {
     (attendee.card.visitingReasons && attendee.card.visitingReasons.length > 0)
   );
 
-  console.log('Cards page debug:', { attendee, hasCard, card: attendee.card });
-
   return `
-    <div class="space-y-6">
-      <div class="glass-card p-6">
+    <div class="space-y-4 md:space-y-6">
+      <div class="glass-card p-4 md:p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
             <div class="text-glass font-semibold">My Business Card</div>
             <div class="text-xs text-glass-secondary">${hasCard ? 'Your digital business card' : 'Create your card to start sharing'}</div>
           </div>
-          <button class="brand-bg px-4 py-2 text-sm" onclick="window.location.hash='/my-card'">
+          <button class="brand-bg px-4 py-2 text-sm touch-target" onclick="window.location.hash='/my-card'">
             ${hasCard ? 'Edit Card' : 'Create Card'}
           </button>
         </div>
@@ -170,29 +163,47 @@ function renderAttendeeCards(state) {
             ${renderAttendeeCard(attendee, true)}
           </div>
         ` : `
-          <div class="border-2 border-dashed border-white/20 rounded-lg p-8 text-center text-glass-secondary">
-            <ion-icon name="card-outline" class="text-4xl mb-2"></ion-icon>
-            <div class="font-medium mb-1">No Business Card Yet</div>
-            <div class="text-xs">Create your card to share with vendors</div>
+          <div class="border-2 border-dashed border-white/20 rounded-xl p-6 md:p-8 text-center">
+            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-3">
+              <ion-icon name="card-outline" class="text-3xl text-blue-400"></ion-icon>
+            </div>
+            <div class="font-medium text-glass mb-1">No Business Card Yet</div>
+            <div class="text-xs text-glass-secondary">Create your card to share with vendors</div>
           </div>
         `}
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="glass-card p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <ion-icon name="paper-plane-outline" class="text-white"></ion-icon>
-          <h3 class="text-lg font-semibold text-glass">Sent to Vendors</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <div class="glass-card p-4 md:p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+              <ion-icon name="paper-plane-outline" class="text-cyan-400"></ion-icon>
+            </div>
+            <h3 class="text-base md:text-lg font-semibold text-glass">Sent to Vendors</h3>
+          </div>
+          ${sent.length ? `<div class="space-y-2">${sent.map(l => renderSentRow(l, state)).join("")}</div>` : `
+            <div class="text-center py-6">
+              <ion-icon name="paper-plane-outline" class="text-2xl text-glass-secondary mb-2"></ion-icon>
+              <p class="text-sm text-glass-secondary">No cards sent yet</p>
+            </div>
+          `}
         </div>
-        ${sent.length ? sent.map(l => renderSentRow(l, state)).join("") : `<div class='text-glass-secondary'>You haven't shared any cards yet.</div>`}
-      </div>
 
-      <div class="glass-card p-6">
-        <div class="flex items-center gap-2 mb-4">
-          <ion-icon name="bookmark-outline" class="text-white"></ion-icon>
-          <h3 class="text-lg font-semibold text-glass">Saved Vendors</h3>
+        <div class="glass-card p-4 md:p-6">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center">
+              <ion-icon name="bookmark-outline" class="text-pink-400"></ion-icon>
+            </div>
+            <h3 class="text-base md:text-lg font-semibold text-glass">Saved Vendors</h3>
+          </div>
+          ${saved.length ? `<div class="space-y-2">${saved.map(v => renderSavedVendor(v)).join("")}</div>` : `
+            <div class="text-center py-6">
+              <ion-icon name="bookmark-outline" class="text-2xl text-glass-secondary mb-2"></ion-icon>
+              <p class="text-sm text-glass-secondary">No saved vendors</p>
+              <button onclick="window.location.hash='/vendors'" class="text-xs text-blue-400 mt-2 hover:underline">Browse vendors →</button>
+            </div>
+          `}
         </div>
-        ${saved.length ? saved.map(v => renderSavedVendor(v)).join("") : `<div class='text-glass-secondary'>No saved vendors yet.</div>`}
       </div>
     </div>
   `;

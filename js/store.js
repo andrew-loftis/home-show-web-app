@@ -129,12 +129,7 @@ function hydrateStore() {
             // Determine admin via Firestore (adminEmails collection)
             try {
               state.isAdmin = await isAdminEmail(state.user.email);
-              console.log('Auth - Admin check result:', { 
-                email: state.user.email, 
-                isAdmin: state.isAdmin 
-              });
             } catch (error) {
-              console.log('Auth - Admin check failed:', error);
               state.isAdmin = false;
             }
             // Ensure user doc exists/updated

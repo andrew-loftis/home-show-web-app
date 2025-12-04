@@ -1,6 +1,29 @@
 import { hydrateStore, subscribe, getState } from "./store.js";
 import { initRouter, navigate, renderCurrentView } from "./router.js";
 import { Modal, Toast } from "./utils/ui.js";
+import { setupGlobalErrorHandlers } from "./utils/errorBoundary.js";
+
+// Setup global error handlers early
+setupGlobalErrorHandlers();
+
+// Setup foreground push notification listener (non-blocking)
+async function setupNotificationListener() {
+  try {
+    const { onForegroundMessage, getNotificationPermission } = await import('./utils/notifications.js');
+    
+    // Only setup if user has granted permission
+    if (getNotificationPermission() === 'granted') {
+      onForegroundMessage((payload) => {
+        // Toast notification for foreground messages
+        if (payload.notification?.body) {
+          Toast(payload.notification.body);
+        }
+      });
+    }
+  } catch (e) {
+    // Silently fail - notifications are optional
+  }
+}
 
 // App shell rendering
 function renderShell() {
@@ -19,16 +42,21 @@ function renderShell() {
 
 function renderHeader(state) {
   const header = document.createElement("header");
-  header.className = "flex items-center justify-between px-6 py-4 nav-glass shadow-glass sticky top-0 z-20";
+  header.className = "flex items-center justify-between px-4 py-3 nav-glass shadow-glass sticky top-0 z-20";
   const roleLabel = state.user ? (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Select Role') : 'Guest';
+  
+  // Role badge styling based on role type
+  const roleBadgeClass = state.role === 'admin' 
+    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
+    : state.role === 'vendor' 
+      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+      : 'glass-button';
+  
   header.innerHTML = `
-    <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-        <span class="text-white font-bold text-[10px] tracking-wide">HS</span>
-      </div>
-      <span class="font-bold text-xl text-glass">HomeShow</span>
-    </div>
-    <div class="glass-button px-3 py-1 text-sm font-medium">
+    <a href="#/home" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+      <img src="assets/logo-dark.svg" alt="HomeShow" class="h-10 w-auto" />
+    </a>
+    <div class="${roleBadgeClass} px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm">
       ${roleLabel}
     </div>
   `;
@@ -37,26 +65,35 @@ function renderHeader(state) {
 
 function renderTabbar(state) {
   const tabbar = document.createElement("nav");
-  tabbar.className = "fixed bottom-0 left-0 right-0 nav-glass border-t border-white/20 flex justify-around py-3 z-20 safe-area-inset-bottom";
+  tabbar.className = "fixed bottom-0 left-0 right-0 nav-glass border-t border-white/10 z-20 safe-area-inset-bottom";
   const tabs = [
-    { label: "Home", icon: "home-outline", route: "/home" },
-    { label: "Vendors", icon: "storefront-outline", route: "/vendors" },
-    { label: "Cards", icon: "card-outline", route: "/cards" },
-    { label: "Profile", icon: "person-circle-outline", route: "/more" }
+    { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+    { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+    { label: "Cards", icon: "card-outline", iconActive: "card", route: "/cards" },
+    { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
   ];
   
   const currentHash = window.location.hash.replace('#', '') || '/home';
   
-  tabbar.innerHTML = tabs.map(tab => {
-    const isActive = currentHash === tab.route;
-    return `
-      <button class="flex flex-col items-center px-3 py-2 rounded-xl transition-all duration-300 ${isActive ? 'glass-button scale-110' : 'hover:scale-105'}" 
-              role="button" tabindex="0" onclick="window.location.hash='${tab.route}'">
-        <ion-icon name="${tab.icon}" class="text-xl ${isActive ? 'text-blue-400' : 'text-glass'}"></ion-icon>
-        <span class="text-xs mt-1 font-medium ${isActive ? 'text-blue-400' : 'text-glass-secondary'}">${tab.label}</span>
-      </button>
-    `;
-  }).join("");
+  tabbar.innerHTML = `
+    <div class="bottom-tabbar">
+      ${tabs.map(tab => {
+        const isActive = currentHash === tab.route || currentHash.startsWith(tab.route + '/');
+        return `
+          <button class="group ${isActive ? 'bg-white/10' : ''}" 
+                  role="button" 
+                  tabindex="0" 
+                  aria-label="${tab.label}"
+                  onclick="window.location.hash='${tab.route}'">
+            <ion-icon name="${isActive ? tab.iconActive : tab.icon}" 
+                      class="text-2xl mb-1 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-300'}">
+            </ion-icon>
+            <span class="text-[10px] font-medium ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-400'}">${tab.label}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
   return tabbar;
 }
 
@@ -84,6 +121,10 @@ function boot() {
   subscribe(() => {
     scheduleRender();
   });
+  
+  // Setup foreground push notification listener
+  setupNotificationListener();
+  
   // Onboarding gate and role selection
   const state = getState();
   if (!state.hasOnboarded) {
@@ -95,8 +136,5 @@ function boot() {
     navigate("/home");
   }
 }
-
-// Force cache refresh by adding timestamp
-console.log('App.js loaded at:', new Date().toISOString());
 
 window.addEventListener("DOMContentLoaded", boot);

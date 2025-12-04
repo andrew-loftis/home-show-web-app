@@ -2,26 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <title>HomeShow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HomeShow">
+  <meta name="description" content="Putnam County Home Show 2025 - Connect with vendors, share business cards, and explore the show">
+  <meta name="keywords" content="home show, putnam county, vendors, home improvement, 2025">
+  <meta property="og:title" content="Putnam County Home Show 2025">
+  <meta property="og:description" content="Connect with local vendors, share your digital business card, and discover services for your home">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/assets/icons/icon-512.svg">
+  <title>Putnam County HomeShow 2025</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="./manifest.json">
+  
+  <!-- Favicon & App Icons -->
+  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon-192.svg">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.svg">
+  
+  <!-- Production Tailwind CSS (tree-shaken & minified) -->
+  <link rel="stylesheet" href="./css/tailwind.css">
   <link rel="stylesheet" href="./css/styles.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: "#007AFF",
-            dark: "#1C1C1E"
-          }
-        }
-      }
-    }
-  </script>
   <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  
   <!-- Firebase modular SDK (no bundler) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
@@ -43,12 +48,57 @@
     window.FIREBASE_CONFIG = firebaseConfig;
     // Use attendees-root layout to match current Storage rules
     window.STORAGE_ATTENDEE_LAYOUT = 'attendees-root';
+    
+    // FCM VAPID Key for push notifications
+    // Generate this in Firebase Console: Project Settings > Cloud Messaging > Web Push certificates
+    // window.FCM_VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
   </script>
 </head>
 <body class="overflow-x-hidden">
-  <div id="app"></div>
+  <div id="app">
+    <!-- Initial loading state - replaced when app boots -->
+    <div id="app-loader" class="fixed inset-0 flex flex-col items-center justify-center" style="background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);">
+      <div class="relative mb-6">
+        <img src="./assets/icons/icon-192.svg" alt="HomeShow" class="w-20 h-20 animate-pulse" />
+      </div>
+      <div class="relative mb-4">
+        <div class="w-10 h-10 border-4 border-slate-700 rounded-full"></div>
+        <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full absolute top-0 left-0 animate-spin"></div>
+      </div>
+      <p class="text-slate-400 text-sm font-medium">Loading HomeShow...</p>
+    </div>
+  </div>
   <div id="modal-root"></div>
   <div id="toast-root"></div>
-  <script type="module" src="./js/app.js?v=20241020-002"></script>
+  <script type="module" src="./js/app.js?v=20241204-002"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('[App] Service Worker registered:', registration.scope);
+            
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New content available, show update prompt
+                  if (confirm('New version available! Reload to update?')) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                    window.location.reload();
+                  }
+                }
+              });
+            });
+          })
+          .catch((error) => {
+            console.warn('[App] Service Worker registration failed:', error);
+          });
+      });
+    }
+  </script>
 </body>
 </html>

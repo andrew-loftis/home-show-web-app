@@ -1,2 +1,0 @@
-Netlify Functions will be placed under netlify/functions/.
-Install dependencies with a package.json at the workspace root.
