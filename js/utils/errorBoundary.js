@@ -12,7 +12,7 @@ const MAX_ERROR_LOG = 10;
 /**
  * Log an error with context
  */
-function logError(error, context = {}) {
+export function logError(error, context = {}) {
   const entry = {
     timestamp: new Date().toISOString(),
     message: error.message || String(error),
