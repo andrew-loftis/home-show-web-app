@@ -1,14 +1,9 @@
 # Netlify Headers
 # https://docs.netlify.com/routing/headers/
 
-# Force clear all browser data on sw.js request (nuclear option)
+# Service Worker - no cache (always fetch fresh)
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
-  Clear-Site-Data: "cache", "storage"
-
-/sw-v2.js
-  Cache-Control: no-cache, no-store, must-revalidate
-  Clear-Site-Data: "cache", "storage"
 
 # Manifest - short cache
 /manifest.json
