@@ -1,26 +1,23 @@
 # Netlify Headers
 # https://docs.netlify.com/routing/headers/
 
-# Service Worker - no cache (always fetch fresh)
-/sw.js
-  Cache-Control: no-cache, no-store, must-revalidate
-
 # Manifest - short cache
 /manifest.json
   Cache-Control: public, max-age=3600
 
-# Static assets - long cache with revalidation
-/css/*
-  Cache-Control: public, max-age=31536000, immutable
-
+# Static assets - long cache (images, fonts)
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# JavaScript files - cache with revalidation
-/js/*
-  Cache-Control: public, max-age=86400, must-revalidate
+# CSS - short cache
+/css/*
+  Cache-Control: public, max-age=3600
 
-# HTML files - no cache (SPA routing)
+# JavaScript files - NO CACHE (always fresh)
+/js/*
+  Cache-Control: no-cache, must-revalidate
+
+# HTML files - no cache
 /*.html
   Cache-Control: no-cache
 

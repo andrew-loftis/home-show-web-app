@@ -70,28 +70,6 @@
   </div>
   <div id="modal-root"></div>
   <div id="toast-root"></div>
-  <script type="module" src="./js/app.js?v=20241204-003"></script>
-  
-  <!-- Service Worker DISABLED - unregister any existing ones -->
-  <script>
-    // Unregister all service workers to fix caching issues
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var registration of registrations) {
-          registration.unregister();
-          console.log('[App] Unregistered service worker');
-        }
-      });
-      // Also clear caches
-      if ('caches' in window) {
-        caches.keys().then(function(names) {
-          for (var name of names) {
-            caches.delete(name);
-            console.log('[App] Cleared cache:', name);
-          }
-        });
-      }
-    }
-  </script>
+  <script type="module" src="./js/app.js?v=20241204-004"></script>
 </body>
 </html>
