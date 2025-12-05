@@ -74,7 +74,7 @@
   
   <!-- Service Worker Registration with Force Update -->
   <script>
-    const APP_VERSION = '2.0';
+    const APP_VERSION = '2.1';
     const STORED_VERSION_KEY = 'app_version';
     
     // Check if we need to force clear old service worker
@@ -117,7 +117,7 @@
       // Register fresh service worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw-v2.js')
+          navigator.serviceWorker.register('/sw.js')
             .then((registration) => {
               console.log('[App] Service Worker registered:', registration.scope);
               
