@@ -128,7 +128,7 @@ export default async function More(root) {
         
         <!-- Version Stamp -->
         <div class="text-right mt-4 pt-3 border-t border-white/10">
-          <span class="text-xs text-glass-secondary opacity-60">V-1.9</span>
+          <span class="text-xs text-glass-secondary opacity-60">V-2.0</span>
         </div>
       </div>
       

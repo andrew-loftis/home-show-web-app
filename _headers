@@ -5,6 +5,9 @@
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
+/sw-v2.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
 # Manifest - short cache
 /manifest.json
   Cache-Control: public, max-age=3600
