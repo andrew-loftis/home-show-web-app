@@ -1,16 +1,60 @@
 ﻿import { getState } from "../store.js";
 import { Toast } from "../utils/ui.js";
 
-export default function EditVendorProfile(root) {
-  const { vendorLoginId, vendors } = getState();
-  const vendor = vendors.find(v => v.id === vendorLoginId);
+export default async function EditVendorProfile(root) {
+  const state = getState();
+  
+  // Try multiple ways to find the vendor
+  let vendor = null;
+  
+  // Method 1: Check vendorLoginId (legacy vendor login flow)
+  if (state.vendorLoginId && state.vendors) {
+    vendor = state.vendors.find(v => v.id === state.vendorLoginId);
+  }
+  
+  // Method 2: Check myVendor (set from VendorDashboard flow)
+  if (!vendor && state.myVendor) {
+    vendor = state.myVendor;
+  }
+  
+  // Method 3: Query Firestore by ownerUid (most reliable)
+  if (!vendor && state.user && !state.user.isAnonymous) {
+    try {
+      const { getDb } = await import("../firebase.js");
+      const db = getDb();
+      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      
+      const vendorsRef = collection(db, 'vendors');
+      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        vendor = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+      }
+    } catch (error) {
+      console.error('Error loading vendor:', error);
+    }
+  }
   
   if (!vendor) {
-    root.innerHTML = '<div class="p-8 text-center text-glass-secondary">Vendor not found. Please login first.</div>';
+    root.innerHTML = `
+      <div class="container-glass fade-in">
+        <div class="text-center py-12">
+          <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ion-icon name="alert-circle-outline" class="text-3xl text-red-400"></ion-icon>
+          </div>
+          <h2 class="text-xl font-bold mb-2 text-glass">Vendor Not Found</h2>
+          <p class="text-glass-secondary mb-6">Please make sure you're logged in with your vendor account.</p>
+          <button class="glass-button px-6 py-3" onclick="window.location.hash='/vendor-dashboard'">
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    `;
     return;
   }
   
-  let profile = { ...vendor.profile };
+  let profile = { ...(vendor.profile || {}) };
   let dirty = false;
 
   const uploadImage = (file) => {
@@ -24,7 +68,9 @@ export default function EditVendorProfile(root) {
   const saveProfile = async () => {
     try {
       const state = getState();
-      const isOwner = state.user && state.user.uid && state.myVendor && state.myVendor.id === vendor.id;
+      
+      // Check permissions - user must be owner or admin
+      const isOwner = state.user && vendor.ownerUid === state.user.uid;
       const canWrite = isOwner || state.isAdmin;
       
       if (!canWrite) {
@@ -47,7 +93,7 @@ export default function EditVendorProfile(root) {
       render();
     } catch (e) {
       console.error('Save error:', e);
-      Toast("Failed to save profile");
+      Toast("Failed to save profile: " + (e.message || 'Unknown error'));
     }
   };
 

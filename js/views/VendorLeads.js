@@ -2,10 +2,64 @@ import { getState, leadsForVendor } from "../store.js";
 import { formatDate } from "../utils/format.js";
 import { EmptyLeads } from "../utils/skeleton.js";
 
-export default function VendorLeads(root) {
-  const { vendorLoginId, vendors } = getState();
-  const vendor = vendors.find(v => v.id === vendorLoginId);
-  const leads = leadsForVendor(vendorLoginId);
+export default async function VendorLeads(root) {
+  const state = getState();
+  
+  // Try multiple ways to find the vendor (same as EditVendorProfile)
+  let vendor = null;
+  let vendorId = null;
+  
+  // Method 1: Check vendorLoginId (legacy vendor login flow)
+  if (state.vendorLoginId && state.vendors) {
+    vendor = state.vendors.find(v => v.id === state.vendorLoginId);
+    vendorId = state.vendorLoginId;
+  }
+  
+  // Method 2: Check myVendor
+  if (!vendor && state.myVendor) {
+    vendor = state.myVendor;
+    vendorId = state.myVendor.id;
+  }
+  
+  // Method 3: Query Firestore by ownerUid
+  if (!vendor && state.user && !state.user.isAnonymous) {
+    try {
+      const { getDb } = await import("../firebase.js");
+      const db = getDb();
+      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      
+      const vendorsRef = collection(db, 'vendors');
+      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
+      const snapshot = await getDocs(q);
+      
+      if (!snapshot.empty) {
+        vendor = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        vendorId = vendor.id;
+      }
+    } catch (error) {
+      console.error('Error loading vendor:', error);
+    }
+  }
+  
+  if (!vendor) {
+    root.innerHTML = `
+      <div class="container-glass fade-in">
+        <div class="text-center py-12">
+          <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <ion-icon name="alert-circle-outline" class="text-3xl text-red-400"></ion-icon>
+          </div>
+          <h2 class="text-xl font-bold mb-2 text-glass">Vendor Not Found</h2>
+          <p class="text-glass-secondary mb-6">Please make sure you're logged in with your vendor account.</p>
+          <button class="glass-button px-6 py-3" onclick="window.location.hash='/vendor-dashboard'">
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  const leads = leadsForVendor(vendorId);
   
   root.innerHTML = `
     <div class="container-glass fade-in">
