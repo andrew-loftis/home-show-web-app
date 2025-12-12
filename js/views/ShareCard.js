@@ -28,6 +28,10 @@ export default function ShareCard(root, params) {
   
   root.innerHTML = `
     <div class="p-6 fade-in">
+      <button class="flex items-center gap-2 text-glass-secondary hover:text-glass mb-4 transition-colors" onclick="window.location.hash='/vendor/${vendor.id}'">
+        <ion-icon name="arrow-back-outline"></ion-icon>
+        <span>Back to Vendor</span>
+      </button>
       <h2 class="text-xl font-bold mb-4 brand">Share Business Card</h2>
       
       <div class="mb-4">

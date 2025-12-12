@@ -126,10 +126,21 @@ function hydrateStore() {
               photoURL: user.photoURL,
               isAnonymous: !!user.isAnonymous
             };
+            
+            // Set a default role immediately so UI doesn't hang
+            // Will be refined below based on admin/vendor checks
+            if (!state.role) {
+              state.role = 'attendee';
+            }
+            
             // Determine admin via Firestore (adminEmails collection)
             try {
               state.isAdmin = await isAdminEmail(state.user.email);
+              if (state.isAdmin) {
+                state.role = 'admin';
+              }
             } catch (error) {
+              console.error('Admin check failed:', error);
               state.isAdmin = false;
             }
             // Ensure user doc exists/updated

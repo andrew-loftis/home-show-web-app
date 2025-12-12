@@ -1,13 +1,13 @@
 {
-  "name": "home-show-web-app",
+  "name": "winn-pro-show-app",
   "version": "1.0.0",
-  "description": "Home Show event app for vendors and attendees",
+  "description": "Winn-Pro Show event app for vendors and attendees",
   "scripts": {
     "build:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --minify",
     "watch:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
     "dev": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
     "build": "npm run build:css",
-    "cap:init": "npx cap init 'Home Show' app.homeshow.mobile --web-dir .",
+    "cap:init": "npx cap init 'Winn-Pro Show' app.winnpro.mobile --web-dir .",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "cap:sync": "npx cap sync",

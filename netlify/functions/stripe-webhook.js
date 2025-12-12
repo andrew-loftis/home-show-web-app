@@ -6,6 +6,8 @@
  * - STRIPE_SECRET_KEY: Your Stripe secret key
  * - STRIPE_WEBHOOK_SECRET: Webhook endpoint signing secret
  * - FIREBASE_SERVICE_ACCOUNT: JSON stringified Firebase service account (for Firestore updates)
+ * - SENDGRID_API_KEY: For sending payment notification emails
+ * - ADMIN_EMAILS: Comma-separated list of admin email addresses
  * 
  * Webhook Events to Configure in Stripe Dashboard:
  * - checkout.session.completed
@@ -16,6 +18,8 @@
  */
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+const SENDGRID_API_URL = 'https://api.sendgrid.com/v3/mail/send';
 
 // Initialize Firebase Admin SDK for Firestore updates
 let admin = null;
@@ -93,6 +97,84 @@ async function createPaymentRecord(data) {
   } catch (error) {
     console.error('Failed to create payment record:', error);
     return null;
+  }
+}
+
+// Send payment notification emails
+async function sendPaymentNotificationEmails(paymentData) {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    console.log('SENDGRID_API_KEY not set, skipping payment emails');
+    return;
+  }
+
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@tn-shows.app';
+  const appName = process.env.APP_NAME || 'Winn-Pro Show';
+  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+
+  try {
+    // 1. Send confirmation email to vendor
+    if (paymentData.vendorEmail) {
+      console.log(`Sending payment confirmation to vendor: ${paymentData.vendorEmail}`);
+      
+      const vendorResponse = await fetch(`${appUrl}/.netlify/functions/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: paymentData.vendorEmail,
+          template: 'paymentConfirmation',
+          data: {
+            businessName: paymentData.vendorName || 'Vendor',
+            transactionId: paymentData.transactionId,
+            packageName: paymentData.boothType || 'Vendor Booth',
+            boothSize: paymentData.boothType || 'Standard',
+            amount: paymentData.amount?.toFixed(2) || '0.00'
+          }
+        })
+      });
+
+      if (vendorResponse.ok) {
+        console.log('✓ Vendor payment confirmation email sent');
+      } else {
+        console.error('Failed to send vendor email:', await vendorResponse.text());
+      }
+    }
+
+    // 2. Send notification emails to admins
+    if (adminEmails.length > 0) {
+      console.log(`Sending payment notification to ${adminEmails.length} admin(s)`);
+      
+      for (const adminEmail of adminEmails) {
+        const adminResponse = await fetch(`${appUrl}/.netlify/functions/send-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: adminEmail,
+            template: 'adminPaymentNotification',
+            data: {
+              businessName: paymentData.vendorName || 'Unknown Vendor',
+              vendorEmail: paymentData.vendorEmail || 'N/A',
+              transactionId: paymentData.transactionId,
+              packageName: paymentData.boothType || 'Vendor Booth',
+              boothType: paymentData.boothType || 'Standard',
+              amount: paymentData.amount?.toFixed(2) || '0.00'
+            }
+          })
+        });
+
+        if (adminResponse.ok) {
+          console.log(`✓ Admin notification sent to ${adminEmail}`);
+        } else {
+          console.error(`Failed to send admin email to ${adminEmail}:`, await adminResponse.text());
+        }
+      }
+    } else {
+      console.log('No admin emails configured, skipping admin notification');
+    }
+  } catch (error) {
+    console.error('Error sending payment notification emails:', error);
+    // Don't throw - email failures shouldn't fail the webhook
   }
 }
 
@@ -174,6 +256,16 @@ exports.handler = async (event, context) => {
             boothType: session.metadata?.boothType,
             source: 'stripe_checkout'
           });
+
+          // Send payment notification emails
+          await sendPaymentNotificationEmails({
+            vendorId,
+            vendorEmail: session.metadata?.vendorEmail,
+            vendorName: session.metadata?.vendorName,
+            amount: session.amount_total / 100,
+            boothType: session.metadata?.boothType,
+            transactionId: session.payment_intent || session.id
+          });
         }
         break;
       }
@@ -243,6 +335,16 @@ exports.handler = async (event, context) => {
             status: 'completed',
             stripeInvoiceId: invoice.id,
             source: 'stripe_invoice'
+          });
+
+          // Send payment notification emails
+          await sendPaymentNotificationEmails({
+            vendorId,
+            vendorEmail: invoice.customer_email,
+            vendorName: invoice.metadata?.vendorName,
+            amount: invoice.amount_paid / 100,
+            boothType: invoice.metadata?.boothType,
+            transactionId: invoice.id
           });
         }
         break;

@@ -54,7 +54,7 @@ function renderHeader(state) {
   
   header.innerHTML = `
     <a href="#/home" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-      <img src="assets/logo-dark.svg" alt="HomeShow" class="h-10 w-auto" />
+      <img src="assets/logo-dark.svg" alt="Winn-Pro" class="h-10 w-auto" />
     </a>
     <div class="${roleBadgeClass} px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm">
       ${roleLabel}
@@ -66,12 +66,43 @@ function renderHeader(state) {
 function renderTabbar(state) {
   const tabbar = document.createElement("nav");
   tabbar.className = "fixed bottom-0 left-0 right-0 nav-glass border-t border-white/10 z-20 safe-area-inset-bottom";
-  const tabs = [
-    { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
-    { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
-    { label: "Cards", icon: "card-outline", iconActive: "card", route: "/cards" },
-    { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
-  ];
+  
+  // Role-adaptive tabs
+  let tabs = [];
+  
+  if (state.isAdmin) {
+    // Admin: Home, Vendors, Admin Dashboard, Profile
+    tabs = [
+      { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+      { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+      { label: "Admin", icon: "shield-checkmark-outline", iconActive: "shield-checkmark", route: "/admin" },
+      { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+    ];
+  } else if (state.myVendor?.approved) {
+    // Approved Vendor: Home, Vendors, Leads, Profile
+    tabs = [
+      { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+      { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+      { label: "Leads", icon: "people-outline", iconActive: "people", route: "/vendor-leads" },
+      { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+    ];
+  } else if (state.myVendor) {
+    // Pending Vendor: Home, Vendors, Cards, Profile
+    tabs = [
+      { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+      { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+      { label: "Cards", icon: "card-outline", iconActive: "card", route: "/cards" },
+      { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+    ];
+  } else {
+    // Attendee/Guest: Home, Vendors, Cards, Profile
+    tabs = [
+      { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+      { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+      { label: "Cards", icon: "card-outline", iconActive: "card", route: "/cards" },
+      { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+    ];
+  }
   
   const currentHash = window.location.hash.replace('#', '') || '/home';
   
@@ -126,17 +157,19 @@ function boot() {
   // Setup foreground push notification listener
   setupNotificationListener();
   
-  // Onboarding gate and role selection
+  // Onboarding gate - roles are auto-detected by store.js
   const state = getState();
-  console.log('[App] State:', { hasOnboarded: state.hasOnboarded, user: !!state.user, role: state.role });
+  const currentHash = window.location.hash;
+  console.log('[App] State:', { hasOnboarded: state.hasOnboarded, user: !!state.user, role: state.role, currentHash });
+  
   if (!state.hasOnboarded) {
     navigate("/onboarding");
-  } else if (state.user && !state.user.isAnonymous && !state.role) {
-    // User is signed in but hasn't selected a role
-    navigate("/role");
-  } else {
+  } else if (!currentHash || currentHash === '#' || currentHash === '#/') {
+    // Only go to home if there's no current route
     navigate("/home");
   }
+  // Otherwise, stay on current page (hash already set)
+  
   console.log('[App] Boot complete');
 }
 

@@ -158,7 +158,12 @@ export default async function VendorRegistration(root) {
     
     root.innerHTML = `
       <div class="p-6 fade-in">
-        <h2 class="text-xl font-bold mb-4 text-glass">Vendor Registration</h2>
+        <button class="flex items-center gap-2 text-glass-secondary hover:text-glass mb-4 transition-colors" onclick="window.location.hash='/home'">
+          <ion-icon name="arrow-back-outline"></ion-icon>
+          <span>Cancel</span>
+        </button>
+        <h2 class="text-xl font-bold mb-2 text-glass">Vendor Registration</h2>
+        <p class="text-glass-secondary text-sm mb-4">Step ${step} of 5: ${step===1?'Company Info':step===2?'Contact Details':step===3?'Booth Selection':step===4?'Additional Services':'Agreement'}</p>
         <div class="mb-4 flex gap-2 items-center">
           <div class="w-4 h-2 rounded ${step>=1?'bg-primary':'bg-white/20'}"></div>
           <div class="w-4 h-2 rounded ${step>=2?'bg-primary':'bg-white/20'}"></div>
@@ -166,21 +171,21 @@ export default async function VendorRegistration(root) {
           <div class="w-4 h-2 rounded ${step>=4?'bg-primary':'bg-white/20'}"></div>
           <div class="w-4 h-2 rounded ${step>=5?'bg-primary':'bg-white/20'}"></div>
         </div>
-        <form id="regForm" class="card p-4">
+        <form id="regForm" class="glass-card p-4">
           ${step===1?`
-            <input name="companyName" required placeholder="Company Name" class="w-full mb-2">
-            <input name="contactName" required placeholder="Contact Name" class="w-full mb-2">
+            <input name="companyName" required placeholder="Company Name" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
+            <input name="contactName" required placeholder="Contact Name" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
           `:step===2?`
-            <input name="email" required type="email" placeholder="Email" class="w-full mb-2">
-            <input name="phone" placeholder="Phone" class="w-full mb-2">
+            <input name="email" required type="email" placeholder="Email" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
+            <input name="phone" placeholder="Phone" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
           `:step===3?`
             <div class="mb-3">
               <div class="mb-1 font-medium text-glass">Category</div>
-              <select name="category" required class="w-full mb-2">
-                <option value="" disabled selected>Select a category</option>
-                ${categories.map(c => `<option value="${c}">${c}</option>`).join("")}
+              <select name="category" required class="w-full mb-2 p-3 rounded border border-white/20 bg-glass-surface text-glass">
+                <option value="" disabled selected class="bg-glass-surface text-glass">Select a category</option>
+                ${categories.map(c => `<option value="${c}" class="bg-glass-surface text-glass">${c}</option>`).join("")}
               </select>
-              <input name="customCategory" placeholder="If Other, enter your category" class="w-full mb-2 hidden">
+              <input name="customCategory" placeholder="If Other, enter your category" class="w-full mb-2 hidden p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
             </div>
             <div class="mb-3">
               <div class="mb-1 font-medium text-glass">Select Booth(s)</div>
@@ -268,7 +273,7 @@ export default async function VendorRegistration(root) {
             <div class="mb-4">
               <h3 class="text-lg font-semibold mb-3 text-glass">Vendor Agreement</h3>
               <div class="max-h-64 overflow-y-auto glass-card p-4 text-sm text-glass">
-                <h4 class="font-semibold mb-2">HOME SHOW VENDOR AGREEMENT</h4>
+                <h4 class="font-semibold mb-2">VENDOR AGREEMENT</h4>
                 
                 <p class="mb-2"><strong>1. BOOTH SETUP & BREAKDOWN:</strong> Vendors may begin setup on Friday 4:00 PM - 8:00 PM or Saturday 7:00 AM - 9:00 AM. Show hours are Saturday 10:00 AM - 8:00 PM and Sunday 10:00 AM - 4:00 PM. Breakdown begins Sunday at 4:00 PM.</p>
                 

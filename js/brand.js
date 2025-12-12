@@ -1,5 +1,5 @@
 /**
- * Brand Configuration - Putnam County Home Show 2025
+ * Brand Configuration - Winn-Pro Show
  * 
  * Central design tokens and brand constants.
  * Import this in any view or component that needs brand consistency.
@@ -7,8 +7,8 @@
 
 export const BRAND = {
   // Event Info
-  name: 'Putnam County Home Show',
-  shortName: 'HomeShow',
+  name: 'Winn-Pro Show',
+  shortName: 'Winn-Pro',
   year: '2025',
   tagline: 'Swap cards. Discover vendors. Connect fast.',
   

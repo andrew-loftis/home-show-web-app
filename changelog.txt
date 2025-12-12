@@ -1,5 +1,30 @@
 # Changelog
 
+## V-2.22 - Admin Dashboard Modular Architecture
+- **Split 1,890-line monolith into focused modules**:
+  - `js/views/admin/AdminVendors.js` - Vendor management (filter, sort, bulk actions)
+  - `js/views/admin/AdminUsers.js` - User management (role editing, admin grants)
+  - `js/views/admin/AdminBooths.js` - Booth management (generate, delete, configurable)
+  - `js/views/admin/AdminPayments.js` - Payment tracking (stats, invoices, export)
+- **Centralized Firebase imports** - All modules use `getAdminDb()` and `getFirestoreModule()` from `admin.js`
+- **Configurable booth settings** - `window.BOOTH_CONFIG` allows runtime customization of booth counts, sizes, prices
+- **Enhanced booth UI** - Added stats cards (total, indoor, available, occupied), grid layout
+- **Better code organization** - Main AdminDashboard.js now ~750 lines (down from 1,890)
+- **Consistent patterns** - All modules use same event delegation, loading states, error handling
+
+## V-2.21 - Admin Dashboard Major Refactor
+- **Fixed ALL duplicate event listeners** - Added _listenerAdded guard flags to vendors list, users list, search, filter, sort, and bulk action buttons
+- **Removed global window pollution** - Replaced 10+ inline onclick handlers with proper event delegation using data-action attributes
+- **Added loading states** - All action buttons (view, edit, approve, delete, admin grant/revoke) now show spinner during async operations
+- **Enhanced Payments tab**:
+  - Added filter dropdown (All/Paid/Pending/Sent)
+  - Added search functionality
+  - Added stats cards (Total Revenue, Paid, Pending, Sent counts)
+  - Payment status color coding (green/yellow/orange badges)
+  - Better payment card layout
+- **Created admin utilities module** - js/utils/admin.js with centralized Firebase helpers and button loading utilities
+- Code quality: More consistent patterns, better separation of concerns, no more global namespace pollution
+
 ## 2025-10-10 - Business Card System Update
 - Replaced legacy LeadPass/RFID system with business card sharing (app now called HomeShow)
 - Added attendee business cards with profile images, background images, family size, visiting reasons, bio, location

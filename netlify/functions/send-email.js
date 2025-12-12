@@ -5,7 +5,7 @@
  * Environment Variables Required:
  * - SENDGRID_API_KEY: Your SendGrid API key
  * - FROM_EMAIL: Verified sender email address
- * - APP_NAME: Application name for branding (default: "Home Show")
+ * - APP_NAME: Application name for branding (default: "Winn-Pro Show")
  * - APP_URL: Base URL for links in emails
  */
 
@@ -287,7 +287,7 @@ ${data.appUrl}
           </div>
           <div class="content">
             <h2>Hi ${data.attendeeName}!</h2>
-            <p>Thanks for creating your digital Lead Pass! You're all set to make the most of the home show experience.</p>
+            <p>Thanks for creating your digital Lead Pass! You're all set to make the most of the trade show experience.</p>
             
             <div class="feature-grid">
               <div class="feature">
@@ -333,7 +333,7 @@ ${data.appUrl}
     text: `
 Hi ${data.attendeeName}!
 
-Thanks for creating your digital Lead Pass! You're all set to make the most of the home show experience.
+Thanks for creating your digital Lead Pass! You're all set to make the most of the trade show experience.
 
 Features available to you:
 - Digital Lead Pass - Show vendors your QR code
@@ -453,6 +453,105 @@ ${data.appUrl}
     `
   }),
 
+  adminPaymentNotification: (data) => ({
+    subject: `💰 Vendor Payment Received: ${data.businessName} - ${data.appName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f7; }
+          .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 24px; }
+          .content { padding: 30px; }
+          .content h2 { color: #333; margin-top: 0; }
+          .content p { color: #555; line-height: 1.6; }
+          .button { display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 15px 0; }
+          .payment-card { background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 0 8px 8px 0; }
+          .payment-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+          .payment-label { color: #6b7280; }
+          .payment-value { color: #111827; font-weight: 500; }
+          .payment-total { border-top: 2px solid #10b981; padding-top: 10px; margin-top: 10px; font-size: 18px; }
+          .footer { background: #f4f4f7; padding: 20px; text-align: center; color: #888; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>💰 Payment Received!</h1>
+          </div>
+          <div class="content">
+            <h2>Vendor Payment Confirmation</h2>
+            <p>A vendor has successfully completed their payment:</p>
+            
+            <div class="payment-card">
+              <div class="payment-row">
+                <span class="payment-label">Vendor:</span>
+                <span class="payment-value">${data.businessName}</span>
+              </div>
+              <div class="payment-row">
+                <span class="payment-label">Email:</span>
+                <span class="payment-value">${data.vendorEmail}</span>
+              </div>
+              <div class="payment-row">
+                <span class="payment-label">Package:</span>
+                <span class="payment-value">${data.packageName || 'Vendor Booth'}</span>
+              </div>
+              <div class="payment-row">
+                <span class="payment-label">Booth Type:</span>
+                <span class="payment-value">${data.boothType || 'Standard'}</span>
+              </div>
+              <div class="payment-row">
+                <span class="payment-label">Transaction ID:</span>
+                <span class="payment-value">${data.transactionId || 'N/A'}</span>
+              </div>
+              <div class="payment-row">
+                <span class="payment-label">Date:</span>
+                <span class="payment-value">${new Date().toLocaleDateString()}</span>
+              </div>
+              <div class="payment-row payment-total">
+                <span class="payment-label"><strong>Amount Paid:</strong></span>
+                <span class="payment-value"><strong>$${data.amount || '0.00'}</strong></span>
+              </div>
+            </div>
+            
+            <p>The vendor's status has been automatically updated to "paid" in the system.</p>
+            
+            <center>
+              <a href="${data.appUrl}/#/admin?tab=vendors" class="button">View Vendor in Admin →</a>
+            </center>
+          </div>
+          <div class="footer">
+            <p>This is an automated admin notification from ${data.appName}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+VENDOR PAYMENT RECEIVED
+
+A vendor has successfully completed their payment:
+
+Vendor: ${data.businessName}
+Email: ${data.vendorEmail}
+Package: ${data.packageName || 'Vendor Booth'}
+Booth Type: ${data.boothType || 'Standard'}
+Transaction ID: ${data.transactionId || 'N/A'}
+Date: ${new Date().toLocaleDateString()}
+Amount Paid: $${data.amount || '0.00'}
+
+The vendor's status has been automatically updated to "paid" in the system.
+
+View in Admin Dashboard: ${data.appUrl}/#/admin?tab=vendors
+
+This is an automated admin notification from ${data.appName}
+    `
+  }),
+
   adminNotification: (data) => ({
     subject: `[Admin] ${data.title} - ${data.appName}`,
     html: `
@@ -519,9 +618,9 @@ This is an automated admin notification from ${data.appName}
  */
 async function sendEmail(to, template, templateData) {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@homeshow.app';
-  const appName = process.env.APP_NAME || 'Home Show';
-  const appUrl = process.env.APP_URL || 'https://homeshow.app';
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@tn-shows.app';
+  const appName = process.env.APP_NAME || 'Winn-Pro Show';
+  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
   
   if (!apiKey) {
     throw new Error('SENDGRID_API_KEY environment variable not set');

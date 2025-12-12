@@ -178,6 +178,24 @@ input, textarea, select {
   transition: all 0.3s ease;
 }
 
+/* Fix select dropdown options for dark mode */
+select {
+  background-color: #1e293b; /* slate-800 - solid color needed for native dropdown */
+}
+
+select option {
+  background-color: #1e293b; /* slate-800 */
+  color: #f1f5f9; /* slate-100 */
+  padding: 12px;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #3b82f6; /* blue-500 */
+  color: #ffffff;
+}
+
 input::placeholder, textarea::placeholder {
   color: rgba(148, 163, 184, 0.9); /* slate-400 */
 }

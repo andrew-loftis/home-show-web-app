@@ -30,14 +30,26 @@ export default async function More(root) {
     }
   }
 
+  // Determine friendly role description
+  const getRoleDescription = () => {
+    if (state.isAdmin) return { label: 'Admin', color: 'text-green-400', icon: 'shield-checkmark' };
+    if (state.myVendor?.approved) return { label: 'Vendor', color: 'text-blue-400', icon: 'storefront' };
+    if (state.myVendor) return { label: 'Vendor (Pending)', color: 'text-yellow-400', icon: 'time' };
+    if (state.user && !state.user.isAnonymous) return { label: 'Attendee', color: 'text-purple-400', icon: 'person' };
+    return { label: 'Guest', color: 'text-glass-secondary', icon: 'person-outline' };
+  };
+  const roleInfo = getRoleDescription();
+
   root.innerHTML = `
     <div class="container-glass fade-in">
       <div class="text-center mb-6">
         <h1 class="text-2xl md:text-3xl font-bold text-glass">Profile</h1>
-        <div class="text-sm text-glass-secondary">Role: <span class="font-semibold">${state.role || "-"}</span></div>
+        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-white/10">
+          <ion-icon name="${roleInfo.icon}" class="${roleInfo.color}"></ion-icon>
+          <span class="text-sm ${roleInfo.color} font-semibold">${roleInfo.label}</span>
+        </div>
         ${state.user ? `
           <div class="mt-2 text-sm text-glass-secondary">Signed in as <span class="font-semibold truncate">${state.user.displayName || state.user.email}</span></div>
-          ${state.isAdmin ? `<div class="mt-1 text-xs text-green-400">Admin privileges enabled</div>` : ``}
         ` : ``}
       </div>
       ${state.isAdmin ? `
@@ -77,7 +89,6 @@ export default async function More(root) {
       `}
       <div class="glass-card p-4 md:p-6">
         <h3 class="text-base md:text-lg font-semibold text-glass mb-3">Account</h3>
-        ${state.isAdmin ? `` : `<div class="text-xs text-glass-secondary mb-3">Role switching is disabled.</div>`}
         ${state.user ? `
           <div class="mb-4">
             <button class="brand-bg p-3 w-full sm:w-auto text-sm touch-target" id="signOutBtn">
@@ -128,7 +139,7 @@ export default async function More(root) {
         
         <!-- Version Stamp -->
         <div class="text-right mt-4 pt-3 border-t border-white/10">
-          <span class="text-xs text-glass-secondary opacity-60">V-2.5</span>
+          <span class="text-xs text-glass-secondary opacity-60">V-2.22</span>
         </div>
       </div>
       
@@ -207,7 +218,7 @@ export default async function More(root) {
         // Already enabled - could show a test notification
         const { showLocalNotification } = await import('../utils/notifications.js');
         showLocalNotification('Notifications Active!', {
-          body: 'You\'ll receive updates about the HomeShow.'
+          body: 'You\'ll receive updates about Winn-Pro Show.'
         });
         return;
       }
@@ -243,7 +254,23 @@ export default async function More(root) {
   import("../firebase.js").then(({ signInWithGoogle, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser, listAdminEmails, addAdminEmail, removeAdminEmail }) => {
     const signInBtn = root.querySelector('#googleSignInBtn');
     const signOutBtn = root.querySelector('#signOutBtn');
-  if (signInBtn) signInBtn.onclick = async () => { try { await signInWithGoogle(); } catch {} };
+  if (signInBtn) signInBtn.onclick = async (e) => { 
+    e.preventDefault();
+    try { 
+      console.log('[More] Starting Google sign in...');
+      await signInWithGoogle(); 
+      console.log('[More] Google sign in successful');
+    } catch (error) {
+      console.error('[More] Google sign in failed:', error);
+      console.error('[More] Error code:', error.code);
+      console.error('[More] Error message:', error.message);
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        // User closed popup or multiple popups, ignore
+      } else {
+        Toast('Sign in failed: ' + (error.code || error.message || 'Unknown error'));
+      }
+    }
+  };
   if (signOutBtn) signOutBtn.onclick = async () => { try { await signOutUser(); } catch {} };
 
     const emailForm = root.querySelector('#emailAuthForm');

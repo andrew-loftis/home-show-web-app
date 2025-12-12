@@ -79,7 +79,7 @@ exports.handler = async (event, context) => {
     const productName = booth.name;
 
     // Site URL for redirects
-    const siteUrl = process.env.SITE_URL || 'https://homeshow.app';
+    const siteUrl = process.env.SITE_URL || 'https://tn-shows.app';
 
     // Create or retrieve Stripe customer
     let customer;
@@ -96,7 +96,7 @@ exports.handler = async (event, context) => {
         name: vendorName || 'Vendor',
         metadata: {
           vendorId,
-          source: 'home_show_app'
+          source: 'winnpro_app'
         }
       });
     }
@@ -130,7 +130,7 @@ exports.handler = async (event, context) => {
         vendorEmail,
         vendorName: vendorName || '',
         boothType,
-        source: 'home_show_checkout'
+        source: 'winnpro_checkout'
       },
       payment_intent_data: {
         metadata: {

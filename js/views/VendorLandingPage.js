@@ -13,6 +13,14 @@ export default function VendorLandingPage(root, params) {
   
   root.innerHTML = `
     <div class="fade-in">
+      <!-- Back Button -->
+      <div class="absolute top-4 left-4 z-10">
+        <button class="flex items-center gap-2 bg-black/40 backdrop-blur-sm text-white px-3 py-2 rounded-full text-sm hover:bg-black/60 transition-colors" onclick="window.location.hash='/vendors'">
+          <ion-icon name="arrow-back-outline"></ion-icon>
+          <span>Vendors</span>
+        </button>
+      </div>
+      
       <!-- Hero Section -->
       <div class="relative">
         ${profile.backgroundImage ? `
@@ -79,6 +87,20 @@ export default function VendorLandingPage(root, params) {
               <span class="font-semibold text-yellow-800">Home Show Special</span>
             </div>
             <div class="text-yellow-700">${profile.specialOffer}</div>
+          </div>
+        ` : ""}
+        
+        <!-- Gallery -->
+        ${profile.gallery && profile.gallery.length ? `
+          <div class="mb-6">
+            <div class="font-semibold mb-3 text-glass">Our Work</div>
+            <div class="grid grid-cols-2 gap-2">
+              ${profile.gallery.map((img, idx) => `
+                <div class="aspect-square rounded-lg overflow-hidden cursor-pointer gallery-item" data-idx="${idx}">
+                  <img src="${img}" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                </div>
+              `).join('')}
+            </div>
           </div>
         ` : ""}
         
@@ -158,4 +180,20 @@ export default function VendorLandingPage(root, params) {
       Toast("Please create your business card first");
     }
   };
+  
+  // Gallery lightbox
+  root.querySelectorAll('.gallery-item').forEach(item => {
+    item.onclick = () => {
+      const idx = parseInt(item.dataset.idx, 10);
+      const images = profile.gallery || [];
+      if (!images[idx]) return;
+      
+      Modal(`
+        <div class="relative">
+          <img src="${images[idx]}" class="max-w-full max-h-[80vh] rounded-lg mx-auto">
+          <div class="text-center mt-3 text-glass-secondary text-sm">${idx + 1} of ${images.length}</div>
+        </div>
+      `);
+    };
+  });
 }

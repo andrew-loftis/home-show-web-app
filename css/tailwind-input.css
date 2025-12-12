@@ -61,3 +61,19 @@
 .theme-dark .nav-glass {
   @apply bg-slate-900/70;
 }
+
+/* Dark mode select dropdowns - ensure options are readable */
+.theme-dark select,
+.theme-dark .bg-glass-surface {
+  background-color: #1e293b !important; /* slate-800 solid for native dropdown */
+}
+
+.theme-dark select option {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+.theme-dark select option:checked {
+  background-color: #3b82f6;
+  color: #ffffff;
+}

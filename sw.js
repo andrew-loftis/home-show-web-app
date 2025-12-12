@@ -1,8 +1,8 @@
-﻿// HomeShow Service Worker v3
+﻿// Winn-Pro Service Worker v3
 // Smart caching with reliable updates
 
 const CACHE_VERSION = 'v3';
-const CACHE_NAME = 'homeshow-' + CACHE_VERSION;
+const CACHE_NAME = 'winnpro-' + CACHE_VERSION;
 
 const PRECACHE_ASSETS = ['/offline.html'];
 
@@ -21,7 +21,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(keys) {
       return Promise.all(
         keys.filter(function(key) {
-          return key.startsWith('homeshow-') && key !== CACHE_NAME;
+          return key.startsWith('winnpro-') && key !== CACHE_NAME;
         }).map(function(key) {
           console.log('[SW] Deleting old cache:', key);
           return caches.delete(key);

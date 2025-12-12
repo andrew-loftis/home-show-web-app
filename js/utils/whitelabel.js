@@ -1,6 +1,6 @@
 /**
  * White-Label Configuration
- * Configurable theming and branding for different home shows
+ * Configurable theming and branding for different trade shows
  * 
  * Usage:
  * 1. Set window.WHITE_LABEL_CONFIG before app loads, OR
@@ -12,15 +12,15 @@
 const DEFAULT_CONFIG = {
   // Show/Event Identity
   show: {
-    name: 'Home Show',
+    name: 'Winn-Pro Show',
     tagline: 'Your Dream Home Starts Here',
     year: new Date().getFullYear(),
     dates: 'March 15-17, 2024',
     location: 'Convention Center',
     address: '123 Main Street, City, ST 12345',
-    description: 'The region\'s premier home improvement event featuring hundreds of exhibitors.',
-    website: 'https://homeshow.app',
-    supportEmail: 'support@homeshow.app',
+    description: 'The region\'s premier trade show event featuring hundreds of exhibitors.',
+    website: 'https://tn-shows.app',
+    supportEmail: 'support@tn-shows.app',
     socialMedia: {
       facebook: '',
       instagram: '',
@@ -142,7 +142,7 @@ const DEFAULT_CONFIG = {
     privacyPolicyUrl: '/privacy',
     termsUrl: '/terms',
     vendorAgreementUrl: '/vendor-agreement',
-    copyrightHolder: 'Home Show Inc.',
+    copyrightHolder: 'Winn-Pro Show Inc.',
     cookieNotice: true
   },
 
@@ -352,7 +352,7 @@ export async function loadConfigFromFirestore(domain = window.location.hostname)
 /**
  * Generate example config for a new show
  */
-export function generateExampleConfig(showName = 'My Home Show') {
+export function generateExampleConfig(showName = 'My Trade Show') {
   return {
     show: {
       name: showName,

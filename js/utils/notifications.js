@@ -158,11 +158,11 @@ export async function onForegroundMessage(callback) {
       // Show notification manually for foreground
       if (Notification.permission === 'granted') {
         const { title, body, icon } = payload.notification || {};
-        new Notification(title || 'HomeShow', {
+        new Notification(title || 'Winn-Pro', {
           body: body || 'You have a new notification',
           icon: icon || '/assets/icons/icon-192.svg',
           badge: '/assets/icons/icon-192.svg',
-          tag: 'homeshow-notification',
+          tag: 'winnpro-notification',
           data: payload.data
         });
       }
@@ -187,7 +187,7 @@ export function showLocalNotification(title, options = {}) {
   return new Notification(title, {
     icon: '/assets/icons/icon-192.svg',
     badge: '/assets/icons/icon-192.svg',
-    tag: 'homeshow-local',
+    tag: 'winnpro-local',
     ...options
   });
 }

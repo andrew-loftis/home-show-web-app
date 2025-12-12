@@ -1,11 +1,11 @@
 {
-  "appId": "app.homeshow.mobile",
-  "appName": "Home Show",
+  "appId": "app.winnpro.mobile",
+  "appName": "Winn-Pro Show",
   "webDir": ".",
   "server": {
     "androidScheme": "https",
     "iosScheme": "https",
-    "hostname": "homeshow.app"
+    "hostname": "tn-shows.app"
   },
   "plugins": {
     "SplashScreen": {

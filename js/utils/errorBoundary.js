@@ -257,16 +257,24 @@ export function setupGlobalErrorHandlers() {
 
   // Catch uncaught errors
   window.addEventListener('error', (event) => {
-    logError(event.error || new Error(event.message), {
+    const errorInfo = {
       type: 'error',
       filename: event.filename,
       lineno: event.lineno,
-      colno: event.colno
-    });
+      colno: event.colno,
+      message: event.message
+    };
+    
+    logError(event.error || new Error(event.message), errorInfo);
+    
+    // Log to console for debugging
+    console.error('[ErrorBoundary] Uncaught error:', event.message, errorInfo);
     
     // Show toast notification for non-fatal errors
     if (!event.error?.fatal) {
-      showErrorToast('An error occurred. Some features may not work correctly.');
+      // Include file info in development for debugging
+      const shortFile = event.filename ? event.filename.split('/').pop() : 'unknown';
+      showErrorToast(`Error in ${shortFile}:${event.lineno || '?'} - ${event.message || 'Unknown error'}`);
     }
   });
 }
