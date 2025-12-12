@@ -2,6 +2,17 @@
   publish = "."
   command = "npm run build"
 
+# Cache control for JS files - no caching during development
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
 # Single Page App redirect
 [[redirects]]
   from = "/*"
