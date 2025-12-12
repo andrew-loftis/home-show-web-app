@@ -1,5 +1,19 @@
 # Changelog
 
+## V-2.23 - Pagination + Stripe Integration
+- **Pagination for large lists** - Vendors and Users now load 25 at a time
+  - "Load more" button with page info (Showing X of Y)
+  - currentPage state tracking, resets on filter/search change
+- **Real-time Stripe integration**:
+  - New `get-stripe-invoices.js` Netlify function for Stripe API access
+  - "Sync Stripe" button pulls live invoice and balance data
+  - Stripe balance card shows available/pending amounts
+  - Auto-sync vendor payment statuses from Stripe invoices
+  - Enhanced status badges (open, paid, draft, void, uncollectible)
+  - "Check Status" per-vendor Stripe lookup button
+  - Shows Stripe invoice IDs and last sync timestamps
+  - "Resend" button label when invoice already exists
+
 ## V-2.22 - Admin Dashboard Modular Architecture
 - **Split 1,890-line monolith into focused modules**:
   - `js/views/admin/AdminVendors.js` - Vendor management (filter, sort, bulk actions)

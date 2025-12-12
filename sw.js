@@ -1,7 +1,7 @@
-﻿// Winn-Pro Service Worker v3
+﻿// Winn-Pro Service Worker v4
 // Smart caching with reliable updates
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = 'winnpro-' + CACHE_VERSION;
 
 const PRECACHE_ASSETS = ['/offline.html'];
