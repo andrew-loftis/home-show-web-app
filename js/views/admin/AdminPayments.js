@@ -186,7 +186,7 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
                 <p class="text-lg font-bold ${payment.paymentStatus === 'paid' ? 'text-green-400' : 'text-glass'}">$${(payment.totalPrice || 0).toLocaleString()}</p>
                 <div class="flex gap-2 mt-2 flex-wrap justify-end">
                   ${payment.stripeInvoiceUrl ? `<a href="${payment.stripeInvoiceUrl}" target="_blank" rel="noopener" class="px-3 py-1 bg-orange-600 rounded text-white text-sm hover:bg-orange-700">View Invoice</a>` : ''}
-                  ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-gray-600 rounded text-white text-sm hover:bg-gray-700" data-action="check-stripe-status" data-vendor-email="${payment.contactEmail}">Check Status</button>` : ''}
+                  ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-gray-600 rounded text-white text-sm hover:bg-gray-700" data-action="check-stripe-status" data-vendor-email="${payment.contactEmail}" data-vendor-name="${payment.name}">Check Status</button>` : ''}
                   ${payment.paymentStatus !== 'paid' ? `<button class="px-3 py-1 bg-brand rounded text-white text-sm hover:bg-brand/80" data-action="send-payment" data-vendor-id="${payment.id}" data-vendor-name="${payment.name}" data-vendor-email="${payment.contactEmail}">${payment.stripeInvoiceId ? 'Resend' : 'Send Invoice'}</button>` : ''}
                 </div>
               </div>
@@ -274,22 +274,183 @@ function setupPaymentListeners(root, showPaymentModal) {
       const checkBtn = e.target.closest('[data-action="check-stripe-status"]');
       if (checkBtn) {
         const vendorEmail = checkBtn.getAttribute('data-vendor-email');
+        const vendorName = checkBtn.getAttribute('data-vendor-name') || vendorEmail;
         setButtonLoading(checkBtn, true, 'Checking...');
         try {
           const invoice = await getVendorStripeStatus(vendorEmail);
-          if (invoice) {
-            alert(`Stripe Status: ${invoice.status}\nAmount: $${(invoice.amount_due / 100).toFixed(2)}\nPaid: ${invoice.paid ? 'Yes' : 'No'}`);
-          } else {
-            alert('No Stripe invoice found for this vendor.');
-          }
+          showStripeStatusModal(invoice, vendorName, vendorEmail);
         } catch (error) {
-          alert('Failed to check Stripe status: ' + error.message);
+          showStripeStatusModal(null, vendorName, vendorEmail, error.message);
         } finally {
           setButtonLoading(checkBtn, false);
         }
       }
     });
   }
+}
+
+/**
+ * Show a themed modal with Stripe invoice status
+ * @param {Object|null} invoice - Stripe invoice data
+ * @param {string} vendorName - Vendor name
+ * @param {string} vendorEmail - Vendor email
+ * @param {string|null} errorMessage - Error message if failed
+ */
+function showStripeStatusModal(invoice, vendorName, vendorEmail, errorMessage = null) {
+  // Remove any existing modal
+  document.querySelectorAll('.stripe-status-modal').forEach(m => m.remove());
+  
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 stripe-status-modal';
+  
+  let content = '';
+  
+  if (errorMessage) {
+    content = `
+      <div class="flex items-center gap-3 text-red-400 mb-4">
+        <ion-icon name="alert-circle" class="text-3xl"></ion-icon>
+        <div>
+          <div class="font-semibold">Error</div>
+          <div class="text-sm text-glass-secondary">${errorMessage}</div>
+        </div>
+      </div>
+    `;
+  } else if (!invoice) {
+    content = `
+      <div class="flex items-center gap-3 text-yellow-400 mb-4">
+        <ion-icon name="document-outline" class="text-3xl"></ion-icon>
+        <div>
+          <div class="font-semibold">No Invoice Found</div>
+          <div class="text-sm text-glass-secondary">No Stripe invoice exists for this vendor yet.</div>
+        </div>
+      </div>
+      <p class="text-sm text-glass-secondary">Send an invoice to create one in Stripe.</p>
+    `;
+  } else {
+    const statusConfig = {
+      paid: { color: 'text-green-400', bg: 'bg-green-500/20', icon: 'checkmark-circle', label: 'Paid' },
+      open: { color: 'text-yellow-400', bg: 'bg-yellow-500/20', icon: 'time-outline', label: 'Open' },
+      draft: { color: 'text-gray-400', bg: 'bg-gray-500/20', icon: 'document-outline', label: 'Draft' },
+      void: { color: 'text-gray-400', bg: 'bg-gray-500/20', icon: 'close-circle-outline', label: 'Voided' },
+      uncollectible: { color: 'text-red-400', bg: 'bg-red-500/20', icon: 'warning-outline', label: 'Uncollectible' }
+    };
+    const status = statusConfig[invoice.status] || { color: 'text-gray-400', bg: 'bg-gray-500/20', icon: 'help-circle-outline', label: invoice.status };
+    
+    const amountDue = (invoice.amount_due / 100).toFixed(2);
+    const amountPaid = (invoice.amount_paid / 100).toFixed(2);
+    const amountRemaining = (invoice.amount_remaining / 100).toFixed(2);
+    const createdDate = invoice.created ? new Date(invoice.created * 1000).toLocaleDateString() : 'N/A';
+    const dueDate = invoice.due_date ? new Date(invoice.due_date * 1000).toLocaleDateString() : 'N/A';
+    
+    content = `
+      <!-- Status Header -->
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-full ${status.bg} flex items-center justify-center">
+          <ion-icon name="${status.icon}" class="text-2xl ${status.color}"></ion-icon>
+        </div>
+        <div>
+          <div class="text-lg font-semibold ${status.color}">${status.label}</div>
+          <div class="text-xs text-glass-secondary">Invoice ${invoice.id}</div>
+        </div>
+      </div>
+      
+      <!-- Amount Cards -->
+      <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+          <div class="text-lg font-bold text-glass">$${amountDue}</div>
+          <div class="text-xs text-glass-secondary">Total Due</div>
+        </div>
+        <div class="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+          <div class="text-lg font-bold text-green-400">$${amountPaid}</div>
+          <div class="text-xs text-glass-secondary">Paid</div>
+        </div>
+        <div class="text-center p-3 rounded-lg bg-white/5 border border-white/10">
+          <div class="text-lg font-bold ${parseFloat(amountRemaining) > 0 ? 'text-red-400' : 'text-green-400'}">$${amountRemaining}</div>
+          <div class="text-xs text-glass-secondary">Remaining</div>
+        </div>
+      </div>
+      
+      <!-- Details -->
+      <div class="space-y-2 text-sm mb-6">
+        <div class="flex justify-between py-2 border-b border-white/10">
+          <span class="text-glass-secondary">Created</span>
+          <span class="text-glass">${createdDate}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-white/10">
+          <span class="text-glass-secondary">Due Date</span>
+          <span class="text-glass">${dueDate}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-white/10">
+          <span class="text-glass-secondary">Customer</span>
+          <span class="text-glass">${invoice.customer_email || vendorEmail}</span>
+        </div>
+        ${invoice.description ? `
+          <div class="flex justify-between py-2 border-b border-white/10">
+            <span class="text-glass-secondary">Description</span>
+            <span class="text-glass text-right max-w-[200px] truncate">${invoice.description}</span>
+          </div>
+        ` : ''}
+      </div>
+      
+      <!-- Action Buttons -->
+      ${invoice.hosted_invoice_url ? `
+        <div class="flex gap-2">
+          <a href="${invoice.hosted_invoice_url}" target="_blank" rel="noopener" 
+             class="flex-1 text-center px-4 py-2 bg-orange-600 rounded text-white hover:bg-orange-700 transition-colors">
+            <ion-icon name="open-outline" class="mr-1"></ion-icon>View in Stripe
+          </a>
+        </div>
+      ` : ''}
+    `;
+  }
+  
+  modal.innerHTML = `
+    <div class="glass-container max-w-md w-full mx-4 modal-content">
+      <div class="p-6 border-b border-glass-border">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-bold text-glass">Stripe Invoice Status</h2>
+            <p class="text-sm text-glass-secondary">${vendorName}</p>
+          </div>
+          <button class="text-glass-secondary hover:text-glass p-2 modal-close-btn">
+            <ion-icon name="close-outline" class="text-2xl pointer-events-none"></ion-icon>
+          </button>
+        </div>
+      </div>
+      
+      <div class="p-6">
+        ${content}
+      </div>
+      
+      <div class="p-4 border-t border-glass-border flex justify-end">
+        <button class="modal-close-btn px-4 py-2 border border-glass-border rounded text-glass-secondary hover:text-glass hover:bg-white/5 transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Close handlers
+  const closeModal = () => modal.remove();
+  
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+  
+  modal.querySelectorAll('.modal-close-btn').forEach(btn => {
+    btn.addEventListener('click', closeModal);
+  });
+  
+  // ESC key to close
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', escHandler);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
 }
 
 /**
