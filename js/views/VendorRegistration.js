@@ -1,6 +1,7 @@
 import { Modal, Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
 import { getState } from "../store.js";
+import { CATEGORY_COLORS, getCategoryColor } from "../brand.js";
 
 export default async function VendorRegistration(root) {
   const state = getState();
@@ -104,29 +105,40 @@ export default async function VendorRegistration(root) {
   const TABLE_FEE = 25;
   const CHAIR_FEE = 10;
   
-  // Track taken booths
+  // Track taken booths with their categories (for color coding)
   let takenBooths = new Set();
+  let boothCategories = {}; // Map of boothId -> category
   
-  // Load booth availability
+  // Load booth availability with category data
   const loadBoothAvailability = async () => {
     try {
       const { getDb } = await import("../firebase.js");
       const db = getDb();
       const { collection, getDocs, where, query } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
       
-      // Get all approved vendors and their booths
+      takenBooths.clear();
+      boothCategories = {};
+      
+      // Get all approved vendors and their booths with categories
       const q = query(collection(db, 'vendors'), where('approved', '==', true));
       const snap = await getDocs(q);
       
-      takenBooths.clear();
       snap.forEach(doc => {
         const data = doc.data();
+        const category = data.category || 'General';
+        
         if (data.booths && Array.isArray(data.booths)) {
-          data.booths.forEach(booth => takenBooths.add(booth));
+          data.booths.forEach(booth => {
+            takenBooths.add(booth);
+            boothCategories[booth] = category;
+          });
         } else if (data.booth) {
           // Handle legacy single booth format
           const booths = data.booth.split(',').map(b => b.trim());
-          booths.forEach(booth => takenBooths.add(booth));
+          booths.forEach(booth => {
+            takenBooths.add(booth);
+            boothCategories[booth] = category;
+          });
         }
       });
       
@@ -136,11 +148,23 @@ export default async function VendorRegistration(root) {
       
       pendingSnap.forEach(doc => {
         const data = doc.data();
+        const category = data.category || 'General';
+        
         if (data.booths && Array.isArray(data.booths)) {
-          data.booths.forEach(booth => takenBooths.add(booth));
+          data.booths.forEach(booth => {
+            if (!takenBooths.has(booth)) { // Don't overwrite approved booths
+              takenBooths.add(booth);
+              boothCategories[booth] = category;
+            }
+          });
         } else if (data.booth) {
           const booths = data.booth.split(',').map(b => b.trim());
-          booths.forEach(booth => takenBooths.add(booth));
+          booths.forEach(booth => {
+            if (!takenBooths.has(booth)) {
+              takenBooths.add(booth);
+              boothCategories[booth] = category;
+            }
+          });
         }
       });
       
@@ -189,30 +213,85 @@ export default async function VendorRegistration(root) {
             </div>
             <div class="mb-3">
               <div class="mb-1 font-medium text-glass">Select Booth(s)</div>
-              <div class="text-xs text-glass-secondary mb-2">$${BOOTH_PRICE.toLocaleString()} per booth. Select multiple to request additional space.</div>
+              <div class="text-xs text-glass-secondary mb-2">$${BOOTH_PRICE.toLocaleString()} per booth. Colors show vendor types in surrounding booths (company names hidden for privacy).</div>
               ${step === 3 && takenBooths.size === 0 ? '<div class="text-center py-4 text-glass-secondary"><ion-icon name="hourglass-outline" class="animate-spin"></ion-icon> Loading booth availability...</div>' : ''}
-              <div class="grid grid-cols-4 md:grid-cols-8 gap-2" id="boothGrid">
-                ${boothOptions.map(b => {
-                  const isTaken = takenBooths.has(b);
-                  return `
-                    <label class="${isTaken ? 'bg-red-800 text-red-200 cursor-not-allowed opacity-75' : 'glass-button hover:bg-white/20'} px-2 py-2 text-center text-sm flex items-center justify-center gap-1 transition-colors ${isTaken ? '' : 'cursor-pointer'}">
-                      <input type="checkbox" class="booth-choice" value="${b}" ${isTaken ? 'disabled' : ''}>
-                      <span class="text-xs">${b}</span>
-                      ${isTaken ? '<ion-icon name="close-circle" class="text-red-400 text-xs"></ion-icon>' : ''}
-                    </label>
-                  `;
-                }).join("")}
-              </div>
-              <div class="mt-3 flex items-center gap-4 text-xs">
-                <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 bg-white/20 rounded border border-white/30"></div>
-                  <span class="text-glass-secondary">Available</span>
+              
+              <!-- Visual Floor Plan -->
+              <div class="mb-4 p-3 glass-card overflow-x-auto">
+                <div class="text-xs text-glass-secondary mb-2 flex items-center gap-1">
+                  <ion-icon name="information-circle-outline"></ion-icon>
+                  Tap to select available booths. Colors indicate vendor business types.
                 </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 bg-red-800 rounded"></div>
-                  <span class="text-glass-secondary">Taken</span>
+                <div class="grid gap-1" style="grid-template-columns: repeat(15, minmax(0, 1fr)); min-width: 600px;">
+                  ${['A','B','C','D','E','F','G','H'].flatMap(row => 
+                    Array.from({length: 15}, (_, i) => {
+                      const boothId = `${row}${i+1}`;
+                      const isTaken = takenBooths.has(boothId);
+                      const category = boothCategories[boothId];
+                      const colorInfo = category ? getCategoryColor(category) : null;
+                      const bgColor = isTaken ? (colorInfo?.hex || '#6b7280') : '';
+                      
+                      return `
+                        <div class="booth-cell relative ${isTaken ? 'cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-brand'}" 
+                             data-booth="${boothId}" 
+                             data-category="${category || ''}"
+                             style="${isTaken ? `background-color: ${bgColor}` : 'background-color: rgba(255,255,255,0.1)'}"
+                             title="${isTaken ? `${boothId} - ${category || 'Taken'}` : `${boothId} - Available`}">
+                          <div class="aspect-square flex items-center justify-center text-[9px] font-medium ${isTaken ? 'text-white' : 'text-glass'} rounded">
+                            ${boothId}
+                          </div>
+                          ${!isTaken ? `<input type="checkbox" class="booth-choice absolute inset-0 opacity-0 cursor-pointer" value="${boothId}">` : ''}
+                        </div>
+                      `;
+                    })
+                  ).join("")}
                 </div>
               </div>
+
+              <!-- Category Legend for taken booths -->
+              ${Object.keys(boothCategories).length > 0 ? `
+                <div class="mb-3 p-3 glass-card">
+                  <div class="text-xs font-medium text-glass mb-2 flex items-center gap-1">
+                    <ion-icon name="color-palette-outline"></ion-icon>
+                    Vendor Types Key (to help avoid competitors nearby)
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <div class="flex items-center gap-1 text-xs">
+                      <div class="w-3 h-3 rounded" style="background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2)"></div>
+                      <span class="text-glass-secondary">Available</span>
+                    </div>
+                    ${[...new Set(Object.values(boothCategories))].map(cat => {
+                      const colorInfo = getCategoryColor(cat);
+                      return `
+                        <div class="flex items-center gap-1 text-xs">
+                          <div class="w-3 h-3 rounded" style="background-color: ${colorInfo.hex}"></div>
+                          <span class="text-glass-secondary">${cat}</span>
+                        </div>
+                      `;
+                    }).join("")}
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- Fallback list view for accessibility -->
+              <details class="mb-3">
+                <summary class="text-xs text-glass-secondary cursor-pointer hover:text-glass">Show list view</summary>
+                <div class="grid grid-cols-4 md:grid-cols-8 gap-2 mt-2" id="boothGrid">
+                  ${boothOptions.map(b => {
+                    const isTaken = takenBooths.has(b);
+                    const category = boothCategories[b];
+                    const colorInfo = category ? getCategoryColor(category) : null;
+                    return `
+                      <label class="${isTaken ? 'cursor-not-allowed opacity-75' : 'glass-button hover:bg-white/20'} px-2 py-2 text-center text-sm flex items-center justify-center gap-1 transition-colors ${isTaken ? '' : 'cursor-pointer'}"
+                             style="${isTaken ? `background-color: ${colorInfo?.hex || '#6b7280'}` : ''}"
+                             title="${isTaken ? `Taken by: ${category || 'Unknown category'}` : 'Available'}">
+                        <input type="checkbox" class="booth-choice" value="${b}" ${isTaken ? 'disabled' : ''}>
+                        <span class="text-xs ${isTaken ? 'text-white' : ''}">${b}</span>
+                      </label>
+                    `;
+                  }).join("")}
+                </div>
+              </details>
               <div class="mt-3 text-sm text-glass"><span class="font-medium">Selected:</span> <span id="selectedCount">0</span> booth(s) — <span class="font-medium">Total:</span> $<span id="totalPrice">0</span></div>
             </div>
           `:step===4?`
@@ -424,7 +503,38 @@ export default async function VendorRegistration(root) {
         if (sc) sc.textContent = String(count);
         if (tp) tp.textContent = total.toLocaleString();
       };
-      root.querySelectorAll('.booth-choice:not([disabled])').forEach(cb => { cb.onchange = updatePricing; });
+      
+      // Handle visual floor plan booth selection
+      root.querySelectorAll('.booth-cell').forEach(cell => {
+        const checkbox = cell.querySelector('.booth-choice');
+        if (checkbox) {
+          // Visual feedback for selection
+          checkbox.onchange = () => {
+            if (checkbox.checked) {
+              cell.classList.add('ring-2', 'ring-brand', 'ring-offset-1', 'ring-offset-transparent');
+              cell.style.backgroundColor = 'rgba(59, 130, 246, 0.6)'; // Brand blue when selected
+            } else {
+              cell.classList.remove('ring-2', 'ring-brand', 'ring-offset-1', 'ring-offset-transparent');
+              cell.style.backgroundColor = 'rgba(255,255,255,0.1)'; // Reset to available color
+            }
+            updatePricing();
+          };
+          
+          // Click on cell should toggle checkbox
+          cell.onclick = (e) => {
+            if (e.target !== checkbox) {
+              checkbox.checked = !checkbox.checked;
+              checkbox.dispatchEvent(new Event('change'));
+            }
+          };
+        }
+      });
+      
+      // Also handle checkboxes in list view
+      root.querySelectorAll('#boothGrid .booth-choice:not([disabled])').forEach(cb => { 
+        cb.onchange = updatePricing; 
+      });
+      
       updatePricing();
     }
     

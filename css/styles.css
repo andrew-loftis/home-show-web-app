@@ -608,3 +608,35 @@ input:focus-visible {
 .img-error {
   display: none !important;
 }
+
+/* Booth floor plan styles */
+.booth-cell {
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.booth-cell:hover:not(.cursor-not-allowed) {
+  transform: scale(1.05);
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.booth-cell.selected {
+  background-color: rgba(59, 130, 246, 0.6) !important;
+  border-color: #3B82F6;
+}
+
+/* Booth group hover effect in SVG */
+.booth-group:hover .booth-rect {
+  filter: brightness(1.2);
+  cursor: pointer;
+}
+
+/* Category legend scrollable on mobile */
+@media (max-width: 640px) {
+  .category-legend {
+    max-height: 150px;
+    overflow-y: auto;
+  }
+}

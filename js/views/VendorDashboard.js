@@ -2,6 +2,7 @@ import { Modal, Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
 import { getState } from "../store.js";
 import { renderErrorUI, renderNetworkError, renderAccessDenied } from "../utils/errorBoundary.js";
+import { getVendorInvoices, getInvoiceStatusDetails, formatCurrency, formatInvoiceDate } from "../utils/payments.js";
 
 export default async function VendorDashboard(root) {
   const state = getState();
@@ -103,6 +104,34 @@ export default async function VendorDashboard(root) {
 
   async function render(vendor) {
     const paymentStatusInfo = getPaymentStatusInfo(vendor);
+    
+    // Fetch invoices from Stripe
+    let invoices = [];
+    let invoicesLoading = true;
+    
+    // Start with initial render (invoices loading)
+    renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading);
+    
+    // Then fetch invoices asynchronously
+    try {
+      const result = await getVendorInvoices(vendor.contactEmail);
+      if (result.success) {
+        invoices = result.invoices;
+      }
+    } catch (error) {
+      console.error('Error fetching invoices:', error);
+    }
+    invoicesLoading = false;
+    
+    // Re-render with invoices
+    renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading);
+    setupEventHandlers(vendor, invoices);
+  }
+
+  function renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading) {
+    // Check if there are unpaid invoices
+    const unpaidInvoices = invoices.filter(inv => inv.status === 'open');
+    const hasUnpaidInvoices = unpaidInvoices.length > 0;
     
     root.innerHTML = `
       <div class="container-glass fade-in">
@@ -233,11 +262,101 @@ export default async function VendorDashboard(root) {
             </div>
           </div>
 
-          <!-- Payment Status Section -->
-          <div class="glass-card p-6 mt-6">
+          <!-- Invoices & Payments Section -->
+          <div class="glass-card p-4 md:p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-glass flex items-center">
+                <ion-icon name="receipt-outline" class="mr-2"></ion-icon>
+                Invoices & Payments
+              </h3>
+              <button onclick="refreshInvoices()" class="text-glass-secondary hover:text-glass text-sm flex items-center gap-1 transition-colors">
+                <ion-icon name="refresh-outline"></ion-icon>
+                Refresh
+              </button>
+            </div>
+            
+            ${invoicesLoading ? `
+              <div class="flex items-center justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+                <span class="ml-3 text-glass-secondary">Loading invoices...</span>
+              </div>
+            ` : invoices.length === 0 ? `
+              <div class="text-center py-6 text-glass-secondary">
+                <ion-icon name="document-outline" class="text-3xl mb-2"></ion-icon>
+                <p>No invoices yet</p>
+                <p class="text-sm mt-1">Invoices will appear here once they are created by the event organizer.</p>
+              </div>
+            ` : `
+              <div class="space-y-4">
+                ${invoices.map(invoice => {
+                  const status = getInvoiceStatusDetails(invoice);
+                  return `
+                    <div class="bg-glass-surface rounded-lg p-4 border-l-4 ${status.borderColor}">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex-1">
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-lg font-bold text-glass">${formatCurrency(invoice.amount_due)}</span>
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}">
+                              <ion-icon name="${status.icon}" class="mr-1"></ion-icon>${status.text}
+                            </span>
+                          </div>
+                          <p class="text-sm text-glass-secondary mt-1">${invoice.description || 'Booth payment'}</p>
+                          <div class="flex items-center gap-4 mt-2 text-xs text-glass-secondary">
+                            <span>Created: ${formatInvoiceDate(invoice.created)}</span>
+                            ${invoice.due_date ? `<span>Due: ${formatInvoiceDate(invoice.due_date)}</span>` : ''}
+                          </div>
+                        </div>
+                        <div class="flex gap-2 flex-wrap">
+                          ${status.actionable && invoice.hosted_invoice_url ? `
+                            <a href="${invoice.hosted_invoice_url}" 
+                               target="_blank" 
+                               rel="noopener"
+                               class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors touch-target">
+                              <ion-icon name="card-outline" class="mr-2"></ion-icon>
+                              Pay Now
+                            </a>
+                          ` : ''}
+                          ${invoice.hosted_invoice_url ? `
+                            <a href="${invoice.hosted_invoice_url}" 
+                               target="_blank" 
+                               rel="noopener"
+                               class="inline-flex items-center px-4 py-2 border border-glass-border text-glass hover:bg-glass-surface rounded-lg transition-colors touch-target">
+                              <ion-icon name="open-outline" class="mr-2"></ion-icon>
+                              View Invoice
+                            </a>
+                          ` : ''}
+                        </div>
+                      </div>
+                      ${invoice.status === 'paid' ? `
+                        <div class="mt-3 pt-3 border-t border-glass-border flex items-center text-green-400 text-sm">
+                          <ion-icon name="checkmark-circle" class="mr-2"></ion-icon>
+                          Payment received - Thank you!
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              
+              ${hasUnpaidInvoices ? `
+                <div class="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <div class="flex items-start gap-3">
+                    <ion-icon name="alert-circle" class="text-yellow-400 text-xl flex-shrink-0 mt-0.5"></ion-icon>
+                    <div>
+                      <p class="text-yellow-300 font-medium">You have ${unpaidInvoices.length} unpaid invoice${unpaidInvoices.length > 1 ? 's' : ''}</p>
+                      <p class="text-sm text-yellow-300/70 mt-1">Click "Pay Now" to complete your payment securely through Stripe.</p>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+            `}
+          </div>
+
+          <!-- Payment Status Summary -->
+          <div class="glass-card p-4 md:p-6 mt-6">
             <h3 class="text-lg font-semibold text-glass mb-4 flex items-center">
               <ion-icon name="card-outline" class="mr-2"></ion-icon>
-              Payment Status
+              Payment Summary
             </h3>
             <div class="flex items-center justify-between">
               <div class="flex items-center">
@@ -247,7 +366,15 @@ export default async function VendorDashboard(root) {
                   <p class="text-sm text-glass-secondary">${paymentStatusInfo.description}</p>
                 </div>
               </div>
-              ${paymentStatusInfo.actionButton || ''}
+              ${hasUnpaidInvoices && unpaidInvoices[0]?.hosted_invoice_url ? `
+                <a href="${unpaidInvoices[0].hosted_invoice_url}" 
+                   target="_blank"
+                   rel="noopener"
+                   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors">
+                  <ion-icon name="card-outline" class="mr-2"></ion-icon>
+                  Pay Now
+                </a>
+              ` : paymentStatusInfo.actionButton || ''}
             </div>
           </div>
 
@@ -277,8 +404,6 @@ export default async function VendorDashboard(root) {
         </div>
       </div>
     `;
-
-    setupEventHandlers();
   }
 
   function getPaymentStatusInfo(vendor) {
@@ -294,15 +419,15 @@ export default async function VendorDashboard(root) {
       return {
         icon: '📧',
         text: 'Invoice Sent',
-        description: 'Please check your email for payment instructions',
+        description: 'An invoice is available - use the Pay Now button above to complete payment',
         statusClass: 'bg-yellow-500',
-        actionButton: '<button class="glass-button px-4 py-2 text-sm" onclick="checkEmail()">Check Email</button>'
+        actionButton: ''
       };
     } else if (vendor.approved) {
       return {
         icon: '⏳',
         text: 'Payment Pending',
-        description: 'Awaiting payment processing from admin',
+        description: 'Awaiting invoice from event organizer',
         statusClass: 'bg-red-500',
         actionButton: '<button class="glass-button px-4 py-2 text-sm" onclick="contactAdmin()">Contact Admin</button>'
       };
@@ -317,7 +442,7 @@ export default async function VendorDashboard(root) {
     }
   }
 
-  function setupEventHandlers() {
+  function setupEventHandlers(vendor, invoices) {
     // Global functions for onclick handlers
     window.editProfile = () => {
       navigate('/edit-vendor');
@@ -338,9 +463,25 @@ export default async function VendorDashboard(root) {
     window.contactAdmin = () => {
       const adminEmail = 'andrew@houseofkna.com';
       const subject = 'Vendor Payment Inquiry';
-      const body = `Hi,\n\nI'm reaching out regarding my vendor booth payment. My business is ${vendorData.name} and my email is ${vendorData.contactEmail}.\n\nCould you please send me the payment information?\n\nThank you!`;
+      const body = `Hi,\n\nI'm reaching out regarding my vendor booth payment. My business is ${vendor.name} and my email is ${vendor.contactEmail}.\n\nCould you please send me the payment information?\n\nThank you!`;
       
       window.open(`mailto:${adminEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+    };
+
+    // Add a refresh invoices button handler
+    window.refreshInvoices = async () => {
+      Toast.show('Refreshing invoices...', 'info');
+      try {
+        const result = await getVendorInvoices(vendor.contactEmail);
+        if (result.success) {
+          const paymentStatusInfo = getPaymentStatusInfo(vendor);
+          renderDashboard(vendor, paymentStatusInfo, result.invoices, false);
+          setupEventHandlers(vendor, result.invoices);
+          Toast.show('Invoices refreshed', 'success');
+        }
+      } catch (error) {
+        Toast.show('Failed to refresh invoices', 'error');
+      }
     };
   }
 }

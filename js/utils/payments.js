@@ -233,3 +233,124 @@ export function renderPaymentBadge(status) {
   
   return `<span class="px-2 py-1 rounded text-xs font-medium text-white ${badge.class}">${badge.text}</span>`;
 }
+
+/**
+ * Get invoices for a vendor from Stripe
+ * @param {string} vendorEmail - The vendor's email address
+ * @returns {Promise<{success: boolean, invoices?: Array, error?: string}>}
+ */
+export async function getVendorInvoices(vendorEmail) {
+  try {
+    const response = await fetch('/.netlify/functions/get-stripe-invoices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'getCustomerInvoices',
+        vendorEmail
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to fetch invoices');
+    }
+
+    return {
+      success: true,
+      invoices: result.invoices || [],
+      customer: result.customer || null
+    };
+  } catch (error) {
+    console.error('Get invoices error:', error);
+    return {
+      success: false,
+      invoices: [],
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Get invoice status details for display
+ * @param {Object} invoice - Stripe invoice object
+ * @returns {Object} Status details with color, icon, and text
+ */
+export function getInvoiceStatusDetails(invoice) {
+  const statusMap = {
+    paid: { 
+      color: 'text-green-400', 
+      bgColor: 'bg-green-500/20',
+      borderColor: 'border-green-500',
+      icon: 'checkmark-circle', 
+      text: 'Paid',
+      actionable: false
+    },
+    open: { 
+      color: 'text-yellow-400', 
+      bgColor: 'bg-yellow-500/20',
+      borderColor: 'border-yellow-500',
+      icon: 'time-outline', 
+      text: 'Awaiting Payment',
+      actionable: true
+    },
+    draft: { 
+      color: 'text-gray-400', 
+      bgColor: 'bg-gray-500/20',
+      borderColor: 'border-gray-500',
+      icon: 'document-outline', 
+      text: 'Draft',
+      actionable: false
+    },
+    void: { 
+      color: 'text-gray-400', 
+      bgColor: 'bg-gray-500/20',
+      borderColor: 'border-gray-500',
+      icon: 'close-circle-outline', 
+      text: 'Voided',
+      actionable: false
+    },
+    uncollectible: { 
+      color: 'text-red-400', 
+      bgColor: 'bg-red-500/20',
+      borderColor: 'border-red-500',
+      icon: 'warning-outline', 
+      text: 'Uncollectible',
+      actionable: false
+    }
+  };
+
+  return statusMap[invoice.status] || { 
+    color: 'text-gray-400', 
+    bgColor: 'bg-gray-500/20',
+    borderColor: 'border-gray-500',
+    icon: 'help-circle-outline', 
+    text: invoice.status || 'Unknown',
+    actionable: false
+  };
+}
+
+/**
+ * Format currency amount from cents
+ * @param {number} cents - Amount in cents
+ * @returns {string} Formatted currency string
+ */
+export function formatCurrency(cents) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+/**
+ * Format Unix timestamp to readable date
+ * @param {number} timestamp - Unix timestamp in seconds
+ * @returns {string} Formatted date string
+ */
+export function formatInvoiceDate(timestamp) {
+  if (!timestamp) return 'N/A';
+  return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}

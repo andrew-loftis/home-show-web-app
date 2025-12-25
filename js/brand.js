@@ -142,9 +142,87 @@ export const CATEGORY_STYLES = {
   'General': { icon: 'storefront-outline', color: 'from-gray-500 to-slate-600' },
 };
 
+// Category colors for floor plan (hex colors for SVG rendering)
+// Each category gets a unique, distinct color to help vendors avoid placing next to competitors
+export const CATEGORY_COLORS = {
+  // Construction & Structure
+  'Roofing': { hex: '#64748b', name: 'Slate', icon: 'home-outline' },
+  'Siding': { hex: '#78716c', name: 'Stone', icon: 'home-outline' },
+  'Gutters': { hex: '#a8a29e', name: 'Warm Gray', icon: 'water-outline' },
+  'Masonry': { hex: '#92400e', name: 'Amber Brown', icon: 'cube-outline' },
+  'Concrete': { hex: '#6b7280', name: 'Gray', icon: 'square-outline' },
+  'Insulation': { hex: '#fbbf24', name: 'Amber', icon: 'layers-outline' },
+  'General Contractor': { hex: '#f97316', name: 'Orange', icon: 'construct-outline' },
+  'Remodeling': { hex: '#ea580c', name: 'Deep Orange', icon: 'hammer-outline' },
+  
+  // Kitchen & Bath
+  'Kitchen': { hex: '#0891b2', name: 'Cyan', icon: 'restaurant-outline' },
+  'Bath': { hex: '#06b6d4', name: 'Light Cyan', icon: 'water-outline' },
+  'Cabinets': { hex: '#0e7490', name: 'Dark Cyan', icon: 'grid-outline' },
+  'Countertops': { hex: '#155e75', name: 'Deep Cyan', icon: 'layers-outline' },
+  'Tile & Stone': { hex: '#164e63', name: 'Teal Dark', icon: 'apps-outline' },
+  'Appliances': { hex: '#0284c7', name: 'Light Blue', icon: 'cube-outline' },
+  
+  // Outdoor & Landscaping
+  'Landscaping': { hex: '#16a34a', name: 'Green', icon: 'leaf-outline' },
+  'Decks & Patios': { hex: '#a16207', name: 'Brown', icon: 'home-outline' },
+  'Pools & Spas': { hex: '#0ea5e9', name: 'Sky Blue', icon: 'water-outline' },
+  'Fencing': { hex: '#78350f', name: 'Wood Brown', icon: 'git-branch-outline' },
+  'Outdoor Living': { hex: '#15803d', name: 'Forest Green', icon: 'sunny-outline' },
+  'Garden/Nursery': { hex: '#22c55e', name: 'Lime', icon: 'flower-outline' },
+  
+  // Windows, Doors & Flooring
+  'Windows': { hex: '#3b82f6', name: 'Blue', icon: 'grid-outline' },
+  'Doors': { hex: '#1d4ed8', name: 'Deep Blue', icon: 'enter-outline' },
+  'Flooring': { hex: '#b45309', name: 'Amber Dark', icon: 'layers-outline' },
+  
+  // HVAC & Utilities
+  'HVAC': { hex: '#dc2626', name: 'Red', icon: 'thermometer-outline' },
+  'Plumbing': { hex: '#2563eb', name: 'Royal Blue', icon: 'water-outline' },
+  'Electrical': { hex: '#facc15', name: 'Yellow', icon: 'flash-outline' },
+  'Water Treatment': { hex: '#38bdf8', name: 'Light Sky', icon: 'water-outline' },
+  
+  // Energy & Solar
+  'Solar': { hex: '#eab308', name: 'Golden', icon: 'sunny-outline' },
+  'Energy Efficiency': { hex: '#84cc16', name: 'Lime Green', icon: 'leaf-outline' },
+  
+  // Technology & Security
+  'Smart Home': { hex: '#8b5cf6', name: 'Violet', icon: 'phone-portrait-outline' },
+  'Security': { hex: '#6366f1', name: 'Indigo', icon: 'shield-checkmark-outline' },
+  'Home Theater/AV': { hex: '#7c3aed', name: 'Purple', icon: 'tv-outline' },
+  'Lighting': { hex: '#fde047', name: 'Light Yellow', icon: 'bulb-outline' },
+  
+  // Services
+  'Painting': { hex: '#f472b6', name: 'Pink', icon: 'brush-outline' },
+  'Pest Control': { hex: '#059669', name: 'Emerald', icon: 'bug-outline' },
+  'Home Cleaning': { hex: '#14b8a6', name: 'Teal', icon: 'sparkles-outline' },
+  'Interior Design': { hex: '#ec4899', name: 'Fuchsia', icon: 'color-palette-outline' },
+  'Furniture': { hex: '#d97706', name: 'Amber Orange', icon: 'bed-outline' },
+  'Garage': { hex: '#57534e', name: 'Warm Stone', icon: 'car-outline' },
+  
+  // Financial & Real Estate
+  'Real Estate': { hex: '#a855f7', name: 'Purple', icon: 'business-outline' },
+  'Mortgage': { hex: '#9333ea', name: 'Deep Purple', icon: 'cash-outline' },
+  'Insurance': { hex: '#4f46e5', name: 'Indigo Blue', icon: 'umbrella-outline' },
+  
+  // General/Other
+  'Other': { hex: '#9ca3af', name: 'Gray', icon: 'ellipsis-horizontal-outline' },
+  'General': { hex: '#71717a', name: 'Zinc', icon: 'storefront-outline' },
+};
+
 // Helper to get category style with fallback
 export function getCategoryStyle(category) {
   return CATEGORY_STYLES[category] || CATEGORY_STYLES['General'];
+}
+
+// Helper to get category color (hex) with fallback
+export function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS['General'];
+}
+
+// Get all unique categories that have colors defined
+export function getAllCategories() {
+  return Object.keys(CATEGORY_COLORS).filter(c => c !== 'General' && c !== 'Other');
 }
 
 // Helper to create gradient CSS class

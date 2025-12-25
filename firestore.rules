@@ -87,6 +87,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
+    // Ads collection - Admin controlled popup ads
+    match /ads/{adId} {
+      allow read, write: if isAdmin(); // Admin COMPLETE access
+      allow read: if resource.data.active == true; // Anyone can read active ads
+      allow update: if true; // Allow impression tracking updates
+    }
+
     // ADMIN COMPLETE ACCESS - catch-all for any other collections
     match /{document=**} { 
       allow read, write: if isAdmin(); // Admin can access EVERYTHING

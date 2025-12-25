@@ -208,6 +208,88 @@ export function getNotificationStatus() {
   };
 }
 
+/**
+ * Send a push notification to users (admin only)
+ * @param {Object} options - Notification options
+ * @param {string} options.template - Template name: 'announcement', 'eventReminder', 'scheduleChange', etc.
+ * @param {Object} options.data - Data for the template (title, message, etc.)
+ * @param {string} [options.userId] - Target a single user
+ * @param {string[]} [options.userIds] - Target multiple users
+ * @param {string} [options.role] - Target by role: 'vendor', 'attendee'
+ * @param {boolean} [options.broadcast] - Send to everyone
+ * @returns {Promise<{success: boolean, sent?: number, error?: string}>}
+ */
+export async function sendPushNotification(options) {
+  try {
+    const response = await fetch('/.netlify/functions/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to send notification');
+    }
+
+    return {
+      success: true,
+      sent: result.sent,
+      failed: result.failed,
+      notification: result.notification
+    };
+  } catch (error) {
+    console.error('[Notifications] Failed to send push:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Send an announcement to all users
+ * @param {string} title - Notification title
+ * @param {string} message - Notification body
+ * @param {Object} [options] - Additional options (url, role)
+ */
+export async function sendAnnouncement(title, message, options = {}) {
+  return sendPushNotification({
+    template: 'announcement',
+    data: { title, message, ...options },
+    broadcast: !options.role,
+    role: options.role
+  });
+}
+
+/**
+ * Send a notification to vendors only
+ * @param {string} template - Template name
+ * @param {Object} data - Template data
+ */
+export async function notifyVendors(template, data) {
+  return sendPushNotification({
+    template,
+    data,
+    role: 'vendor'
+  });
+}
+
+/**
+ * Send a notification to a specific user
+ * @param {string} userId - User ID
+ * @param {string} template - Template name
+ * @param {Object} data - Template data
+ */
+export async function notifyUser(userId, template, data) {
+  return sendPushNotification({
+    template,
+    data,
+    userId
+  });
+}
+
 export default {
   isNotificationSupported,
   getNotificationPermission,
@@ -216,5 +298,9 @@ export default {
   saveTokenToFirestore,
   onForegroundMessage,
   showLocalNotification,
-  getNotificationStatus
+  getNotificationStatus,
+  sendPushNotification,
+  sendAnnouncement,
+  notifyVendors,
+  notifyUser
 };

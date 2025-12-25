@@ -140,6 +140,21 @@ function scheduleRender() {
   });
 }
 
+// Initialize ads system (non-blocking)
+async function initAdsSystem() {
+  try {
+    const state = getState();
+    // Only show ads after onboarding is complete
+    if (!state.hasOnboarded) return;
+    
+    const { initAds } = await import('./utils/ads.js');
+    await initAds();
+  } catch (e) {
+    // Silently fail - ads are optional
+    console.log('[App] Ads system not initialized:', e.message);
+  }
+}
+
 function boot() {
   console.log('[App] Booting V-1.5...');
   hydrateStore();
@@ -156,6 +171,19 @@ function boot() {
   
   // Setup foreground push notification listener
   setupNotificationListener();
+  
+  // Initialize ads system (after a short delay to let app render first)
+  setTimeout(initAdsSystem, 2000);
+  
+  // Listen for notification click messages from service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK' && event.data?.url) {
+        console.log('[App] Navigating from notification:', event.data.url);
+        navigate(event.data.url);
+      }
+    });
+  }
   
   // Onboarding gate - roles are auto-detected by store.js
   const state = getState();

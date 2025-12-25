@@ -16,6 +16,7 @@ import { renderVendorsTab, loadVendors } from "./admin/AdminVendors.js";
 import { renderUsersTab, loadUsers } from "./admin/AdminUsers.js";
 import { renderBoothsTab, loadBooths } from "./admin/AdminBooths.js";
 import { renderPaymentsTab, loadPayments } from "./admin/AdminPayments.js";
+import { renderAdsTab, loadAds as loadAdsTab } from "./admin/AdminAds.js";
 
 export default function AdminDashboard(root) {
   const state = getState();
@@ -65,6 +66,7 @@ export default function AdminDashboard(root) {
           ${renderTabButton('users', 'people-outline', 'Users')}
           ${renderTabButton('booths', 'grid-outline', 'Booths')}
           ${renderTabButton('payments', 'card-outline', 'Payments')}
+          ${renderTabButton('ads', 'megaphone-outline', 'Ads')}
           ${renderTabButton('admins', 'shield-checkmark-outline', 'Admins')}
         </div>
 
@@ -116,6 +118,8 @@ export default function AdminDashboard(root) {
         return renderBoothsTab();
       case 'payments':
         return renderPaymentsTab();
+      case 'ads':
+        return renderAdsTab();
       case 'admins':
         return renderAdminsTab();
       default:
@@ -145,6 +149,9 @@ export default function AdminDashboard(root) {
         break;
       case 'payments':
         await loadPayments(root, {}, showStripePaymentModal);
+        break;
+      case 'ads':
+        await loadAdsTab(root);
         break;
       case 'admins':
         await loadAdmins();

@@ -178,6 +178,33 @@ async function sendPaymentNotificationEmails(paymentData) {
   }
 }
 
+// Send push notification via send-push function
+async function sendPushNotification(options) {
+  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+  
+  try {
+    console.log(`Sending push notification: ${options.template}`);
+    
+    const response = await fetch(`${appUrl}/.netlify/functions/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options)
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log(`✓ Push notification sent: ${result.sent} delivered`);
+      return result;
+    } else {
+      console.error('Failed to send push notification:', await response.text());
+      return null;
+    }
+  } catch (error) {
+    console.error('Error sending push notification:', error);
+    // Don't throw - push failures shouldn't fail the webhook
+    return null;
+  }
+}
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -266,6 +293,17 @@ exports.handler = async (event, context) => {
             boothType: session.metadata?.boothType,
             transactionId: session.payment_intent || session.id
           });
+
+          // Send push notification
+          await sendPushNotification({
+            template: 'paymentReceived',
+            userId: vendorId,
+            data: {
+              amount: (session.amount_total / 100).toFixed(2),
+              description: session.metadata?.boothType || 'booth rental',
+              vendorName: session.metadata?.vendorName
+            }
+          });
         }
         break;
       }
@@ -345,6 +383,17 @@ exports.handler = async (event, context) => {
             amount: invoice.amount_paid / 100,
             boothType: invoice.metadata?.boothType,
             transactionId: invoice.id
+          });
+
+          // Send push notification
+          await sendPushNotification({
+            template: 'paymentReceived',
+            userId: vendorId,
+            data: {
+              amount: (invoice.amount_paid / 100).toFixed(2),
+              description: invoice.metadata?.boothType || 'booth rental',
+              vendorName: invoice.metadata?.vendorName
+            }
           });
         }
         break;
