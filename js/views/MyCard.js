@@ -1,3 +1,5 @@
+// MyCard.js - Digital Business Card Creation and Management
+// Last updated: 2026-02-04 12:45 PM
 import { getState, upsertAttendee, currentVendor } from "../store.js";
 import { Toast } from "../utils/ui.js";
 
