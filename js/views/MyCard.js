@@ -626,13 +626,12 @@ export default function MyCard(root, forceEdit = false) {
       uploadProfileImage?.addEventListener('click', () => profileImageFile.click());
       uploadBackgroundImage?.addEventListener('click', () => backgroundImageFile.click());
 
-      // Use Firebase Storage for persistent uploads (same as attendee path)
-      const { uploadImage } = await import('../firebase.js');
-
       profileImageFile?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         try {
+          // Import Firebase Storage uploader
+          const { uploadImage } = await import('../firebase.js');
           if (uploadProfileImage) { uploadProfileImage.disabled = true; uploadProfileImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
           const url = await uploadImage(file, 'attendees', (pct) => {
             if (uploadProfileImage) uploadProfileImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
@@ -651,6 +650,8 @@ export default function MyCard(root, forceEdit = false) {
         const file = e.target.files[0];
         if (!file) return;
         try {
+          // Import Firebase Storage uploader
+          const { uploadImage } = await import('../firebase.js');
           if (uploadBackgroundImage) { uploadBackgroundImage.disabled = true; uploadBackgroundImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
           const url = await uploadImage(file, 'attendees', (pct) => {
             if (uploadBackgroundImage) uploadBackgroundImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
