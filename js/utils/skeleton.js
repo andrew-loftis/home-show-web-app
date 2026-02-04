@@ -2,14 +2,14 @@
  * Skeleton loading components for professional loading states
  */
 
-// Base skeleton shimmer animation class
-const shimmer = "animate-pulse bg-gradient-to-r from-white/10 via-white/20 to-white/10 bg-[length:200%_100%]";
+// Base skeleton shimmer animation class - uses CSS class for theme awareness
+const shimmer = "skeleton-shimmer animate-pulse rounded";
 
 /**
  * Generic skeleton box
  */
 export function SkeletonBox(className = "") {
-  return `<div class="${shimmer} rounded ${className}"></div>`;
+  return `<div class="${shimmer} ${className}"></div>`;
 }
 
 /**
@@ -18,7 +18,7 @@ export function SkeletonBox(className = "") {
 export function SkeletonText(lines = 3, className = "") {
   const widths = ["w-full", "w-5/6", "w-4/6", "w-3/4", "w-2/3"];
   return Array(lines).fill(0).map((_, i) => 
-    `<div class="${shimmer} h-4 rounded ${widths[i % widths.length]} ${className}"></div>`
+    `<div class="${shimmer} h-4 ${widths[i % widths.length]} ${className}"></div>`
   ).join("");
 }
 
@@ -27,22 +27,22 @@ export function SkeletonText(lines = 3, className = "") {
  */
 export function SkeletonVendorCard() {
   return `
-    <div class="glass-card overflow-hidden border border-white/15">
+    <div class="glass-card overflow-hidden">
       <!-- Header -->
-      <div class="flex items-center gap-4 p-6 border-b border-white/20">
+      <div class="flex items-center gap-4 p-6 border-b border-glass-border">
         <div class="${shimmer} w-16 h-16 rounded-2xl"></div>
         <div class="flex-1 space-y-2">
-          <div class="${shimmer} h-6 w-3/4 rounded"></div>
-          <div class="${shimmer} h-4 w-1/2 rounded"></div>
+          <div class="${shimmer} h-6 w-3/4"></div>
+          <div class="${shimmer} h-4 w-1/2"></div>
         </div>
         <div class="${shimmer} h-10 w-20 rounded-xl"></div>
       </div>
       <!-- Image area -->
-      <div class="${shimmer} w-full h-80"></div>
+      <div class="${shimmer} w-full h-80 rounded-none"></div>
       <!-- Content -->
       <div class="p-6 space-y-4">
-        <div class="${shimmer} h-4 w-full rounded"></div>
-        <div class="${shimmer} h-4 w-5/6 rounded"></div>
+        <div class="${shimmer} h-4 w-full"></div>
+        <div class="${shimmer} h-4 w-5/6"></div>
         <div class="flex gap-3 pt-4">
           <div class="${shimmer} h-10 w-24 rounded-xl"></div>
           <div class="${shimmer} h-10 w-24 rounded-xl"></div>
@@ -59,12 +59,12 @@ export function SkeletonVendorRow() {
   return `
     <div class="glass-card p-3">
       <div class="flex items-center gap-4">
-        <div class="${shimmer} w-10 h-10 rounded"></div>
+        <div class="${shimmer} w-10 h-10"></div>
         <div class="flex-1 space-y-2">
-          <div class="${shimmer} h-5 w-1/3 rounded"></div>
-          <div class="${shimmer} h-3 w-1/4 rounded"></div>
+          <div class="${shimmer} h-5 w-1/3"></div>
+          <div class="${shimmer} h-3 w-1/4"></div>
         </div>
-        <div class="${shimmer} w-5 h-5 rounded"></div>
+        <div class="${shimmer} w-5 h-5"></div>
       </div>
     </div>
   `;

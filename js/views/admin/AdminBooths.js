@@ -86,14 +86,16 @@ export function renderBoothsTab() {
 /**
  * Load booths data and render the list
  * @param {HTMLElement} root - The root container element
+ * @param {Object} options - Additional options (includes showId for show filtering)
  */
-export async function loadBooths(root) {
+export async function loadBooths(root, options = {}) {
+  const { showId = null } = options;
   const boothsList = root.querySelector('#boothsList');
   const boothStats = root.querySelector('#boothStats');
   if (!boothsList) return;
 
   try {
-    console.log('[AdminBooths] Loading booths...');
+    console.log('[AdminBooths] Loading booths...', showId ? `for show: ${showId}` : '(all shows)');
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
 

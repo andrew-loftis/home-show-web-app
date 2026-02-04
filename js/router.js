@@ -27,6 +27,7 @@ const routes = {
   "/schedule": "Schedule",
   "/sponsors": "Sponsors",
   "/admin": "AdminDashboard",
+  "/admin-data": "AdminDataManager",
   "/more": "More"
 };
 

@@ -1,6 +1,8 @@
 import { getState, setRole, vendorLogout, setTheme, getTheme } from "../store.js";
 import { renderInstallButton, wireInstallButton } from "../utils/pwa.js";
 import { isNotificationSupported, getNotificationPermission, requestNotificationPermission, saveTokenToFirestore, getNotificationStatus } from "../utils/notifications.js";
+import { Toast } from "../utils/ui.js";
+import { handleAuthError } from "../utils/authErrors.js";
 
 export default async function More(root) {
   const state = getState();
@@ -42,63 +44,68 @@ export default async function More(root) {
 
   root.innerHTML = `
     <div class="container-glass fade-in">
-      <div class="text-center mb-6">
-        <h1 class="text-2xl md:text-3xl font-bold text-glass">Profile</h1>
-        <div class="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-white/10">
+      <!-- Profile header - compact -->
+      <div class="text-center mb-5">
+        <h1 class="text-xl font-bold text-glass">Profile</h1>
+        <div class="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-full bg-white/10 text-sm">
           <ion-icon name="${roleInfo.icon}" class="${roleInfo.color}"></ion-icon>
-          <span class="text-sm ${roleInfo.color} font-semibold">${roleInfo.label}</span>
+          <span class="${roleInfo.color} font-medium">${roleInfo.label}</span>
         </div>
         ${state.user ? `
-          <div class="mt-2 text-sm text-glass-secondary">Signed in as <span class="font-semibold truncate">${state.user.displayName || state.user.email}</span></div>
+          <div class="mt-1 text-xs text-glass-secondary truncate">${state.user.displayName || state.user.email}</div>
         ` : ``}
       </div>
       ${state.isAdmin ? `
-        <div class="glass-card p-4 md:p-6 mb-4 md:mb-6">
-          <h3 class="text-base md:text-lg font-semibold text-glass mb-3">Admin Tools</h3>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 mb-4">
-            <button class="glass-button p-3 text-sm touch-target" onclick="window.location.hash='/admin'">
+        <div class="glass-card mb-4">
+          <h3 class="text-sm font-semibold text-glass mb-3">Admin Tools</h3>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/admin'">
               <ion-icon name="settings-outline" class="mr-1"></ion-icon>Dashboard
             </button>
-            <button class="glass-button p-3 text-sm touch-target" onclick="window.location.hash='/vendors'">
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/vendors'">
               <ion-icon name="storefront-outline" class="mr-1"></ion-icon>Vendors
             </button>
             ${getVendorButton(vendorStatus)}
           </div>
-          <div class="border-t border-white/10 pt-4">
-            <div class="font-semibold mb-2 text-sm">Admin Management</div>
-            <form id="addAdminForm" class="flex flex-col sm:flex-row gap-2 mb-3">
-              <input type="email" required placeholder="Add admin email" class="glass-input flex-1 p-3 rounded border border-white/15 bg-white/10 text-glass text-sm" name="email">
-              <button class="brand-bg px-4 py-3 rounded text-sm touch-target">Add</button>
+          <div class="border-t border-white/10 pt-3">
+            <div class="font-medium mb-2 text-xs text-glass-secondary">Add Admin</div>
+            <form id="addAdminForm" class="flex gap-2 mb-2">
+              <input type="email" required placeholder="admin@email.com" class="flex-1 p-2.5 rounded text-sm" name="email">
+              <button class="brand-bg px-3 py-2.5 rounded text-xs touch-target">Add</button>
             </form>
-            <div id="adminList" class="grid gap-2 text-sm text-glass-secondary">Loading admins…</div>
+            <div id="adminList" class="text-xs text-glass-secondary">Loading admins…</div>
           </div>
         </div>
       ` : `
-        <div class="glass-card p-4 md:p-6 mb-4 md:mb-6">
-          <div class="text-sm text-glass-secondary mb-3">Quick Links</div>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+        <div class="glass-card mb-4">
+          <div class="text-xs text-glass-secondary mb-2">Quick Links</div>
+          <div class="grid grid-cols-3 gap-2">
             ${getVendorButton(vendorStatus)}
-            <button class="glass-button p-3 text-sm touch-target" onclick="window.location.hash='/saved-vendors'">
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/saved-vendors'">
               <ion-icon name="bookmark-outline" class="mr-1"></ion-icon>Saved
             </button>
-            <button class="glass-button p-3 text-sm touch-target col-span-2 md:col-span-1" onclick="window.location.hash='/cards'">
-              <ion-icon name="card-outline" class="mr-1"></ion-icon>My Cards
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/cards'">
+              <ion-icon name="card-outline" class="mr-1"></ion-icon>Cards
             </button>
           </div>
         </div>
       `}
-      <div class="glass-card p-4 md:p-6">
-        <h3 class="text-base md:text-lg font-semibold text-glass mb-3">Account</h3>
+      <div class="glass-card">
+        <h3 class="text-sm font-semibold text-glass mb-3">Account</h3>
         ${state.user ? `
-          <div class="mb-4">
-            <button class="brand-bg p-3 w-full sm:w-auto text-sm touch-target" id="signOutBtn">
+          <div class="mb-3 space-y-2">
+            <button class="brand-bg p-2.5 w-full text-sm touch-target" id="signOutBtn">
               <ion-icon name="log-out-outline" class="mr-1"></ion-icon>Sign out
             </button>
           </div>
         ` : `
-          <div class="mb-4">
+          <div class="mb-3 space-y-2">
             <button class="brand-bg p-3 w-full text-sm touch-target" id="googleSignInBtn">
               <ion-icon name="logo-google" class="mr-1"></ion-icon>Sign in with Google
+            </button>
+            <!-- Sign in with Apple (iOS only) -->
+            <button class="glass-button p-3 w-full text-sm touch-target hidden" id="appleSignInBtn" style="background: #000; color: #fff; border-color: #333;">
+              <ion-icon name="logo-apple" class="mr-1"></ion-icon>Sign in with Apple
             </button>
           </div>
           <form id="emailAuthForm" class="space-y-3 mb-4">
@@ -207,6 +214,59 @@ export default async function More(root) {
   const notificationBtn = root.querySelector('#notificationBtn');
   if (notificationBtn) {
     notificationBtn.onclick = async () => {
+      // Native (Capacitor) push flow
+      try {
+        const { isNative, requestPushPermissions, setupPushListeners } = await import('../utils/native.js');
+        if (isNative()) {
+          notificationBtn.disabled = true;
+          notificationBtn.innerHTML = '<ion-icon name="hourglass-outline" class="mr-1"></ion-icon>Enabling...';
+
+          const allowed = await requestPushPermissions();
+          if (!allowed) {
+            notificationBtn.innerHTML = '<ion-icon name="notifications-off-outline" class="mr-1"></ion-icon>Blocked';
+            root.querySelector('#notificationStatus').textContent = 'Permission denied';
+            notificationBtn.disabled = false;
+            return;
+          }
+
+          const token = await new Promise((resolve, reject) => {
+            let settled = false;
+            const timeout = setTimeout(() => {
+              if (settled) return;
+              settled = true;
+              reject(new Error('Timed out registering for push notifications'));
+            }, 12000);
+
+            setupPushListeners({
+              onRegistration: (t) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                resolve(t);
+              },
+              onRegistrationError: (err) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                reject(err instanceof Error ? err : new Error('Push registration failed'));
+              }
+            });
+          });
+
+          if (state.user && token) {
+            await saveTokenToFirestore(state.user.uid, token);
+          }
+
+          notificationBtn.innerHTML = '<ion-icon name="notifications" class="mr-1"></ion-icon>Enabled';
+          notificationBtn.classList.add('bg-green-500/20', 'border-green-500/30');
+          root.querySelector('#notificationStatus').textContent = 'Push notifications enabled';
+          notificationBtn.disabled = false;
+          return;
+        }
+      } catch {
+        // fall through to web flow
+      }
+
       const permission = getNotificationPermission();
       
       if (permission === 'denied') {
@@ -218,7 +278,7 @@ export default async function More(root) {
         // Already enabled - could show a test notification
         const { showLocalNotification } = await import('../utils/notifications.js');
         showLocalNotification('Notifications Active!', {
-          body: 'You\'ll receive updates about Winn-Pro Show.'
+          body: 'You\'ll receive updates about WinnPro Shows.'
         });
         return;
       }
@@ -226,6 +286,15 @@ export default async function More(root) {
       // Request permission
       notificationBtn.disabled = true;
       notificationBtn.innerHTML = '<ion-icon name="hourglass-outline" class="mr-1"></ion-icon>Requesting...';
+
+      // If VAPID key isn't configured, web token generation will fail.
+      // Allow a runtime override via localStorage for quick setup.
+      if (!window.FCM_VAPID_KEY && !localStorage.getItem('fcmVapidKey')) {
+        const key = prompt('Push notifications require the Firebase Web Push VAPID key. Paste it here to enable notifications on this device:');
+        if (key && key.trim()) {
+          localStorage.setItem('fcmVapidKey', key.trim());
+        }
+      }
       
       const result = await requestNotificationPermission();
       
@@ -251,9 +320,26 @@ export default async function More(root) {
   wireInstallButton();
 
   // Auth buttons
-  import("../firebase.js").then(({ signInWithGoogle, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser, listAdminEmails, addAdminEmail, removeAdminEmail }) => {
+  import("../firebase.js").then(({ signInWithGoogle, signInWithApple, signOutUser, signInWithEmailPassword, signUpWithEmailPassword, signInAnonymouslyUser, listAdminEmails, addAdminEmail, removeAdminEmail, isIOSDevice }) => {
     const signInBtn = root.querySelector('#googleSignInBtn');
     const signOutBtn = root.querySelector('#signOutBtn');
+    const appleSignInBtn = root.querySelector('#appleSignInBtn');
+    
+    // Show Apple Sign In button on iOS
+    if (appleSignInBtn && isIOSDevice()) {
+      appleSignInBtn.classList.remove('hidden');
+      appleSignInBtn.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          console.log('[More] Starting Apple sign in...');
+          await signInWithApple();
+          console.log('[More] Apple sign in successful');
+        } catch (error) {
+          handleAuthError(error, 'Apple');
+        }
+      };
+    }
+    
   if (signInBtn) signInBtn.onclick = async (e) => { 
     e.preventDefault();
     try { 
@@ -261,17 +347,14 @@ export default async function More(root) {
       await signInWithGoogle(); 
       console.log('[More] Google sign in successful');
     } catch (error) {
-      console.error('[More] Google sign in failed:', error);
-      console.error('[More] Error code:', error.code);
-      console.error('[More] Error message:', error.message);
-      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        // User closed popup or multiple popups, ignore
-      } else {
-        Toast('Sign in failed: ' + (error.code || error.message || 'Unknown error'));
-      }
+      handleAuthError(error, 'Google');
     }
   };
-  if (signOutBtn) signOutBtn.onclick = async () => { try { await signOutUser(); } catch {} };
+  if (signOutBtn) signOutBtn.onclick = async () => {
+    try {
+      await signOutUser();
+    } catch {}
+  };
 
     const emailForm = root.querySelector('#emailAuthForm');
     if (emailForm) {
@@ -283,18 +366,22 @@ export default async function More(root) {
         try {
           await signInWithEmailPassword(email, password);
         } catch (err) {
-          import("../utils/ui.js").then(({ Toast }) => Toast('Sign-in failed'));
+          handleAuthError(err, 'Email');
         }
       };
       const signupBtn = root.querySelector('#signupBtn');
       if (signupBtn) signupBtn.onclick = async () => {
         const email = root.querySelector('input[name="email"]').value;
         const password = root.querySelector('input[name="password"]').value;
+        if (!email || !password) {
+          Toast('Please enter both email and password.');
+          return;
+        }
         try {
           await signUpWithEmailPassword(email, password);
-          import("../utils/ui.js").then(({ Toast }) => Toast('Account created'));
+          Toast('Account created successfully!');
         } catch (err) {
-          import("../utils/ui.js").then(({ Toast }) => Toast('Sign-up failed'));
+          handleAuthError(err, 'Sign up');
         }
       };
     }

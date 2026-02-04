@@ -1,7 +1,7 @@
-﻿// Winn-Pro Service Worker v4
+﻿// WinnPro Shows Service Worker v5
 // Smart caching with reliable updates
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = 'winnpro-' + CACHE_VERSION;
 
 const PRECACHE_ASSETS = ['/offline.html'];
@@ -81,10 +81,10 @@ self.addEventListener('push', function(event) {
   console.log('[SW] Push received');
   
   let notificationData = {
-    title: 'Winn-Pro Show',
+    title: 'WinnPro Shows',
     body: 'You have a new notification',
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'default',
     data: {}
   };

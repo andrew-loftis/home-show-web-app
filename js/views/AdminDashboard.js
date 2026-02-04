@@ -2,7 +2,7 @@
  * Admin Dashboard - Main Orchestrator
  * Coordinates all admin tab modules
  * 
- * V-2.22 - Modular architecture refactor
+ * V-2.23 - Added show filter for multi-show admin management
  */
 
 import { getState } from "../store.js";
@@ -17,6 +17,11 @@ import { renderUsersTab, loadUsers } from "./admin/AdminUsers.js";
 import { renderBoothsTab, loadBooths } from "./admin/AdminBooths.js";
 import { renderPaymentsTab, loadPayments } from "./admin/AdminPayments.js";
 import { renderAdsTab, loadAds as loadAdsTab } from "./admin/AdminAds.js";
+import { renderImportTab, setupImportListeners } from "./admin/AdminImport.js";
+import { renderShowsTab, loadShows as loadShowsTab } from "./admin/AdminShows.js";
+
+// Import shows for admin filter
+import { SHOWS, getAllShows, getCurrentShowId, setCurrentShow, getCurrentShow, DEFAULT_SHOW_ID, initShows } from "../shows.js";
 
 export default function AdminDashboard(root) {
   const state = getState();
@@ -35,73 +40,239 @@ export default function AdminDashboard(root) {
   }
 
   let activeTab = 'overview';
+  let sidebarOpen = false;
+  
+  // Admin show filter - tracks which show admin is viewing
+  let adminShowId = getCurrentShowId();
+  const adminShow = () => SHOWS[adminShowId] || getCurrentShow();
+  const allShows = getAllShows();
+
+  // Tab configuration - organized into sections
+  const navSections = [
+    {
+      title: 'Dashboard',
+      items: [
+        { key: 'overview', icon: 'grid-outline', label: 'Overview' },
+        { key: 'analytics', icon: 'bar-chart-outline', label: 'Analytics' },
+      ]
+    },
+    {
+      title: 'Management',
+      items: [
+        { key: 'vendors', icon: 'storefront-outline', label: 'Vendors' },
+        { key: 'users', icon: 'people-outline', label: 'Users' },
+        { key: 'leads', icon: 'swap-horizontal-outline', label: 'Leads' },
+        { key: 'booths', icon: 'map-outline', label: 'Booth Map' },
+      ]
+    },
+    {
+      title: 'Operations',
+      items: [
+        { key: 'import', icon: 'cloud-upload-outline', label: 'Import Data' },
+        { key: 'payments', icon: 'card-outline', label: 'Payments' },
+        { key: 'ads', icon: 'megaphone-outline', label: 'Ads' },
+      ]
+    },
+    {
+      title: 'Settings',
+      items: [
+        { key: 'shows', icon: 'calendar-outline', label: 'Shows' },
+        { key: 'admins', icon: 'shield-checkmark-outline', label: 'Admin Users' },
+      ]
+    }
+  ];
 
   // ========================================
   // Main Render
   // ========================================
   function render() {
     root.innerHTML = `
-      <div class="glass-container">
-        <!-- Header -->
-        <div class="p-4 md:p-6 border-b border-glass-border">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 class="text-2xl md:text-3xl font-bold text-glass flex items-center gap-3">
-                <ion-icon name="settings-outline" class="text-brand"></ion-icon>
-                Admin Dashboard
-              </h1>
-              <p class="text-glass-secondary mt-1 text-sm">Complete system management</p>
-            </div>
-            <div class="text-xs text-glass-secondary bg-glass-surface/30 px-3 py-2 rounded-lg">
-              <span class="text-brand">${state.user?.email}</span>
-            </div>
+      <div class="admin-layout">
+        <!-- Mobile Header -->
+        <div class="admin-mobile-header lg:hidden">
+          <button id="sidebarToggle" class="admin-menu-btn">
+            <ion-icon name="menu-outline"></ion-icon>
+          </button>
+          <div class="admin-mobile-title">
+            <ion-icon name="settings-outline" class="text-brand"></ion-icon>
+            <span>Admin</span>
+          </div>
+          <div class="admin-user-badge">
+            ${state.user?.email?.split('@')[0]?.substring(0, 8)}
           </div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="admin-tabs border-b border-glass-border bg-glass-surface/20">
-          ${renderTabButton('overview', 'stats-chart-outline', 'Overview')}
-          ${renderTabButton('analytics', 'bar-chart-outline', 'Analytics')}
-          ${renderTabButton('vendors', 'storefront-outline', 'Vendors')}
-          ${renderTabButton('users', 'people-outline', 'Users')}
-          ${renderTabButton('booths', 'grid-outline', 'Booths')}
-          ${renderTabButton('payments', 'card-outline', 'Payments')}
-          ${renderTabButton('ads', 'megaphone-outline', 'Ads')}
-          ${renderTabButton('admins', 'shield-checkmark-outline', 'Admins')}
-        </div>
+        <!-- Sidebar Overlay (mobile) -->
+        <div id="sidebarOverlay" class="admin-sidebar-overlay ${sidebarOpen ? 'active' : ''}"></div>
 
-        <!-- Tab Content -->
-        <div class="p-4 md:p-6">
-          <div id="tabContent">
-            ${renderTabContent()}
+        <!-- Sidebar -->
+        <aside id="adminSidebar" class="admin-sidebar ${sidebarOpen ? 'open' : ''}">
+          <!-- Sidebar Header -->
+          <div class="admin-sidebar-header">
+            <div class="admin-logo">
+              <div class="admin-logo-icon">
+                <img src="/assets/House Logo Only.png" alt="WinnPro" class="w-8 h-8 object-contain">
+              </div>
+              <div class="admin-logo-text">
+                <div class="admin-logo-title">WinnPro</div>
+                <div class="admin-logo-subtitle">Admin Panel</div>
+              </div>
+            </div>
+            <button id="sidebarClose" class="admin-sidebar-close lg:hidden">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
           </div>
-        </div>
+
+          <!-- Navigation -->
+          <nav class="admin-nav">
+            ${navSections.map(section => `
+              <div class="admin-nav-section">
+                <div class="admin-nav-section-title">${section.title}</div>
+                <ul class="admin-nav-list">
+                  ${section.items.map(item => `
+                    <li>
+                      <button class="admin-nav-item ${activeTab === item.key ? 'active' : ''}" data-tab="${item.key}">
+                        <ion-icon name="${item.icon}"></ion-icon>
+                        <span>${item.label}</span>
+                        ${activeTab === item.key ? '<div class="admin-nav-active-indicator"></div>' : ''}
+                      </button>
+                    </li>
+                  `).join('')}
+                </ul>
+              </div>
+            `).join('')}
+            
+            <!-- Show Filter -->
+            <div class="admin-show-filter">
+              ${allShows.map(show => `
+                <button class="admin-show-pill ${show.id === adminShowId ? 'active' : ''} ${show.season}" data-show-id="${show.id}">
+                  ${show.shortName}
+                </button>
+              `).join('')}
+            </div>
+          </nav>
+
+          <!-- Sidebar Footer -->
+          <div class="admin-sidebar-footer">
+            <div class="admin-user-info">
+              <div class="admin-user-avatar">
+                ${state.user?.email?.charAt(0)?.toUpperCase() || 'A'}
+              </div>
+              <div class="admin-user-details">
+                <div class="admin-user-name">${state.user?.displayName || state.user?.email?.split('@')[0] || 'Admin'}</div>
+                <div class="admin-user-email">${state.user?.email || ''}</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+          <!-- Desktop Header -->
+          <header class="admin-content-header hidden lg:flex">
+            <div class="admin-page-title">
+              <h1>${getActiveTabLabel()}</h1>
+              <p class="admin-page-subtitle">${getActiveTabDescription()}</p>
+            </div>
+            <div class="admin-header-actions">
+              <div class="admin-current-show-badge">
+                <div class="admin-show-badge-indicator ${adminShow().season === 'spring' ? 'spring' : 'fall'}"></div>
+                <span>${adminShow().shortName}</span>
+              </div>
+              <div class="admin-user-badge-desktop">
+                <ion-icon name="person-circle-outline"></ion-icon>
+                ${state.user?.email?.split('@')[0]}
+              </div>
+            </div>
+          </header>
+
+          <!-- Content Area -->
+          <div class="admin-content">
+            <div id="tabContent">
+              ${renderTabContent()}
+            </div>
+          </div>
+        </main>
       </div>
     `;
 
+    // Wire up sidebar toggle
+    const sidebarToggle = root.querySelector('#sidebarToggle');
+    const sidebarClose = root.querySelector('#sidebarClose');
+    const sidebarOverlay = root.querySelector('#sidebarOverlay');
+    
+    if (sidebarToggle) {
+      sidebarToggle.onclick = () => {
+        sidebarOpen = true;
+        render();
+      };
+    }
+    
+    if (sidebarClose) {
+      sidebarClose.onclick = () => {
+        sidebarOpen = false;
+        render();
+      };
+    }
+    
+    if (sidebarOverlay) {
+      sidebarOverlay.onclick = () => {
+        sidebarOpen = false;
+        render();
+      };
+    }
+
     // Wire up tab navigation
-    root.querySelectorAll('.tab-btn').forEach(btn => {
+    root.querySelectorAll('.admin-nav-item').forEach(btn => {
       btn.onclick = () => {
         activeTab = btn.dataset.tab;
+        sidebarOpen = false; // Close sidebar on mobile after selection
         render();
         initializeTab();
+      };
+    });
+
+    // Wire up show selector
+    root.querySelectorAll('.admin-show-pill').forEach(btn => {
+      btn.onclick = () => {
+        const newShowId = btn.dataset.showId;
+        if (newShowId !== adminShowId) {
+          adminShowId = newShowId;
+          // Also update the global show context (optional - could keep them separate)
+          setCurrentShow(newShowId);
+          // Re-render and reload data for the new show
+          render();
+          initializeTab();
+          Toast(`Now viewing: ${adminShow().shortName}`, 'success');
+        }
       };
     });
 
     initializeTab();
   }
 
-  function renderTabButton(tab, icon, label) {
-    const isActive = activeTab === tab;
-    const activeClass = isActive 
-      ? 'bg-brand/20 text-brand border border-brand/30' 
-      : 'text-glass-secondary hover:text-glass hover:bg-white/5';
-    return `
-      <button class="tab-btn ${activeClass}" data-tab="${tab}">
-        <ion-icon name="${icon}"></ion-icon>
-        <span>${label}</span>
-      </button>
-    `;
+  function getActiveTabLabel() {
+    for (const section of navSections) {
+      const item = section.items.find(i => i.key === activeTab);
+      if (item) return item.label;
+    }
+    return 'Dashboard';
+  }
+
+  function getActiveTabDescription() {
+    const descriptions = {
+      overview: 'System statistics and quick insights',
+      analytics: 'Detailed charts and performance metrics',
+      vendors: 'Manage vendor accounts and profiles',
+      users: 'View and manage attendee accounts',
+      leads: 'All card swaps and lead exchanges',
+      booths: 'Configure booth layout and assignments',
+      import: 'Import vendor data from CSV or other sources',
+      payments: 'Process payments and view transactions',
+      ads: 'Manage promotional content and banners',
+      admins: 'Manage admin user access'
+    };
+    return descriptions[activeTab] || '';
   }
 
   function renderTabContent() {
@@ -112,6 +283,10 @@ export default function AdminDashboard(root) {
         return renderAnalyticsDashboard();
       case 'vendors':
         return renderVendorsTab();
+      case 'import':
+        return renderImportTab();
+      case 'leads':
+        return renderLeadsTab();
       case 'users':
         return renderUsersTab();
       case 'booths':
@@ -120,6 +295,8 @@ export default function AdminDashboard(root) {
         return renderPaymentsTab();
       case 'ads':
         return renderAdsTab();
+      case 'shows':
+        return renderShowsTab();
       case 'admins':
         return renderAdminsTab();
       default:
@@ -131,6 +308,9 @@ export default function AdminDashboard(root) {
   // Tab Initializers
   // ========================================
   async function initializeTab() {
+    // Get current show filter for data queries
+    const showFilter = { showId: adminShowId };
+    
     switch (activeTab) {
       case 'overview':
         await loadOverview();
@@ -139,19 +319,28 @@ export default function AdminDashboard(root) {
         await loadAnalytics();
         break;
       case 'vendors':
-        await loadVendors(root, {}, showVendorProfileModal, showStripePaymentModal);
+        await loadVendors(root, showFilter, showVendorProfileModal, showStripePaymentModal);
+        break;
+      case 'import':
+        await setupImportListeners(root);
+        break;
+      case 'leads':
+        await loadLeads();
         break;
       case 'users':
-        await loadUsers(root, showUserProfileModal);
+        await loadUsers(root, showUserProfileModal, showFilter);
         break;
       case 'booths':
-        await loadBooths(root);
+        await loadBooths(root, showFilter);
         break;
       case 'payments':
-        await loadPayments(root, {}, showStripePaymentModal);
+        await loadPayments(root, showFilter, showStripePaymentModal);
         break;
       case 'ads':
-        await loadAdsTab(root);
+        await loadAdsTab(root, showFilter);
+        break;
+      case 'shows':
+        await loadShowsTab(root);
         break;
       case 'admins':
         await loadAdmins();
@@ -186,15 +375,29 @@ export default function AdminDashboard(root) {
         fsm.getDocs(fsm.collection(db, 'boothLayout'))
       ]);
 
-      const totalVendors = vendorsSnap.size;
-      const totalUsers = attendeesSnap.size + vendorsSnap.size;
-      const totalBooths = boothsSnap.size;
-      
+      // Filter by selected show (legacy data without showId belongs to default show)
+      let totalVendors = 0;
       let totalRevenue = 0;
       vendorsSnap.forEach(doc => {
         const data = doc.data();
-        if (data.totalPrice) totalRevenue += data.totalPrice;
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          totalVendors++;
+          if (data.totalPrice) totalRevenue += data.totalPrice;
+        }
       });
+      
+      let totalAttendees = 0;
+      attendeesSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          totalAttendees++;
+        }
+      });
+      
+      const totalUsers = totalAttendees + totalVendors;
+      const totalBooths = boothsSnap.size;
 
       if (statsContainer) {
         statsContainer.innerHTML = `
@@ -252,14 +455,33 @@ export default function AdminDashboard(root) {
         fsm.getDocs(fsm.collection(db, 'leads'))
       ]);
 
+      // Filter by selected show (legacy data without showId belongs to default show)
       const vendors = [];
-      vendorsSnap.forEach(doc => vendors.push({ id: doc.id, ...doc.data() }));
+      vendorsSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          vendors.push({ id: doc.id, ...data });
+        }
+      });
       
       const attendees = [];
-      attendeesSnap.forEach(doc => attendees.push({ id: doc.id, ...doc.data() }));
+      attendeesSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          attendees.push({ id: doc.id, ...data });
+        }
+      });
       
       const leads = [];
-      leadsSnap.forEach(doc => leads.push({ id: doc.id, ...doc.data() }));
+      leadsSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          leads.push({ id: doc.id, ...data });
+        }
+      });
 
       await initAnalyticsCharts({
         vendors,
@@ -275,6 +497,262 @@ export default function AdminDashboard(root) {
     } catch (error) {
       console.error('[AdminDashboard] Failed to load analytics:', error);
     }
+  }
+
+  // ========================================
+  // Leads Tab (All swapped cards per company)
+  // ========================================
+  function renderLeadsTab() {
+    return `
+      <div class="space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+          <h2 class="text-2xl font-bold text-glass">All Leads (Card Swaps)</h2>
+          <div class="flex gap-3">
+            <select id="leadsVendorFilter" class="bg-glass-surface border border-glass-border rounded px-3 py-2 text-glass text-sm">
+              <option value="all">All Vendors</option>
+            </select>
+            <button class="bg-brand px-4 py-2 rounded text-white" id="refreshLeadsBtn">
+              <ion-icon name="refresh-outline" class="mr-1"></ion-icon>Refresh
+            </button>
+            <button class="bg-green-600 px-4 py-2 rounded text-white" id="exportLeadsBtn">
+              <ion-icon name="download-outline" class="mr-1"></ion-icon>Export CSV
+            </button>
+          </div>
+        </div>
+        <div id="leadsStats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+        <div id="leadsList" class="space-y-3">
+          <div class="glass-card p-8 text-center text-glass-secondary">
+            Loading leads...
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  let allLeadsData = [];
+  let allVendorsMap = {};
+
+  async function loadLeads() {
+    const listEl = root.querySelector('#leadsList');
+    const statsEl = root.querySelector('#leadsStats');
+    const filterEl = root.querySelector('#leadsVendorFilter');
+    const refreshBtn = root.querySelector('#refreshLeadsBtn');
+    const exportBtn = root.querySelector('#exportLeadsBtn');
+    if (!listEl) return;
+
+    // Wire up refresh
+    if (refreshBtn && !refreshBtn._listenerAdded) {
+      refreshBtn._listenerAdded = true;
+      refreshBtn.addEventListener('click', () => loadLeads());
+    }
+
+    // Wire up export
+    if (exportBtn && !exportBtn._listenerAdded) {
+      exportBtn._listenerAdded = true;
+      exportBtn.addEventListener('click', () => exportLeadsCsv());
+    }
+
+    try {
+      const db = await getAdminDb();
+      const fsm = await getFirestoreModule();
+
+      // Load all vendors for the filter dropdown (filtered by show)
+      const vendorsSnap = await fsm.getDocs(fsm.collection(db, 'vendors'));
+      allVendorsMap = {};
+      vendorsSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          allVendorsMap[doc.id] = { id: doc.id, ...data };
+        }
+      });
+
+      // Populate vendor filter dropdown
+      if (filterEl) {
+        filterEl.innerHTML = '<option value="all">All Vendors</option>' +
+          Object.values(allVendorsMap)
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+            .map(v => `<option value="${v.id}">${v.name || v.companyName || v.id}</option>`)
+            .join('');
+        
+        if (!filterEl._listenerAdded) {
+          filterEl._listenerAdded = true;
+          filterEl.addEventListener('change', () => renderLeadsList());
+        }
+      }
+
+      // Load all leads (filtered by show)
+      const leadsSnap = await fsm.getDocs(fsm.collection(db, 'leads'));
+      allLeadsData = [];
+      leadsSnap.forEach(doc => {
+        const data = doc.data();
+        const docShowId = data.showId || DEFAULT_SHOW_ID;
+        if (docShowId === adminShowId) {
+          allLeadsData.push({ id: doc.id, ...data });
+        }
+      });
+
+      // Sort by date (newest first)
+      allLeadsData.sort((a, b) => {
+        const aDate = a.createdAt?.toDate?.() || new Date(a.createdAt || 0);
+        const bDate = b.createdAt?.toDate?.() || new Date(b.createdAt || 0);
+        return bDate - aDate;
+      });
+
+      renderLeadsStats();
+      renderLeadsList();
+
+    } catch (error) {
+      console.error('[AdminDashboard] Failed to load leads:', error);
+      listEl.innerHTML = `
+        <div class="glass-card p-8 text-center text-red-400">
+          <ion-icon name="warning-outline" class="text-3xl mb-2"></ion-icon>
+          <p>Failed to load leads</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderLeadsStats() {
+    const statsEl = root.querySelector('#leadsStats');
+    if (!statsEl) return;
+
+    const totalLeads = allLeadsData.length;
+    const uniqueVendors = new Set(allLeadsData.map(l => l.vendorId)).size;
+    const uniqueAttendees = new Set(allLeadsData.map(l => l.attendeeId || l.attendee_id)).size;
+    const todayCount = allLeadsData.filter(l => {
+      const date = l.createdAt?.toDate?.() || new Date(l.createdAt || 0);
+      const today = new Date();
+      return date.toDateString() === today.toDateString();
+    }).length;
+
+    statsEl.innerHTML = `
+      <div class="glass-card p-4 text-center">
+        <div class="text-3xl font-bold text-brand">${totalLeads}</div>
+        <div class="text-sm text-glass-secondary">Total Leads</div>
+      </div>
+      <div class="glass-card p-4 text-center">
+        <div class="text-3xl font-bold text-green-400">${todayCount}</div>
+        <div class="text-sm text-glass-secondary">Today</div>
+      </div>
+      <div class="glass-card p-4 text-center">
+        <div class="text-3xl font-bold text-blue-400">${uniqueVendors}</div>
+        <div class="text-sm text-glass-secondary">Vendors w/ Leads</div>
+      </div>
+      <div class="glass-card p-4 text-center">
+        <div class="text-3xl font-bold text-purple-400">${uniqueAttendees}</div>
+        <div class="text-sm text-glass-secondary">Unique Attendees</div>
+      </div>
+    `;
+  }
+
+  function renderLeadsList() {
+    const listEl = root.querySelector('#leadsList');
+    const filterEl = root.querySelector('#leadsVendorFilter');
+    if (!listEl) return;
+
+    const vendorFilter = filterEl?.value || 'all';
+    let filteredLeads = allLeadsData;
+
+    if (vendorFilter !== 'all') {
+      filteredLeads = filteredLeads.filter(l => l.vendorId === vendorFilter);
+    }
+
+    if (filteredLeads.length === 0) {
+      listEl.innerHTML = `
+        <div class="glass-card p-8 text-center text-glass-secondary">
+          <ion-icon name="swap-horizontal-outline" class="text-4xl mb-2"></ion-icon>
+          <p>No leads found${vendorFilter !== 'all' ? ' for this vendor' : ''}</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Group leads by vendor
+    const groupedByVendor = {};
+    filteredLeads.forEach(lead => {
+      const vendorId = lead.vendorId || 'unknown';
+      if (!groupedByVendor[vendorId]) {
+        groupedByVendor[vendorId] = [];
+      }
+      groupedByVendor[vendorId].push(lead);
+    });
+
+    listEl.innerHTML = Object.entries(groupedByVendor).map(([vendorId, leads]) => {
+      const vendor = allVendorsMap[vendorId] || {};
+      const vendorName = vendor.name || vendor.companyName || 'Unknown Vendor';
+
+      return `
+        <div class="glass-card p-4">
+          <div class="flex items-center justify-between mb-3 pb-3 border-b border-glass-border">
+            <div>
+              <h3 class="text-lg font-semibold text-glass">${vendorName}</h3>
+              <p class="text-sm text-glass-secondary">${leads.length} lead${leads.length !== 1 ? 's' : ''} captured</p>
+            </div>
+            <span class="bg-brand/20 text-brand px-3 py-1 rounded text-sm font-medium">${vendor.category || 'N/A'}</span>
+          </div>
+          <div class="space-y-2">
+            ${leads.map(lead => {
+              const name = lead.name || lead.attendeeName || 'Unknown';
+              const email = lead.email || lead.attendeeEmail || '';
+              const phone = lead.phone || lead.attendeePhone || '';
+              const date = lead.createdAt?.toDate?.() || new Date(lead.createdAt || 0);
+              const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              
+              return `
+                <div class="bg-glass-surface/50 rounded p-3 flex items-center justify-between">
+                  <div>
+                    <p class="font-medium text-glass">${name}</p>
+                    <div class="text-sm text-glass-secondary flex flex-wrap gap-3">
+                      ${email ? `<span><ion-icon name="mail-outline" class="mr-1"></ion-icon>${email}</span>` : ''}
+                      ${phone ? `<span><ion-icon name="call-outline" class="mr-1"></ion-icon>${phone}</span>` : ''}
+                    </div>
+                    ${lead.notes ? `<p class="text-xs text-glass-secondary mt-1">Notes: ${lead.notes}</p>` : ''}
+                  </div>
+                  <div class="text-xs text-glass-secondary text-right">
+                    ${dateStr}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function exportLeadsCsv() {
+    if (allLeadsData.length === 0) {
+      Toast('No leads to export');
+      return;
+    }
+
+    const headers = ['Vendor', 'Attendee Name', 'Email', 'Phone', 'Notes', 'Date'];
+    const rows = allLeadsData.map(lead => {
+      const vendor = allVendorsMap[lead.vendorId] || {};
+      const date = lead.createdAt?.toDate?.() || new Date(lead.createdAt || 0);
+      return [
+        vendor.name || vendor.companyName || lead.vendorId || '',
+        lead.name || lead.attendeeName || '',
+        lead.email || lead.attendeeEmail || '',
+        lead.phone || lead.attendeePhone || '',
+        lead.notes || '',
+        date.toISOString()
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    Toast('Leads exported successfully');
   }
 
   // ========================================
@@ -574,7 +1052,7 @@ export default function AdminDashboard(root) {
           await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), updatedData);
           closeModal();
           Toast('Vendor profile updated successfully!');
-          await loadVendors(root, {}, showVendorProfileModal, showStripePaymentModal);
+          await loadVendors(root, { showId: adminShowId }, showVendorProfileModal, showStripePaymentModal);
           
         } catch (error) {
           console.error('[AdminDashboard] Failed to update vendor:', error);
@@ -819,7 +1297,8 @@ export default function AdminDashboard(root) {
           description: description,
           paymentType: paymentType,
           vendorName: vendorNameVal,
-          vendorId: vendorIdVal
+          vendorId: vendorIdVal,
+          showId: adminShowId || ''
         };
 
         const response = await fetch('/.netlify/functions/create-invoice', {
@@ -842,6 +1321,28 @@ export default function AdminDashboard(root) {
               stripeInvoiceUrl: result.invoiceUrl || null,
               invoiceAmount: amount
             });
+
+            // Send push notification to the vendor (if we can resolve ownerUid)
+            try {
+              const vendorSnap = await fsm.getDoc(fsm.doc(db, 'vendors', vendorIdVal));
+              const vendorData = vendorSnap.exists() ? vendorSnap.data() : null;
+              const ownerUid = vendorData?.ownerUid;
+              if (ownerUid) {
+                const { sendPushNotification } = await import('../utils/notifications.js');
+                await sendPushNotification({
+                  template: 'invoiceSent',
+                  userId: ownerUid,
+                  data: {
+                    amount: amount.toFixed(2),
+                    invoiceUrl: result.invoiceUrl || '',
+                    vendorId: vendorIdVal,
+                    showId: adminShowId || ''
+                  }
+                });
+              }
+            } catch (pushErr) {
+              console.warn('[AdminDashboard] Push notification failed (non-blocking):', pushErr);
+            }
           } catch (firestoreError) {
             console.error('[AdminDashboard] Failed to update vendor payment status:', firestoreError);
           }
@@ -849,7 +1350,7 @@ export default function AdminDashboard(root) {
           closeModal();
           await AlertDialog('Invoice Sent', `Invoice sent successfully!\n\nInvoice ID: ${result.invoiceId}\nAmount: $${amount.toFixed(2)}\nSent to: ${vendorEmailVal}`, { type: 'success' });
           
-          await loadVendors(root, {}, showVendorProfileModal, showStripePaymentModal);
+          await loadVendors(root, { showId: adminShowId }, showVendorProfileModal, showStripePaymentModal);
         } else {
           throw new Error(result.error || 'Failed to create invoice');
         }

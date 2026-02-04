@@ -1,5 +1,6 @@
 ﻿import { getState } from "../store.js";
 import { Toast } from "../utils/ui.js";
+import { navigate } from "../router.js";
 
 // Vendor categories (same as registration)
 const CATEGORIES = [
@@ -122,10 +123,10 @@ export default async function EditVendorProfile(root) {
       
       const { getDb } = await import("../firebase.js");
       const db = getDb();
-      const { doc, updateDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { doc, updateDoc, serverTimestamp, deleteField } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
       
-      // Save both core data and profile data
-      await updateDoc(doc(db, 'vendors', vendor.id), { 
+      // Build update data
+      const updateData = { 
         name: coreData.name.trim(),
         category: coreData.category,
         contactEmail: coreData.contactEmail.trim(),
@@ -133,10 +134,22 @@ export default async function EditVendorProfile(root) {
         website: coreData.website.trim(),
         socialMedia: coreData.socialMedia,
         profile: { ...profile }, 
-        updatedAt: serverTimestamp() 
-      });
+        updatedAt: serverTimestamp()
+      };
+      
+      // If vendor was previously denied, clear the denial and set back to pending
+      if (vendor.denied) {
+        updateData.denied = deleteField();
+        updateData.denialReason = deleteField();
+        updateData.deniedAt = deleteField();
+        updateData.approved = false; // Set back to pending for re-review
+      }
+      
+      // Save both core data and profile data
+      await updateDoc(doc(db, 'vendors', vendor.id), updateData);
       
       // Update local vendor object
+      const wasResubmitted = vendor.denied;
       vendor.name = coreData.name.trim();
       vendor.category = coreData.category;
       vendor.contactEmail = coreData.contactEmail.trim();
@@ -144,10 +157,18 @@ export default async function EditVendorProfile(root) {
       vendor.website = coreData.website.trim();
       vendor.socialMedia = coreData.socialMedia;
       vendor.profile = { ...profile };
+      vendor.denied = false;
       
       dirty = false;
-      Toast("Profile updated successfully!");
-      render();
+      
+      if (wasResubmitted) {
+        Toast("Application resubmitted for review!");
+        // Navigate to dashboard to show pending status
+        setTimeout(() => navigate('/vendor-dashboard'), 1000);
+      } else {
+        Toast("Profile updated successfully!");
+        render();
+      }
     } catch (e) {
       console.error('Save error:', e);
       Toast("Failed to save profile: " + (e.message || 'Unknown error'));

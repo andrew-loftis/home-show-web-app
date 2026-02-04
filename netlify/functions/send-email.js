@@ -5,7 +5,7 @@
  * Environment Variables Required:
  * - SENDGRID_API_KEY: Your SendGrid API key
  * - FROM_EMAIL: Verified sender email address
- * - APP_NAME: Application name for branding (default: "Winn-Pro Show")
+ * - APP_NAME: Application name for branding (default: "WinnPro Shows")
  * - APP_URL: Base URL for links in emails
  */
 
@@ -610,6 +610,164 @@ View in Admin Dashboard: ${data.appUrl}/admin
 
 This is an automated admin notification from ${data.appName}
     `
+  }),
+
+  passwordReset: (data) => ({
+    subject: `Reset Your ${data.appName} Password`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f7; }
+          .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .content h2 { color: #333; margin-top: 0; }
+          .content p { color: #555; line-height: 1.6; }
+          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+          .info-box { background: #f8f9fa; border-left: 4px solid #667eea; padding: 15px 20px; margin: 20px 0; }
+          .footer { background: #f4f4f7; padding: 30px; text-align: center; color: #888; font-size: 14px; }
+          .footer a { color: #667eea; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Password Reset</h1>
+          </div>
+          <div class="content">
+            <h2>Reset Your Password</h2>
+            <p>You've requested to reset your password for your ${data.appName} account.</p>
+            <p>Click the button below to create a new password:</p>
+            
+            <center>
+              <a href="${data.resetLink}" class="button">Reset Password →</a>
+            </center>
+            
+            <div class="info-box">
+              <strong>Security Notice:</strong><br>
+              This link will expire in 1 hour. If you didn't request this reset, you can safely ignore this email.
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; font-size: 12px; color: #666;">${data.resetLink}</p>
+          </div>
+          <div class="footer">
+            <p>${data.appName} • <a href="${data.appUrl}">${data.appUrl}</a></p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Reset Your Password
+
+You've requested to reset your password for your ${data.appName} account.
+
+Click this link to create a new password:
+${data.resetLink}
+
+This link will expire in 1 hour. If you didn't request this reset, you can safely ignore this email.
+
+${data.appName}
+${data.appUrl}
+    `
+  }),
+
+  vendorImported: (data) => ({
+    subject: `Welcome to ${data.appName} - Your Account is Ready!`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f7; }
+          .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .content h2 { color: #333; margin-top: 0; }
+          .content p { color: #555; line-height: 1.6; }
+          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
+          .info-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; margin: 20px 0; }
+          .footer { background: #f4f4f7; padding: 30px; text-align: center; color: #888; font-size: 14px; }
+          .footer a { color: #667eea; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Welcome to ${data.appName}!</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${data.businessName}! 👋</h2>
+            <p>Great news! Your vendor account has been set up on our new ${data.appName} platform. We've migrated your information from Scan2Scan to make the transition seamless.</p>
+            
+            <div class="info-box">
+              <strong>What's New:</strong><br>
+              • Beautiful vendor profile page<br>
+              • Digital lead capture system<br>
+              • Interactive booth map<br>
+              • Real-time analytics
+            </div>
+            
+            <p>To access your account, you'll need to set a password:</p>
+            
+            <center>
+              <a href="${data.resetLink}" class="button">Set Your Password →</a>
+            </center>
+            
+            <p>Once you've set your password, you can:</p>
+            <ul>
+              <li>Update your business profile</li>
+              <li>Add photos and gallery images</li>
+              <li>View and manage leads</li>
+              <li>Check your booth location</li>
+            </ul>
+            
+            <p>Questions? Just reply to this email - we're here to help!</p>
+          </div>
+          <div class="footer">
+            <p>${data.appName} • <a href="${data.appUrl}">${data.appUrl}</a></p>
+            <p>You're receiving this because you were registered as a vendor.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+Welcome to ${data.appName}!
+
+Hello ${data.businessName}!
+
+Your vendor account has been set up on our new ${data.appName} platform. We've migrated your information from Scan2Scan to make the transition seamless.
+
+What's New:
+• Beautiful vendor profile page
+• Digital lead capture system
+• Interactive booth map
+• Real-time analytics
+
+To access your account, set your password here:
+${data.resetLink}
+
+Once you've set your password, you can:
+- Update your business profile
+- Add photos and gallery images
+- View and manage leads
+- Check your booth location
+
+Questions? Just reply to this email!
+
+${data.appName}
+${data.appUrl}
+    `
   })
 };
 
@@ -618,9 +776,9 @@ This is an automated admin notification from ${data.appName}
  */
 async function sendEmail(to, template, templateData) {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@tn-shows.app';
-  const appName = process.env.APP_NAME || 'Winn-Pro Show';
-  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@winnpro-shows.app';
+  const appName = process.env.APP_NAME || 'WinnPro Shows';
+  const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
   
   if (!apiKey) {
     throw new Error('SENDGRID_API_KEY environment variable not set');

@@ -1,15 +1,43 @@
 import { getState, saveBusinessCard } from "../store.js";
 import { Modal, Toast } from "../utils/ui.js";
 
-export default function VendorLandingPage(root, params) {
-  const { vendors } = getState();
-  const vendor = vendors.find(v => v.id === params.vendorId);
+export default async function VendorLandingPage(root, params) {
+  const state = getState();
+  let vendor = state.vendors.find(v => v.id === params.vendorId);
+  
+  // If not found in local state, try Firestore
   if (!vendor) {
-    root.innerHTML = `<div class='p-8 text-center text-glass-secondary'>Vendor not found.</div>`;
+    try {
+      const { getVendorById } = await import("../firebase.js");
+      vendor = await getVendorById(params.vendorId);
+    } catch (error) {
+      console.error('Error loading vendor:', error);
+    }
+  }
+  
+  if (!vendor) {
+    root.innerHTML = `
+      <div class="container-glass fade-in text-center py-12">
+        <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <ion-icon name="alert-circle-outline" class="text-3xl text-red-400"></ion-icon>
+        </div>
+        <h2 class="text-xl font-bold mb-2 text-glass">Vendor Not Found</h2>
+        <p class="text-glass-secondary mb-6">This vendor may have been removed or the link is invalid.</p>
+        <button class="brand-bg px-6 py-3 rounded-xl" onclick="window.location.hash='/vendors'">
+          Browse All Vendors
+        </button>
+      </div>
+    `;
     return;
   }
   
   const profile = vendor.profile || {};
+  const attendee = state.attendees[0];
+  
+  // Check if vendor is already saved
+  const savedVendors = state.savedVendorsByAttendee[attendee?.id] || [];
+  const savedBusinessCards = attendee?.savedBusinessCards || [];
+  const isVendorSaved = savedVendors.includes(vendor.id) || savedBusinessCards.includes(vendor.id);
   
   root.innerHTML = `
     <div class="fade-in">
@@ -56,11 +84,13 @@ export default function VendorLandingPage(root, params) {
         
         <!-- Action Buttons -->
         <div class="flex gap-3 mb-6">
-          <button class="flex-1 brand-bg text-white px-4 py-3 rounded font-semibold" id="shareCardBtn">
+          <button class="flex-1 brand-bg text-white px-4 py-3 rounded-xl font-semibold flex items-center justify-center gap-2" id="shareCardBtn">
+            <ion-icon name="share-outline"></ion-icon>
             Share My Card
           </button>
-          <button class="flex-1 px-4 py-3 glass-button rounded font-semibold" id="saveVendorBtn">
-            Save Vendor
+          <button class="flex-1 px-4 py-3 glass-button rounded-xl font-semibold flex items-center justify-center gap-2 ${isVendorSaved ? 'bg-green-500/20 border-green-500/40' : ''}" id="saveVendorBtn">
+            <ion-icon name="${isVendorSaved ? 'checkmark-circle' : 'bookmark-outline'}" class="${isVendorSaved ? 'text-green-400' : ''}"></ion-icon>
+            ${isVendorSaved ? 'Saved!' : 'Save Vendor'}
           </button>
         </div>
         
@@ -168,16 +198,46 @@ export default function VendorLandingPage(root, params) {
     window.location.hash = `/share-card/${vendor.id}`;
   };
   
-  root.querySelector("#saveVendorBtn").onclick = () => {
-    const state = getState();
-    const attendeeId = state.attendees[0]?.id;
-    if (attendeeId) {
-      import("../store.js").then(({ saveVendorForAttendee }) => {
-        saveVendorForAttendee(attendeeId, vendor.id);
-        Toast("Vendor saved!");
-      });
-    } else {
+  root.querySelector("#saveVendorBtn").onclick = async () => {
+    const btn = root.querySelector("#saveVendorBtn");
+    const currentState = getState();
+    const attendeeId = currentState.attendees[0]?.id;
+    
+    if (!attendeeId) {
       Toast("Please create your business card first");
+      setTimeout(() => {
+        window.location.hash = '/my-card';
+      }, 1000);
+      return;
+    }
+    
+    // Check if already saved
+    const alreadySaved = (currentState.savedVendorsByAttendee[attendeeId] || []).includes(vendor.id) ||
+                         (currentState.attendees[0]?.savedBusinessCards || []).includes(vendor.id);
+    
+    if (alreadySaved) {
+      Toast("Vendor already saved!");
+      return;
+    }
+    
+    // Disable button while saving
+    btn.disabled = true;
+    btn.innerHTML = '<ion-icon name="hourglass-outline" class="animate-spin mr-2"></ion-icon> Saving...';
+    
+    try {
+      const { saveVendorForAttendee, saveBusinessCard } = await import("../store.js");
+      await saveVendorForAttendee(attendeeId, vendor.id);
+      saveBusinessCard(attendeeId, vendor.id);
+      
+      // Update button state
+      btn.innerHTML = '<ion-icon name="checkmark-circle" class="text-green-400 mr-2"></ion-icon> Saved!';
+      btn.classList.add('bg-green-500/20', 'border-green-500/40');
+      Toast("Vendor saved! ✓");
+    } catch (error) {
+      console.error('Error saving vendor:', error);
+      btn.disabled = false;
+      btn.innerHTML = '<ion-icon name="bookmark-outline" class="mr-2"></ion-icon> Save Vendor';
+      Toast("Failed to save vendor");
     }
   };
   

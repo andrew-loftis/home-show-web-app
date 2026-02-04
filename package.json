@@ -1,13 +1,15 @@
 {
-  "name": "winn-pro-show-app",
+  "name": "winnpro-shows-app",
   "version": "1.0.0",
-  "description": "Winn-Pro Show event app for vendors and attendees",
+  "description": "WinnPro Shows event app for vendors and attendees",
   "scripts": {
     "build:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --minify",
     "watch:css": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
     "dev": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
     "build": "npm run build:css",
-    "cap:init": "npx cap init 'Winn-Pro Show' app.winnpro.mobile --web-dir .",
+    "deploy:prod": "netlify deploy --prod --dir .",
+    "deploy:watch": "node ./scripts/watch-netlify-deploy.mjs",
+    "cap:init": "npx cap init 'WinnPro Shows' app.winnpro.mobile --web-dir .",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "cap:sync": "npx cap sync",
@@ -35,7 +37,8 @@
     "@capacitor/device": "^6.0.0",
     "@capacitor/app": "^6.0.0",
     "@capacitor-community/barcode-scanner": "^4.0.0",
-    "stripe": "^16.6.0"
+    "stripe": "^16.6.0",
+    "firebase-admin": "^12.0.0"
   },
   "keywords": ["home-show", "event-app", "vendors", "mobile", "capacitor"],
   "author": "Andrew Loftis",

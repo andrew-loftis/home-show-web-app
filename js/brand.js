@@ -1,14 +1,14 @@
 /**
- * Brand Configuration - Winn-Pro Show
+ * Brand Configuration - WinnPro Shows
  * 
  * Central design tokens and brand constants.
  * Import this in any view or component that needs brand consistency.
  */
 
 export const BRAND = {
-  // Event Info
-  name: 'Winn-Pro Show',
-  shortName: 'Winn-Pro',
+  // Platform Info
+  name: 'WinnPro Shows',
+  shortName: 'WinnPro',
   year: '2025',
   tagline: 'Swap cards. Discover vendors. Connect fast.',
   

@@ -6,13 +6,72 @@
 import { getAdminDb, getFirestoreModule, setButtonLoading, exportCsv, getPaymentStatusInfo, debounce } from '../../utils/admin.js';
 import { ConfirmDialog, AlertDialog, Toast } from '../../utils/ui.js';
 import { SkeletonTableRows } from '../../utils/skeleton.js';
-import { sendVendorApprovalEmail } from '../../utils/email.js';
+import { sendVendorApprovalEmail, sendVendorDenialEmail } from '../../utils/email.js';
+import { DEFAULT_SHOW_ID } from '../../shows.js';
 
 // Module state
 let lastVendors = [];
 let allVendors = []; // Full filtered/sorted list
 let currentPage = 1;
 const PAGE_SIZE = 20; // Items per page
+
+/**
+ * Show a denial modal with reason input
+ * @param {string} vendorName - The vendor's name for display
+ * @returns {Promise<string|null>} - The denial reason or null if cancelled
+ */
+async function showDenialModal(vendorName) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4';
+    overlay.innerHTML = `
+      <div class="bg-glass-surface border border-glass-border rounded-lg p-6 max-w-md w-full">
+        <h3 class="text-xl font-bold text-glass mb-2">Deny Vendor Application</h3>
+        <p class="text-glass-secondary text-sm mb-4">Please provide a reason for denying <strong>${vendorName}</strong>'s application. This will be sent to the vendor.</p>
+        <textarea id="denialReason" class="w-full bg-glass-surface border border-glass-border rounded p-3 text-glass text-sm min-h-[100px]" placeholder="Enter reason for denial..."></textarea>
+        <div class="flex gap-3 mt-4 justify-end">
+          <button id="cancelDenial" class="px-4 py-2 bg-gray-600 rounded text-white text-sm">Cancel</button>
+          <button id="confirmDenial" class="px-4 py-2 bg-yellow-600 rounded text-white text-sm">Deny Application</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    const reasonInput = overlay.querySelector('#denialReason');
+    const cancelBtn = overlay.querySelector('#cancelDenial');
+    const confirmBtn = overlay.querySelector('#confirmDenial');
+    
+    reasonInput.focus();
+    
+    const cleanup = () => {
+      overlay.remove();
+    };
+    
+    cancelBtn.addEventListener('click', () => {
+      cleanup();
+      resolve(null);
+    });
+    
+    confirmBtn.addEventListener('click', () => {
+      const reason = reasonInput.value.trim();
+      if (!reason) {
+        reasonInput.classList.add('border-red-500');
+        reasonInput.focus();
+        return;
+      }
+      cleanup();
+      resolve(reason);
+    });
+    
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        cleanup();
+        resolve(null);
+      }
+    });
+  });
+}
 
 /**
  * Render the vendors tab HTML template
@@ -33,6 +92,7 @@ export function renderVendorsTab() {
               <option value="all">All Vendors</option>
               <option value="approved">Approved</option>
               <option value="pending">Awaiting Approval</option>
+              <option value="denied">Denied</option>
               <option value="paid">Paid</option>
               <option value="payment_sent">Payment Sent</option>
               <option value="payment_pending">Payment Pending</option>
@@ -94,12 +154,12 @@ export function renderVendorsTab() {
 /**
  * Load vendors data and render the list
  * @param {HTMLElement} root - The root container element
- * @param {Object} options - Filter, search, sort options
+ * @param {Object} options - Filter, search, sort options (includes showId for show filtering)
  * @param {Function} showVendorModal - Callback to show vendor profile modal
  * @param {Function} showPaymentModal - Callback to show payment modal
  */
 export async function loadVendors(root, options = {}, showVendorModal, showPaymentModal) {
-  const { filterType = 'all', searchTerm = '', sortBy = 'default', resetPage = true } = options;
+  const { filterType = 'all', searchTerm = '', sortBy = 'default', resetPage = true, showId = null } = options;
   
   const vendorsList = root.querySelector('#vendorsList');
   const paginationEl = root.querySelector('#vendorPagination');
@@ -114,7 +174,7 @@ export async function loadVendors(root, options = {}, showVendorModal, showPayme
   vendorsList.innerHTML = SkeletonTableRows(5);
 
   try {
-    console.log('[AdminVendors] Loading vendors...');
+    console.log('[AdminVendors] Loading vendors...', showId ? `for show: ${showId}` : '(all shows)');
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
 
@@ -123,12 +183,18 @@ export async function loadVendors(root, options = {}, showVendorModal, showPayme
     let vendors = [];
     vendorsSnap.forEach(doc => vendors.push({ id: doc.id, ...doc.data() }));
 
+    // Filter by show if specified (legacy data without showId belongs to default show)
+    if (showId) {
+      vendors = vendors.filter(v => (v.showId || DEFAULT_SHOW_ID) === showId);
+    }
+
     // Apply filter
     if (filterType !== 'all') {
       vendors = vendors.filter(vendor => {
         switch (filterType) {
           case 'approved': return vendor.approved === true;
-          case 'pending': return vendor.approved !== true;
+          case 'pending': return vendor.approved !== true && vendor.denied !== true;
+          case 'denied': return vendor.denied === true;
           case 'paid': return vendor.paymentStatus === 'paid';
           case 'payment_sent': return vendor.paymentStatus === 'payment_sent';
           case 'payment_pending': return vendor.approved === true && (!vendor.paymentStatus || vendor.paymentStatus === 'pending');
@@ -209,9 +275,10 @@ export async function loadVendors(root, options = {}, showVendorModal, showPayme
                 </div>
                 <p class="text-glass-secondary">${vendor.contactEmail}</p>
                 <div class="flex items-center gap-4 mt-2 flex-wrap">
-                  <p class="text-sm text-glass-secondary">Status: ${vendor.approved ? '✅ Approved' : '⏳ Pending'}</p>
+                  <p class="text-sm text-glass-secondary">Status: ${vendor.denied ? '❌ Denied' : vendor.approved ? '✅ Approved' : '⏳ Pending'}</p>
                   <p class="text-sm ${statusInfo.statusColor}">${statusInfo.status}</p>
                 </div>
+                ${vendor.denied && vendor.denialReason ? `<p class="text-sm text-red-400">Denial Reason: ${vendor.denialReason}</p>` : ''}
                 <p class="text-sm text-glass-secondary">Category: ${vendor.category || 'N/A'}</p>
                 <p class="text-sm text-glass-secondary">Phone: ${vendor.phone || 'N/A'}</p>
                 ${vendor.booths ? `<p class="text-sm text-glass-secondary">Booths: ${vendor.booths.join(', ')}</p>` : ''}
@@ -230,9 +297,14 @@ export async function loadVendors(root, options = {}, showVendorModal, showPayme
                 ${vendor.stripeInvoiceUrl ? `<a href="${vendor.stripeInvoiceUrl}" target="_blank" rel="noopener" class="text-center px-3 py-1 bg-orange-700 rounded text-white text-sm">
                   <ion-icon name="open-outline" class="mr-1"></ion-icon>Invoice
                 </a>` : ''}
-                ${!vendor.approved ? `<button class="bg-green-600 px-3 py-1 rounded text-white text-sm" data-action="approve" data-vendor-id="${vendor.id}" data-vendor-email="${vendor.contactEmail}">
-                  <ion-icon name="checkmark-outline" class="mr-1"></ion-icon>Approve
-                </button>` : ''}
+                ${!vendor.approved ? `
+                  <button class="bg-green-600 px-3 py-1 rounded text-white text-sm" data-action="approve" data-vendor-id="${vendor.id}" data-vendor-email="${vendor.contactEmail}" data-vendor-name="${vendor.name}">
+                    <ion-icon name="checkmark-outline" class="mr-1"></ion-icon>Approve
+                  </button>
+                  <button class="bg-yellow-600 px-3 py-1 rounded text-white text-sm" data-action="deny" data-vendor-id="${vendor.id}" data-vendor-email="${vendor.contactEmail}" data-vendor-name="${vendor.name}">
+                    <ion-icon name="close-outline" class="mr-1"></ion-icon>Deny
+                  </button>
+                ` : ''}
                 <button class="bg-red-600 px-3 py-1 rounded text-white text-sm" data-action="delete" data-vendor-id="${vendor.id}">
                   <ion-icon name="trash-outline" class="mr-1"></ion-icon>Delete
                 </button>
@@ -497,6 +569,32 @@ function setupVendorListeners(root, showVendorModal, showPaymentModal) {
       } else if (action === 'pay') {
         setButtonLoading(el, false);
         showPaymentModal(vendorId, vendorName, vendorEmail);
+      } else if (action === 'deny') {
+        setButtonLoading(el, false);
+        
+        // Show denial modal with reason input
+        const reason = await showDenialModal(vendorName);
+        if (!reason) return; // User cancelled
+        
+        setButtonLoading(el, true, 'Denying...');
+        
+        await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), { 
+          approved: false,
+          denied: true,
+          denialReason: reason,
+          deniedAt: new Date().toISOString()
+        });
+        
+        // Send denial email (non-blocking)
+        if (vendorEmail) {
+          sendVendorDenialEmail(vendorEmail, {
+            businessName: vendorName,
+            reason: reason
+          }).catch(err => console.warn('Denial email send failed:', err));
+        }
+        
+        Toast('Vendor application denied');
+        reloadVendors();
       } else if (action === 'delete') {
         setButtonLoading(el, false);
         const confirmed = await ConfirmDialog('Delete Vendor', 'Are you sure you want to delete this vendor? This action cannot be undone.', { danger: true, confirmText: 'Delete' });

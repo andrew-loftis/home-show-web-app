@@ -70,6 +70,47 @@ export default async function VendorDashboard(root) {
     return;
   }
 
+  // Check if vendor was denied
+  if (vendorData.denied) {
+    root.innerHTML = `
+      <div class='p-8 text-center'>
+        <div class="glass-card p-8">
+          <div class="text-center">
+            <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ion-icon name="close-circle-outline" class="text-3xl text-red-400"></ion-icon>
+            </div>
+            <h2 class="text-2xl font-bold mb-4 text-glass">Application Denied</h2>
+            <p class="text-glass-secondary mb-6">Unfortunately, your vendor application was not approved at this time.</p>
+            ${vendorData.denialReason ? `
+              <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-red-400 mb-2">Reason:</h3>
+                <p class="text-glass-secondary text-sm">${vendorData.denialReason}</p>
+              </div>
+            ` : ''}
+            <div class="bg-glass-surface rounded-lg p-4 mb-6">
+              <h3 class="font-semibold text-glass mb-2">Application Details:</h3>
+              <div class="text-left text-sm text-glass-secondary space-y-1">
+                <p><span class="font-medium">Business Name:</span> ${vendorData.name}</p>
+                <p><span class="font-medium">Contact Email:</span> ${vendorData.contactEmail}</p>
+                <p><span class="font-medium">Category:</span> ${vendorData.category || 'Not specified'}</p>
+                <p><span class="font-medium">Denied On:</span> ${vendorData.deniedAt ? new Date(vendorData.deniedAt).toLocaleDateString() : 'Recently'}</p>
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+              <button class="glass-button px-6 py-2 rounded" onclick="window.location.hash='/edit-vendor'">
+                <ion-icon name="create-outline" class="mr-2"></ion-icon>Edit & Resubmit
+              </button>
+              <a href="mailto:support@winnpro-shows.app?subject=Vendor Application Appeal - ${encodeURIComponent(vendorData.name)}" class="glass-button px-6 py-2 rounded inline-flex items-center justify-center">
+                <ion-icon name="mail-outline" class="mr-2"></ion-icon>Contact Support
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
   if (!vendorData.approved) {
     root.innerHTML = `
       <div class='p-8 text-center'>
@@ -102,8 +143,17 @@ export default async function VendorDashboard(root) {
   // Render the approved vendor dashboard
   render(vendorData);
 
+  function filterLiveInvoices(invoices) {
+    return (Array.isArray(invoices) ? invoices : []).filter(inv => {
+      const status = String(inv?.status || '').toLowerCase();
+      // Vendor should only see invoices that are payable or represent completed payment.
+      return status === 'open' || status === 'paid';
+    });
+  }
+
   async function render(vendor) {
-    const paymentStatusInfo = getPaymentStatusInfo(vendor);
+    // Start with vendor-only status (fast) then refine once invoices load.
+    const paymentStatusInfo = getPaymentStatusInfo(vendor, []);
     
     // Fetch invoices from Stripe
     let invoices = [];
@@ -116,7 +166,7 @@ export default async function VendorDashboard(root) {
     try {
       const result = await getVendorInvoices(vendor.contactEmail);
       if (result.success) {
-        invoices = result.invoices;
+        invoices = filterLiveInvoices(result.invoices);
       }
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -124,13 +174,15 @@ export default async function VendorDashboard(root) {
     invoicesLoading = false;
     
     // Re-render with invoices
-    renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading);
+    renderDashboard(vendor, getPaymentStatusInfo(vendor, invoices), invoices, invoicesLoading);
     setupEventHandlers(vendor, invoices);
   }
 
   function renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading) {
+    const visibleInvoices = filterLiveInvoices(invoices);
+
     // Check if there are unpaid invoices
-    const unpaidInvoices = invoices.filter(inv => inv.status === 'open');
+    const unpaidInvoices = visibleInvoices.filter(inv => inv.status === 'open');
     const hasUnpaidInvoices = unpaidInvoices.length > 0;
     
     root.innerHTML = `
@@ -280,7 +332,7 @@ export default async function VendorDashboard(root) {
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
                 <span class="ml-3 text-glass-secondary">Loading invoices...</span>
               </div>
-            ` : invoices.length === 0 ? `
+            ` : visibleInvoices.length === 0 ? `
               <div class="text-center py-6 text-glass-secondary">
                 <ion-icon name="document-outline" class="text-3xl mb-2"></ion-icon>
                 <p>No invoices yet</p>
@@ -288,7 +340,7 @@ export default async function VendorDashboard(root) {
               </div>
             ` : `
               <div class="space-y-4">
-                ${invoices.map(invoice => {
+                ${visibleInvoices.map(invoice => {
                   const status = getInvoiceStatusDetails(invoice);
                   return `
                     <div class="bg-glass-surface rounded-lg p-4 border-l-4 ${status.borderColor}">
@@ -406,8 +458,13 @@ export default async function VendorDashboard(root) {
     `;
   }
 
-  function getPaymentStatusInfo(vendor) {
-    if (vendor.paymentStatus === 'paid') {
+  function getPaymentStatusInfo(vendor, invoices = []) {
+    const liveInvoices = filterLiveInvoices(invoices);
+    const hasOpen = liveInvoices.some(inv => String(inv?.status || '').toLowerCase() === 'open');
+    const hasPaid = liveInvoices.some(inv => String(inv?.status || '').toLowerCase() === 'paid');
+
+    // Prefer live Stripe data when available.
+    if (vendor.paymentStatus === 'paid' || hasPaid) {
       return {
         icon: '💰',
         text: 'Payment Complete',
@@ -415,7 +472,7 @@ export default async function VendorDashboard(root) {
         statusClass: 'bg-green-500',
         actionButton: ''
       };
-    } else if (vendor.paymentStatus === 'payment_sent') {
+    } else if (hasOpen || vendor.paymentStatus === 'payment_sent') {
       return {
         icon: '📧',
         text: 'Invoice Sent',
@@ -426,9 +483,9 @@ export default async function VendorDashboard(root) {
     } else if (vendor.approved) {
       return {
         icon: '⏳',
-        text: 'Payment Pending',
-        description: 'Awaiting invoice from event organizer',
-        statusClass: 'bg-red-500',
+        text: 'Awaiting Invoice',
+        description: 'No active invoice is available right now',
+        statusClass: 'bg-gray-500',
         actionButton: '<button class="glass-button px-4 py-2 text-sm" onclick="contactAdmin()">Contact Admin</button>'
       };
     } else {
@@ -474,9 +531,9 @@ export default async function VendorDashboard(root) {
       try {
         const result = await getVendorInvoices(vendor.contactEmail);
         if (result.success) {
-          const paymentStatusInfo = getPaymentStatusInfo(vendor);
-          renderDashboard(vendor, paymentStatusInfo, result.invoices, false);
-          setupEventHandlers(vendor, result.invoices);
+          const liveInvoices = filterLiveInvoices(result.invoices);
+          renderDashboard(vendor, getPaymentStatusInfo(vendor, liveInvoices), liveInvoices, false);
+          setupEventHandlers(vendor, liveInvoices);
           Toast.show('Invoices refreshed', 'success');
         }
       } catch (error) {

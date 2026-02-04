@@ -6,11 +6,251 @@
 
 import { getAdminDb, getFirestoreModule, exportCsv, debounce, setButtonLoading } from '../../utils/admin.js';
 
+async function voidStripeInvoice(invoiceId) {
+  const response = await fetch('/.netlify/functions/void-invoice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invoiceId })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to void invoice');
+  }
+  return data;
+}
+
+async function getUi() {
+  return await import('../../utils/ui.js');
+}
+
+function formatStripeAmountCents(cents) {
+  const n = Number(cents || 0);
+  return `$${(n / 100).toFixed(2)}`;
+}
+
+function getInvoiceBadge(inv) {
+  const status = inv?.status || 'unknown';
+  if (status === 'paid' || inv?.paid) {
+    return '<span class="px-2 py-1 bg-green-600 rounded text-white text-xs">Paid</span>';
+  }
+  if (status === 'open') {
+    return '<span class="px-2 py-1 bg-yellow-600 rounded text-white text-xs">Open</span>';
+  }
+  if (status === 'draft') {
+    return '<span class="px-2 py-1 bg-gray-600 rounded text-white text-xs">Draft</span>';
+  }
+  if (status === 'void') {
+    return '<span class="px-2 py-1 bg-gray-600 rounded text-white text-xs">Voided</span>';
+  }
+  if (status === 'uncollectible') {
+    return '<span class="px-2 py-1 bg-red-800 rounded text-white text-xs">Uncollectible</span>';
+  }
+  return `<span class="px-2 py-1 bg-gray-600 rounded text-white text-xs">${status}</span>`;
+}
+
+async function clearVendorInvoiceFieldsById(vendorId) {
+  if (!vendorId) return false;
+
+  const db = await getAdminDb();
+  const fsm = await getFirestoreModule();
+  const ref = fsm.doc(db, 'vendors', vendorId);
+
+  // Avoid throwing "No document to update" when a vendor record was deleted.
+  try {
+    const snap = await fsm.getDoc(ref);
+    if (!snap.exists()) return false;
+  } catch (e) {
+    // If we can't read it, fall back to attempting update and handling errors there.
+  }
+  const deleteField = typeof fsm.deleteField === 'function' ? fsm.deleteField() : null;
+
+  const payload = { paymentStatus: 'pending' };
+  if (deleteField) {
+    payload.lastPaymentSent = deleteField;
+    payload.stripeInvoiceId = deleteField;
+    payload.stripeInvoiceUrl = deleteField;
+    payload.invoiceAmount = deleteField;
+    payload.stripeInvoiceStatus = deleteField;
+  } else {
+    payload.lastPaymentSent = null;
+    payload.stripeInvoiceId = null;
+    payload.stripeInvoiceUrl = null;
+    payload.invoiceAmount = null;
+    payload.stripeInvoiceStatus = null;
+  }
+
+  try {
+    await fsm.updateDoc(ref, payload);
+    return true;
+  } catch (e) {
+    const msg = String(e?.message || '');
+    const code = String(e?.code || '');
+    if (code === 'not-found' || msg.includes('No document to update')) {
+      return false;
+    }
+    throw e;
+  }
+}
+
+async function findVendorIdByContactEmail(email) {
+  const key = String(email || '').trim().toLowerCase();
+  if (!key) return null;
+
+  if (vendorIdByEmail[key]) return vendorIdByEmail[key];
+
+  const db = await getAdminDb();
+  const fsm = await getFirestoreModule();
+  const q = fsm.query(fsm.collection(db, 'vendors'), fsm.where('contactEmail', '==', key));
+  const snap = await fsm.getDocs(q);
+  if (snap.empty) return null;
+  const id = snap.docs[0].id;
+  vendorIdByEmail[key] = id;
+  vendorById[id] = snap.docs[0].data();
+  return id;
+}
+
+function renderStripeInvoicesSection(root, showId = currentShowId) {
+  const section = root.querySelector('#stripeInvoicesSection');
+  if (!section) return;
+
+  if (!stripeInvoices || stripeInvoices.length === 0) {
+    section.classList.add('hidden');
+    section.innerHTML = '';
+    return;
+  }
+
+  const matchesShow = (inv) => {
+    if (!showId) return true;
+
+    const invShowId = inv?.metadata?.showId;
+    if (invShowId && invShowId === showId) return true;
+
+    const emailKey = String(inv?.customer_email || '').trim().toLowerCase();
+    const vendorId = inv?.metadata?.vendorId || vendorIdByEmail[emailKey] || '';
+    if (!vendorId) return false;
+
+    const vendor = vendorById[vendorId];
+    const vendorShowId = vendor?.showId;
+    return vendorShowId === showId || !vendorShowId;
+  };
+
+  const showFiltered = [...stripeInvoices].filter(matchesShow);
+
+  const clientEmails = [...new Set(
+    showFiltered
+      .map(inv => normalizeEmail(inv?.customer_email))
+      .filter(Boolean)
+  )].sort();
+
+  // If the currently selected client doesn't exist anymore, reset to All.
+  if (selectedStripeClientEmail && !clientEmails.includes(selectedStripeClientEmail)) {
+    selectedStripeClientEmail = '';
+  }
+
+  const matchesClient = (inv) => {
+    if (!selectedStripeClientEmail) return true;
+    return normalizeEmail(inv?.customer_email) === selectedStripeClientEmail;
+  };
+
+  // Once an invoice is voided/uncollectible, remove it from the actionable UI list.
+  // (Stripe keeps historical records; voided invoices are just no longer payable.)
+  const isVisible = (inv) => {
+    const status = String(inv?.status || '').toLowerCase();
+    return status !== 'void' && status !== 'uncollectible';
+  };
+
+  const sorted = showFiltered
+    .filter(matchesClient)
+    .filter(isVisible)
+    .sort((a, b) => (b.created || 0) - (a.created || 0))
+    .slice(0, 50);
+
+  if (sorted.length === 0) {
+    section.classList.add('hidden');
+    section.innerHTML = '';
+    return;
+  }
+
+  section.classList.remove('hidden');
+  section.innerHTML = `
+    <div class="glass-card p-4">
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <h3 class="text-lg font-semibold text-glass">Stripe Invoices</h3>
+        <div class="text-sm text-glass-secondary">${showId ? `Showing: ${sorted.length} • For show: ${showFiltered.length} • Loaded: ${stripeInvoices.length}` : `Showing: ${sorted.length} • Loaded: ${stripeInvoices.length}`}</div>
+      </div>
+      <div class="mt-3 flex items-center gap-2 flex-wrap">
+        <label class="text-glass-secondary text-sm">Client:</label>
+        <select id="stripeClientFilter" class="bg-glass-surface border border-glass-border rounded px-3 py-2 text-glass text-sm min-w-[220px]">
+          <option value="">All</option>
+          ${clientEmails.map(email => `<option value="${email}" ${email === selectedStripeClientEmail ? 'selected' : ''}>${email}</option>`).join('')}
+        </select>
+      </div>
+      <div class="mt-3 space-y-3">
+        ${sorted.map(inv => {
+          const created = inv.created ? new Date(inv.created * 1000).toLocaleDateString() : '—';
+          const due = inv.due_date ? new Date(inv.due_date * 1000).toLocaleDateString() : '—';
+          const customerEmail = inv.customer_email || '';
+          const vendorId = inv.metadata?.vendorId || '';
+          const canRemove = !(inv.status === 'paid' || inv.paid || inv.status === 'void' || inv.status === 'uncollectible');
+          return `
+            <div class="p-3 rounded-lg bg-white/5 border border-white/10">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <div class="font-semibold text-glass">${inv.id}</div>
+                    ${getInvoiceBadge(inv)}
+                    <div class="text-glass-secondary text-sm">${formatStripeAmountCents(inv.amount_due)}</div>
+                  </div>
+                  <div class="text-sm text-glass-secondary truncate">${customerEmail}</div>
+                  <div class="text-xs text-glass-secondary mt-1">Created: ${created} • Due: ${due}</div>
+                  ${inv.description ? `<div class="text-xs text-glass-secondary mt-1 truncate">${inv.description}</div>` : ''}
+                </div>
+                <div class="flex gap-2 flex-wrap justify-end">
+                  ${inv.hosted_invoice_url ? `<a href="${inv.hosted_invoice_url}" target="_blank" rel="noopener" class="px-3 py-1 bg-orange-600 rounded text-white text-sm hover:bg-orange-700">View</a>` : ''}
+                  ${canRemove ? `<button class="px-3 py-1 bg-red-600 rounded text-white text-sm hover:bg-red-700" data-action="remove-stripe-invoice" data-invoice-id="${inv.id}" data-customer-email="${customerEmail}" data-vendor-id="${vendorId}">Delete</button>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
 // Module state
 let lastPayments = [];
 let stripeInvoices = [];
 let stripeBalance = null;
 let lastStripeSync = null;
+let vendorById = {};
+let vendorIdByEmail = {};
+let currentShowId = null;
+let stripeAutoSyncInFlight = false;
+let selectedStripeClientEmail = '';
+let selectedPaymentClientEmail = '';
+
+const STRIPE_AUTO_SYNC_TTL_MS = 5 * 60 * 1000;
+
+function normalizeEmail(email) {
+  const key = String(email || '').trim().toLowerCase();
+  return key || '';
+}
+
+async function maybeAutoSyncStripe(root, showPaymentModal) {
+  // Prevent repeated sync calls triggered by filter/search re-renders.
+  if (stripeAutoSyncInFlight) return;
+
+  const last = lastStripeSync ? lastStripeSync.getTime() : 0;
+  if (last && (Date.now() - last) < STRIPE_AUTO_SYNC_TTL_MS) return;
+
+  stripeAutoSyncInFlight = true;
+  try {
+    await syncWithStripe(root, showPaymentModal);
+  } finally {
+    stripeAutoSyncInFlight = false;
+  }
+}
 
 /**
  * Render the payments tab HTML template
@@ -32,6 +272,12 @@ export function renderPaymentsTab() {
               <option value="paid">Paid</option>
               <option value="payment_sent">Invoice Sent</option>
               <option value="pending">Pending</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-glass-secondary text-sm">Client:</label>
+            <select id="paymentClientFilter" class="bg-glass-surface border border-glass-border rounded px-3 py-2 text-glass text-sm min-w-[220px]">
+              <option value="">All</option>
             </select>
           </div>
           <button class="bg-orange-600 px-4 py-2 rounded text-white hover:bg-orange-700" id="syncStripeBtn">
@@ -58,6 +304,9 @@ export function renderPaymentsTab() {
       <div id="stripeSyncStatus" class="hidden">
         <!-- Will show sync status -->
       </div>
+
+      <!-- Stripe Invoices (shown after sync) -->
+      <div id="stripeInvoicesSection" class="hidden"></div>
       
       <!-- Payments List -->
       <div id="paymentsList">Loading payments...</div>
@@ -68,26 +317,38 @@ export function renderPaymentsTab() {
 /**
  * Load payments data and render the list
  * @param {HTMLElement} root - The root container element
- * @param {Object} options - Filter and search options
+ * @param {Object} options - Filter and search options (includes showId for show filtering)
  * @param {Function} showPaymentModal - Callback to show payment modal
  */
 export async function loadPayments(root, options = {}, showPaymentModal) {
-  const { filterType = 'all', searchTerm = '' } = options;
+  const { filterType = 'all', searchTerm = '', showId = null } = options;
   
   const paymentsList = root.querySelector('#paymentsList');
   const statsContainer = root.querySelector('#paymentStats');
   if (!paymentsList) return;
 
+  currentShowId = showId || null;
+  // If Stripe invoices have already been loaded in this session, show them.
+  renderStripeInvoicesSection(root, currentShowId);
+
   try {
-    console.log('[AdminPayments] Loading payments...');
+    console.log('[AdminPayments] Loading payments...', showId ? `for show: ${showId}` : '(all shows)');
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
 
     const vendorsSnap = await fsm.getDocs(fsm.collection(db, 'vendors'));
     let payments = [];
+    vendorById = {};
+    vendorIdByEmail = {};
     vendorsSnap.forEach(doc => {
       const data = doc.data();
-      if (data.approved && data.totalPrice) {
+      vendorById[doc.id] = data;
+      if (data?.contactEmail) {
+        vendorIdByEmail[String(data.contactEmail).trim().toLowerCase()] = doc.id;
+      }
+      // Filter by show if specified
+      const matchesShow = !showId || data.showId === showId || !data.showId;
+      if (data.approved && data.totalPrice && matchesShow) {
         payments.push({ id: doc.id, ...data });
       }
     });
@@ -100,6 +361,20 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
     const paidCount = payments.filter(p => p.paymentStatus === 'paid').length;
     const sentCount = payments.filter(p => p.paymentStatus === 'payment_sent').length;
     const pendingCount = payments.filter(p => !p.paymentStatus || p.paymentStatus === 'pending').length;
+
+    // Populate and remember the payment client filter (by email)
+    const paymentClientEl = root.querySelector('#paymentClientFilter');
+    if (paymentClientEl) {
+      const current = normalizeEmail(paymentClientEl.value || selectedPaymentClientEmail);
+      selectedPaymentClientEmail = current;
+      const emails = [...new Set(
+        payments
+          .map(p => normalizeEmail(p.contactEmail))
+          .filter(Boolean)
+      )].sort();
+      paymentClientEl.innerHTML = `<option value="">All</option>${emails.map(e => `<option value="${e}">${e}</option>`).join('')}`;
+      paymentClientEl.value = selectedPaymentClientEmail;
+    }
 
     // Apply filter
     const filter = filterType || root.querySelector('#paymentFilter')?.value || 'all';
@@ -119,6 +394,13 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
         const fields = [p.name, p.contactEmail].map(x => String(x || '').toLowerCase());
         return fields.some(f => f.includes(q));
       });
+    }
+
+    // Apply client filter (exact email match)
+    const selectedClient = normalizeEmail(root.querySelector('#paymentClientFilter')?.value || selectedPaymentClientEmail);
+    selectedPaymentClientEmail = selectedClient;
+    if (selectedClient) {
+      payments = payments.filter(p => normalizeEmail(p.contactEmail) === selectedClient);
     }
 
     // Store for export (include Stripe fields)
@@ -188,6 +470,7 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
                   ${payment.stripeInvoiceUrl ? `<a href="${payment.stripeInvoiceUrl}" target="_blank" rel="noopener" class="px-3 py-1 bg-orange-600 rounded text-white text-sm hover:bg-orange-700">View Invoice</a>` : ''}
                   ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-gray-600 rounded text-white text-sm hover:bg-gray-700" data-action="check-stripe-status" data-vendor-email="${payment.contactEmail}" data-vendor-name="${payment.name}">Check Status</button>` : ''}
                   ${payment.paymentStatus !== 'paid' ? `<button class="px-3 py-1 bg-brand rounded text-white text-sm hover:bg-brand/80" data-action="send-payment" data-vendor-id="${payment.id}" data-vendor-name="${payment.name}" data-vendor-email="${payment.contactEmail}">${payment.stripeInvoiceId ? 'Resend' : 'Send Invoice'}</button>` : ''}
+                  ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-red-600 rounded text-white text-sm hover:bg-red-700" data-action="remove-invoice" data-vendor-id="${payment.id}" data-invoice-id="${payment.stripeInvoiceId}" data-vendor-name="${payment.name}">Delete Invoice</button>` : ''}
                 </div>
               </div>
             </div>
@@ -198,6 +481,9 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
 
     // Setup event listeners
     setupPaymentListeners(root, showPaymentModal);
+
+    // Auto-sync Stripe on initial load (guarded by TTL + in-flight flag)
+    void maybeAutoSyncStripe(root, showPaymentModal);
 
   } catch (error) {
     console.error('[AdminPayments] Failed to load payments:', error);
@@ -211,6 +497,8 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
 function setupPaymentListeners(root, showPaymentModal) {
   const paymentsList = root.querySelector('#paymentsList');
   if (!paymentsList) return;
+
+  const stripeInvoicesSection = root.querySelector('#stripeInvoicesSection');
 
   // Reload helper
   const reloadPayments = () => {
@@ -257,6 +545,16 @@ function setupPaymentListeners(root, showPaymentModal) {
     filterEl.addEventListener('change', reloadPayments);
   }
 
+  // Client filter
+  const clientEl = root.querySelector('#paymentClientFilter');
+  if (clientEl && !clientEl._listenerAdded) {
+    clientEl._listenerAdded = true;
+    clientEl.addEventListener('change', () => {
+      selectedPaymentClientEmail = normalizeEmail(clientEl.value);
+      reloadPayments();
+    });
+  }
+
   // Payment action listener with check invoice status support
   if (!paymentsList._listenerAdded) {
     paymentsList._listenerAdded = true;
@@ -267,6 +565,91 @@ function setupPaymentListeners(root, showPaymentModal) {
         const vendorName = sendBtn.getAttribute('data-vendor-name');
         const vendorEmail = sendBtn.getAttribute('data-vendor-email');
         showPaymentModal(vendorId, vendorName, vendorEmail);
+        return;
+      }
+
+      const removeBtn = e.target.closest('[data-action="remove-invoice"]');
+      if (removeBtn) {
+        const vendorId = removeBtn.getAttribute('data-vendor-id');
+        const invoiceId = removeBtn.getAttribute('data-invoice-id');
+        const vendorName = removeBtn.getAttribute('data-vendor-name') || 'this vendor';
+
+        const { ConfirmDialog, AlertDialog, Toast } = await getUi();
+        const confirmed = await ConfirmDialog(
+          'Delete Invoice',
+          `This will delete draft invoices in Stripe when possible, otherwise it will void them. It will also clear the vendor's invoice fields. Continue for ${vendorName}?`,
+          { danger: true, confirmText: 'Delete' }
+        );
+        if (!confirmed) return;
+
+        const typed = (window.prompt(`Type DELETE to remove invoice ${invoiceId} for ${vendorName}:`) || '').trim();
+        if (typed !== 'DELETE') {
+          Toast('Cancelled');
+          return;
+        }
+
+        setButtonLoading(removeBtn, true, 'Deleting...');
+        try {
+          // 1) Void invoice in Stripe so it won't be payable/active for the vendor.
+          await voidStripeInvoice(invoiceId);
+
+          // 2) Clear vendor-side invoice fields so profile/dashboard doesn't keep showing it as sent.
+          const cleared = await clearVendorInvoiceFieldsById(vendorId);
+
+          Toast(cleared ? 'Invoice deleted/voided and vendor updated' : 'Invoice deleted/voided (vendor record not found)');
+          reloadPayments();
+        } catch (error) {
+          console.error('[AdminPayments] Failed to remove invoice:', error);
+          await AlertDialog('Remove Failed', error.message || 'Failed to remove invoice', { type: 'error' });
+          setButtonLoading(removeBtn, false);
+        }
+        return;
+      }
+
+      const removeStripeBtn = e.target.closest('[data-action="remove-stripe-invoice"]');
+      if (removeStripeBtn) {
+        const { ConfirmDialog, AlertDialog, Toast } = await getUi();
+        const invoiceId = removeStripeBtn.getAttribute('data-invoice-id');
+        const customerEmail = removeStripeBtn.getAttribute('data-customer-email') || '';
+        let vendorId = removeStripeBtn.getAttribute('data-vendor-id') || '';
+
+        const confirmed = await ConfirmDialog(
+          'Remove Invoice',
+          `This will void the Stripe invoice and clear the vendor's invoice fields. Continue?`,
+          { danger: true, confirmText: 'Remove' }
+        );
+        if (!confirmed) return;
+
+        const typed = (window.prompt(`Type DELETE to remove Stripe invoice ${invoiceId}:`) || '').trim();
+        if (typed !== 'DELETE') {
+          Toast('Cancelled');
+          return;
+        }
+
+        setButtonLoading(removeStripeBtn, true, 'Removing...');
+        try {
+          await voidStripeInvoice(invoiceId);
+
+          if (!vendorId && customerEmail) {
+            vendorId = await findVendorIdByContactEmail(customerEmail);
+          }
+
+          if (vendorId) {
+            await clearVendorInvoiceFieldsById(vendorId);
+          }
+
+          // Update local cache so the list reflects the change immediately.
+          const idx = stripeInvoices.findIndex(i => i.id === invoiceId);
+          if (idx >= 0) stripeInvoices[idx] = { ...stripeInvoices[idx], status: 'void' };
+          renderStripeInvoicesSection(root);
+
+          Toast(vendorId ? 'Invoice removed' : 'Invoice removed (vendor not found)');
+          reloadPayments();
+        } catch (error) {
+          console.error('[AdminPayments] Failed to remove Stripe invoice:', error);
+          await AlertDialog('Remove Failed', error.message || 'Failed to remove invoice', { type: 'error' });
+          setButtonLoading(removeStripeBtn, false);
+        }
         return;
       }
       
@@ -285,6 +668,68 @@ function setupPaymentListeners(root, showPaymentModal) {
           setButtonLoading(checkBtn, false);
         }
       }
+    });
+  }
+
+  // Stripe invoices list is rendered outside #paymentsList, so it needs its own delegated listener.
+  if (stripeInvoicesSection && !stripeInvoicesSection._listenerAdded) {
+    stripeInvoicesSection._listenerAdded = true;
+    stripeInvoicesSection.addEventListener('click', async (e) => {
+      const removeStripeBtn = e.target.closest('[data-action="remove-stripe-invoice"]');
+      if (!removeStripeBtn) return;
+
+      const { ConfirmDialog, AlertDialog, Toast } = await getUi();
+      const invoiceId = removeStripeBtn.getAttribute('data-invoice-id');
+      const customerEmail = removeStripeBtn.getAttribute('data-customer-email') || '';
+      let vendorId = removeStripeBtn.getAttribute('data-vendor-id') || '';
+
+      const confirmed = await ConfirmDialog(
+        'Delete Invoice',
+        `This will delete draft invoices in Stripe when possible, otherwise it will void them. It will also clear the vendor's invoice fields. Continue?`,
+        { danger: true, confirmText: 'Delete' }
+      );
+      if (!confirmed) return;
+
+      const typed = (window.prompt(`Type DELETE to delete Stripe invoice ${invoiceId}:`) || '').trim();
+      if (typed !== 'DELETE') {
+        Toast('Cancelled');
+        return;
+      }
+
+      setButtonLoading(removeStripeBtn, true, 'Deleting...');
+      try {
+        await voidStripeInvoice(invoiceId);
+
+        if (!vendorId && customerEmail) {
+          vendorId = await findVendorIdByContactEmail(customerEmail);
+        }
+
+        if (vendorId) {
+          await clearVendorInvoiceFieldsById(vendorId);
+        }
+
+        const idx = stripeInvoices.findIndex(i => i.id === invoiceId);
+        if (idx >= 0) stripeInvoices[idx] = { ...stripeInvoices[idx], status: 'void' };
+        renderStripeInvoicesSection(root, currentShowId);
+
+        Toast(vendorId ? 'Invoice deleted/voided' : 'Invoice deleted/voided (vendor not found)');
+        reloadPayments();
+      } catch (error) {
+        console.error('[AdminPayments] Failed to delete Stripe invoice:', error);
+        await AlertDialog('Delete Failed', error.message || 'Failed to delete invoice', { type: 'error' });
+        setButtonLoading(removeStripeBtn, false);
+      }
+    });
+  }
+
+  // Stripe client dropdown is re-rendered often; use delegated change listener once.
+  if (stripeInvoicesSection && !stripeInvoicesSection._changeListenerAdded) {
+    stripeInvoicesSection._changeListenerAdded = true;
+    stripeInvoicesSection.addEventListener('change', (e) => {
+      const el = e.target;
+      if (!el || el.id !== 'stripeClientFilter') return;
+      selectedStripeClientEmail = normalizeEmail(el.value);
+      renderStripeInvoicesSection(root, currentShowId);
     });
   }
 }
@@ -513,6 +958,8 @@ export async function syncWithStripe(root, showPaymentModal) {
       invoices: stripeInvoices.length,
       balance: stripeBalance
     });
+
+    renderStripeInvoicesSection(root, currentShowId);
     
     // Show balance card
     if (balanceCard && stripeBalance) {

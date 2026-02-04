@@ -79,7 +79,7 @@ exports.handler = async (event, context) => {
     const productName = booth.name;
 
     // Site URL for redirects
-    const siteUrl = process.env.SITE_URL || 'https://tn-shows.app';
+    const siteUrl = process.env.SITE_URL || 'https://winnpro-shows.app';
 
     // Create or retrieve Stripe customer
     let customer;

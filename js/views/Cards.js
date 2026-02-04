@@ -2,6 +2,56 @@ import { getState, leadsForVendor, currentVendor } from "../store.js";
 import { Toast } from "../utils/ui.js";
 import { EmptyLeads, EmptyBusinessCard, EmptySentCards, EmptySavedVendors } from "../utils/skeleton.js";
 
+// Save contact to device using vCard format
+function saveContactToDevice(contact) {
+  const vCardData = generateVCard(contact);
+  const blob = new Blob([vCardData], { type: 'text/vcard' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${contact.name || 'contact'}.vcf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  Toast(`Contact saved: ${contact.name}`);
+}
+
+// Generate vCard format
+function generateVCard(contact) {
+  const lines = [
+    'BEGIN:VCARD',
+    'VERSION:3.0',
+    `FN:${contact.name || ''}`,
+    `N:${contact.name || ''};;;;`,
+  ];
+  
+  if (contact.email) {
+    lines.push(`EMAIL:${contact.email}`);
+  }
+  if (contact.phone) {
+    lines.push(`TEL:${contact.phone}`);
+  }
+  if (contact.company || contact.businessName) {
+    lines.push(`ORG:${contact.company || contact.businessName}`);
+  }
+  if (contact.location) {
+    lines.push(`ADR:;;${contact.location};;;;`);
+  }
+  if (contact.website) {
+    lines.push(`URL:${contact.website}`);
+  }
+  if (contact.bio) {
+    lines.push(`NOTE:${contact.bio.replace(/\n/g, '\\n')}`);
+  }
+  
+  lines.push('END:VCARD');
+  return lines.join('\r\n');
+}
+
+// Expose save contact function globally
+window._saveContactToDevice = saveContactToDevice;
+
 // Import renderAttendeeCard function for card preview
 function renderAttendeeCard(attendee, compact = false) {
   if (!attendee.card) return "";
@@ -77,6 +127,42 @@ function renderAttendeeCard(attendee, compact = false) {
   `;
 }
 
+// Compact vendor card for carousel display
+function renderVendorCard(vendor) {
+  const profile = vendor.profile || {};
+  return `
+    <div class="glass-card overflow-hidden shadow-glass">
+      <!-- Background/Hero -->
+      ${profile.backgroundImage ? `
+        <div class="h-24 bg-cover bg-center relative" style="background-image: url('${profile.backgroundImage}')">
+          <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+        </div>
+      ` : `
+        <div class="h-24 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>
+      `}
+      
+      <div class="p-3 relative">
+        <!-- Logo -->
+        <div class="w-12 h-12 -top-6 left-3 rounded-xl border-2 border-white/30 absolute overflow-hidden backdrop-blur-sm bg-white/20 flex items-center justify-center">
+          ${vendor.logoUrl ? `
+            <img src="${vendor.logoUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+          ` : `
+            <span class="text-white font-bold text-sm">${(vendor.name || 'V').charAt(0)}</span>
+          `}
+        </div>
+        
+        <div class="mt-8">
+          <div class="text-sm font-semibold text-glass truncate">${vendor.name}</div>
+          <div class="text-xs text-glass-secondary truncate">${vendor.category || ''} • Booth ${vendor.booth || ''}</div>
+          ${profile.tagline ? `
+            <div class="text-xs text-glass-secondary mt-2 line-clamp-2">${profile.tagline}</div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export default function Cards(root) {
   const state = getState();
   const role = state.role;
@@ -97,8 +183,42 @@ function renderVendorCards(state) {
   if (!vendor) return `<div class="glass-card p-6 text-glass-secondary">Login as a vendor to view interactions.</div>`;
   const leads = leadsForVendor(vendor.id).sort((a,b)=>b.timestamp-a.timestamp);
   if (!leads.length) return EmptyLeads();
+  
+  // Get leads with attendee data for carousel
+  const leadsWithAttendees = leads.map(lead => ({
+    ...lead,
+    attendee: state.attendees.find(a => a.id === lead.attendee_id)
+  })).filter(l => l.attendee);
+  
   return `
-    <div class="space-y-4">
+    <!-- Card Carousel -->
+    ${leadsWithAttendees.length > 0 ? `
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm sm:text-base font-semibold text-glass">Recent Cards</h3>
+          <span class="text-xs text-glass-secondary">${leadsWithAttendees.length} card${leadsWithAttendees.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="card-carousel flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide" style="-webkit-overflow-scrolling: touch;">
+          ${leadsWithAttendees.slice(0, 10).map(({ attendee, ...lead }) => `
+            <div class="flex-shrink-0 w-64 sm:w-72 snap-start">
+              ${renderAttendeeCard(attendee, true)}
+              <div class="flex gap-2 mt-2">
+                <button class="glass-button flex-1 py-2 text-xs" onclick="window.location.hash='/vendor-lead/${lead.id}'">
+                  <ion-icon name="eye-outline" class="mr-1"></ion-icon>View
+                </button>
+                <button class="glass-button flex-1 py-2 text-xs" onclick="window._saveContactToDevice({name:'${(attendee.name || '').replace(/'/g, "\\'")}',email:'${attendee.email || ''}',phone:'${attendee.phone || ''}',location:'${(attendee.card?.location || '').replace(/'/g, "\\'")}',bio:'${(attendee.card?.bio || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}'})">
+                  <ion-icon name="person-add-outline" class="mr-1"></ion-icon>Save
+                </button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    ` : ''}
+    
+    <!-- Lead List -->
+    <div class="space-y-3">
+      <h3 class="text-sm sm:text-base font-semibold text-glass">All Leads</h3>
       ${leads.map(lead => renderLeadRow(lead, state)).join("")}
     </div>
   `;
@@ -118,7 +238,12 @@ function renderLeadRow(lead, state) {
         <div class="text-glass font-semibold text-sm md:text-base truncate">${attendee.name || attendee.email}</div>
         <div class="text-xs text-glass-secondary">${lead.exchangeMethod === 'card_share' ? 'Card shared' : 'Manual lead'} • ${time}</div>
       </div>
-      <button class="glass-button px-3 py-2 text-xs md:text-sm flex-shrink-0 touch-target" onclick="window.location.hash='/vendor-lead/${lead.id}'">View</button>
+      <div class="flex gap-2 flex-shrink-0">
+        <button class="glass-button p-2 text-xs touch-target" onclick="window._saveContactToDevice({name:'${(attendee.name || '').replace(/'/g, "\\'")}',email:'${attendee.email || ''}',phone:'${attendee.phone || ''}'})">
+          <ion-icon name="person-add-outline"></ion-icon>
+        </button>
+        <button class="glass-button px-3 py-2 text-xs md:text-sm touch-target" onclick="window.location.hash='/vendor-lead/${lead.id}'">View</button>
+      </div>
     </div>
   `;
 }
@@ -173,6 +298,31 @@ function renderAttendeeCards(state) {
         `}
       </div>
       
+      <!-- Saved Vendors Carousel -->
+      ${saved.length > 0 ? `
+        <div class="mb-2">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm sm:text-base font-semibold text-glass">Saved Vendors</h3>
+            <span class="text-xs text-glass-secondary">${saved.length} saved</span>
+          </div>
+          <div class="card-carousel flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide" style="-webkit-overflow-scrolling: touch;">
+            ${saved.map(vendor => `
+              <div class="flex-shrink-0 w-64 sm:w-72 snap-start">
+                ${renderVendorCard(vendor)}
+                <div class="flex gap-2 mt-2">
+                  <button class="glass-button flex-1 py-2 text-xs" onclick="window.location.hash='/vendor/${vendor.id}'">
+                    <ion-icon name="eye-outline" class="mr-1"></ion-icon>View
+                  </button>
+                  <button class="glass-button flex-1 py-2 text-xs" onclick="window._saveContactToDevice({name:'${(vendor.name || '').replace(/'/g, "\\'")}',email:'${vendor.email || ''}',phone:'${vendor.phone || ''}',org:'${(vendor.name || '').replace(/'/g, "\\'")}',location:'Booth ${vendor.booth || ''}'})">
+                    <ion-icon name="person-add-outline" class="mr-1"></ion-icon>Save
+                  </button>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      ` : ''}
+      
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div class="glass-card p-4 md:p-6">
           <div class="flex items-center gap-2 mb-4">
@@ -194,7 +344,7 @@ function renderAttendeeCards(state) {
             <div class="w-8 h-8 rounded-lg bg-pink-500/20 flex items-center justify-center">
               <ion-icon name="bookmark-outline" class="text-pink-400"></ion-icon>
             </div>
-            <h3 class="text-base md:text-lg font-semibold text-glass">Saved Vendors</h3>
+            <h3 class="text-base md:text-lg font-semibold text-glass">All Saved Vendors</h3>
           </div>
           ${saved.length ? `<div class="space-y-2">${saved.map(v => renderSavedVendor(v)).join("")}</div>` : `
             <div class="text-center py-6">

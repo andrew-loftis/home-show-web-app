@@ -2,6 +2,7 @@ import { Modal, Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
 import { getState } from "../store.js";
 import { CATEGORY_COLORS, getCategoryColor } from "../brand.js";
+import { getCurrentShowId, getCurrentShow, getActiveShows, setCurrentShow, SHOWS } from "../shows.js";
 
 export default async function VendorRegistration(root) {
   const state = getState();
@@ -10,7 +11,7 @@ export default async function VendorRegistration(root) {
     return;
   }
 
-  // Check if user is already an approved vendor
+  // Check if user is already a vendor (approved, pending, or denied)
   if (!state.user.isAnonymous) {
     try {
       const { getDb } = await import("../firebase.js");
@@ -23,18 +24,11 @@ export default async function VendorRegistration(root) {
       
       if (!snapshot.empty) {
         const vendorData = snapshot.docs[0].data();
-        // If vendor exists and is approved, show dashboard instead
-        if (vendorData.approved) {
-          const { default: VendorDashboard } = await import("./VendorDashboard.js");
-          VendorDashboard(root);
-          return;
-        }
-        // If vendor exists but not approved, show pending status
-        if (!vendorData.approved) {
-          const { default: VendorDashboard } = await import("./VendorDashboard.js");
-          VendorDashboard(root);
-          return;
-        }
+        // If vendor exists (approved, pending, or denied), redirect to dashboard
+        // The dashboard will handle showing appropriate UI for each status
+        const { default: VendorDashboard } = await import("./VendorDashboard.js");
+        VendorDashboard(root);
+        return;
       }
     } catch (error) {
       console.error('Error checking vendor status:', error);
@@ -197,6 +191,13 @@ export default async function VendorRegistration(root) {
         </div>
         <form id="regForm" class="glass-card p-4">
           ${step===1?`
+            <div class="mb-4">
+              <label class="block mb-1 font-medium text-glass">Which Show?</label>
+              <select name="showId" required class="w-full p-3 rounded border border-white/20 bg-glass-surface text-glass">
+                ${getActiveShows().map(s => `<option value="${s.id}" ${s.id === getCurrentShowId() ? 'selected' : ''} class="bg-glass-surface text-glass">${s.shortName} - ${s.displayDate}</option>`).join('')}
+              </select>
+              <p class="text-xs text-glass-secondary mt-1">Select the show you want to exhibit at</p>
+            </div>
             <input name="companyName" required placeholder="Company Name" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
             <input name="contactName" required placeholder="Contact Name" class="w-full mb-2 p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary">
           `:step===2?`
@@ -399,8 +400,12 @@ export default async function VendorRegistration(root) {
       e.preventDefault();
       const fd = new FormData(e.target);
       if (step===1) {
+        data.showId = fd.get("showId");
+        data.showName = SHOWS[data.showId]?.shortName || '';
         data.companyName = fd.get("companyName");
         data.contactName = fd.get("contactName");
+        // Update global show context to match selection
+        setCurrentShow(data.showId);
         step++;
         await render();
       } else if (step===2) {
@@ -454,6 +459,9 @@ export default async function VendorRegistration(root) {
             const db = getDb();
             const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
             await addDoc(collection(db, 'vendors'), {
+              // Show association (from Step 1 selection)
+              showId: data.showId,
+              showName: data.showName,
               name: data.companyName,
               category: data.category,
               booth: data.booths.join(', '),

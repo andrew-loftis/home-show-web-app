@@ -4,23 +4,31 @@ export function Modal(content, opts = {}) {
   root.innerHTML = "";
   const overlay = document.createElement("div");
   overlay.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm";
+  overlay.style.cssText = "padding: env(safe-area-inset-top, 20px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 16px);";
   if (!opts.preventClose) {
     overlay.onclick = () => closeModal();
   }
   const panel = document.createElement("div");
-  panel.className = `glass-card rounded-xl p-6 shadow-xl max-w-md w-full mx-4 fade-in ${opts.size === 'large' ? 'max-w-2xl' : ''}`;
+  panel.className = `glass-card rounded-xl p-6 shadow-xl max-w-md w-full mx-4 fade-in max-h-[85vh] overflow-y-auto ${opts.size === 'large' ? 'max-w-2xl' : ''}`;
+  panel.style.cssText = "-webkit-overflow-scrolling: touch;";
   panel.onclick = e => e.stopPropagation();
   panel.appendChild(content);
   overlay.appendChild(panel);
   root.appendChild(overlay);
+  
+  // Prevent body scrolling when modal is open
+  document.body.style.overflow = 'hidden';
 }
 export function closeModal() {
   document.getElementById("modal-root").innerHTML = "";
+  document.body.style.overflow = '';
 }
 export function Toast(msg, opts = {}) {
   const root = document.getElementById("toast-root");
   const toast = document.createElement("div");
-  toast.className = "fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-primary text-white px-4 py-2 rounded shadow fade-in z-50";
+  // Position above the tabbar with safe area support
+  toast.className = "glass-card px-4 py-3 rounded-xl shadow-lg fade-in z-50 text-center text-glass font-medium";
+  toast.style.cssText = "position: fixed; bottom: calc(100px + env(safe-area-inset-bottom, 0)); left: 50%; transform: translateX(-50%); max-width: calc(100vw - 32px);";
   toast.textContent = msg;
   root.appendChild(toast);
   setTimeout(() => toast.remove(), opts.duration || 2200);

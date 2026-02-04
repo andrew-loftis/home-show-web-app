@@ -26,7 +26,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { customerEmail, amount, description, paymentType, vendorName, vendorId } = JSON.parse(event.body);
+    const { customerEmail, amount, description, paymentType, vendorName, vendorId, showId } = JSON.parse(event.body);
 
     // Validate required fields
     if (!customerEmail || !amount || !description) {
@@ -52,6 +52,7 @@ exports.handler = async (event, context) => {
         name: vendorName || 'Vendor',
         metadata: {
           vendorId: vendorId || '',
+          showId: showId || '',
           paymentType: paymentType || 'booth_rental',
         },
       });
@@ -66,6 +67,7 @@ exports.handler = async (event, context) => {
       metadata: {
         vendorId: vendorId || '',
         vendorName: vendorName || '',
+        showId: showId || '',
         paymentType: paymentType || 'booth_rental',
       },
     });

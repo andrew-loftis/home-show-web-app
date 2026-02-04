@@ -42,7 +42,7 @@ export default function Sponsors(root) {
         <div class="glass-card p-6">
           <h3 class="text-lg font-semibold text-glass mb-2">Interested in Sponsoring?</h3>
           <p class="text-glass-secondary text-sm mb-4">Join our family of sponsors and reach thousands of homeowners.</p>
-          <button class="brand-bg px-6 py-3 rounded-xl font-semibold text-sm" onclick="window.location.href='mailto:sponsors@tn-shows.app'">
+          <button class="brand-bg px-6 py-3 rounded-xl font-semibold text-sm" onclick="window.location.href='mailto:sponsors@winnpro-shows.app'">
             <ion-icon name="mail-outline" class="mr-2"></ion-icon>
             Contact Us
           </button>

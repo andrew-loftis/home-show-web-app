@@ -30,7 +30,7 @@ export default function Vendors(root) {
           <div class="flex items-center gap-3 mb-4">
             <div class="flex-1 relative">
               <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-glass-secondary"></ion-icon>
-              <input type="text" placeholder="Search vendors, categories, booth…" class="w-full pl-10 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-glass placeholder:text-glass-secondary" disabled>
+              <input type="text" placeholder="Search vendors, categories, booth…" class="w-full pl-10 pr-3 py-2 rounded-lg" disabled>
             </div>
             <div class="flex items-center gap-2">
               <button class="glass-button px-3 py-2 opacity-50" disabled>
@@ -55,18 +55,19 @@ export default function Vendors(root) {
     const filtered = filter(list);
     root.innerHTML = `
       <div class="fade-in min-h-screen">
-        <div class="max-w-5xl mx-auto px-4 pt-4 pb-28">
-          <div class="flex items-center gap-3 mb-4">
+        <div class="max-w-5xl mx-auto px-3 pt-3 pb-24">
+          <!-- Search bar - compact -->
+          <div class="flex items-center gap-2 mb-3">
             <div class="flex-1 relative">
-              <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-glass-secondary"></ion-icon>
-              <input id="vendorSearch" type="text" placeholder="Search vendors, categories, booth…" class="w-full pl-10 pr-3 py-2 rounded-lg border border-white/15 bg-white/10 text-glass placeholder:text-glass-secondary">
+              <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-glass-secondary text-sm"></ion-icon>
+              <input id="vendorSearch" type="text" placeholder="Search vendors..." class="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm">
             </div>
-            <div class="flex items-center gap-2">
-              <button id="listViewBtn" class="glass-button px-3 py-2 ${currentView==='list' ? 'brand-bg' : ''}">
-                <ion-icon name="reorder-three-outline"></ion-icon>
+            <div class="flex items-center gap-1">
+              <button id="listViewBtn" class="glass-button p-2.5 ${currentView==='list' ? 'brand-bg' : ''}">
+                <ion-icon name="list-outline" class="text-lg"></ion-icon>
               </button>
-              <button id="galleryViewBtn" class="glass-button px-3 py-2 ${currentView==='gallery' ? 'brand-bg' : ''}">
-                <ion-icon name="grid-outline"></ion-icon>
+              <button id="galleryViewBtn" class="glass-button p-2.5 ${currentView==='gallery' ? 'brand-bg' : ''}">
+                <ion-icon name="grid-outline" class="text-lg"></ion-icon>
               </button>
             </div>
           </div>
@@ -157,65 +158,67 @@ export default function Vendors(root) {
     const profile = vendor.profile || {};
     const selectedSocials = profile.selectedSocials || [];
     return `
-      <div class="glass-card overflow-hidden slide-up border border-white/15 shadow-glass">
-        <div class="flex items-center gap-4 p-6 border-b border-white/20">
-          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-            ${vendor.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>'}
+      <div class="glass-card overflow-hidden slide-up border border-white/10">
+        <!-- Header - compact -->
+        <div class="flex items-center gap-3 p-4 border-b border-white/10">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-white/15 to-white/5 border border-white/15 flex items-center justify-center overflow-hidden flex-shrink-0">
+            ${vendor.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-lg"></ion-icon>'}
           </div>
-          <div class="flex-1">
-            <h3 class="text-xl font-bold text-glass">${vendor.name}</h3>
-            <p class="text-glass-secondary">${vendor.category} ${vendor.booth ? `• Booth ${vendor.booth}` : ''}</p>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-base font-bold text-glass truncate">${vendor.name}</h3>
+            <p class="text-glass-secondary text-xs">${vendor.category} ${vendor.booth ? `• Booth ${vendor.booth}` : ''}</p>
           </div>
-          <button class="brand-bg px-6 py-3 rounded-xl font-semibold" onclick="window.location.hash='/vendor/${vendor.id}'">Visit</button>
+          <button class="brand-bg px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0" onclick="window.location.hash='/vendor/${vendor.id}'">View</button>
         </div>
+        <!-- Image - shorter -->
         <div class="relative">
           ${profile.backgroundImage ? `
-            <img src="${profile.backgroundImage}" class="w-full h-80 object-cover lazy-img" loading="lazy" onerror="this.style.display='none'">
+            <img src="${profile.backgroundImage}" class="w-full h-48 object-cover lazy-img" loading="lazy" onerror="this.style.display='none'">
           ` : `
-            <div class="w-full h-80 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900 flex items-center justify-center">
+            <div class="w-full h-48 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900 flex items-center justify-center">
               <div class="text-white text-center">
-                <ion-icon name="business-outline" class="text-6xl mb-4"></ion-icon>
-                <h4 class="text-2xl font-bold">${vendor.name}</h4>
+                <ion-icon name="business-outline" class="text-4xl mb-2 opacity-50"></ion-icon>
+                <h4 class="text-lg font-semibold opacity-75">${vendor.name}</h4>
               </div>
             </div>
           `}
           ${profile.homeShowVideo ? `
-            <div class="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[1px]">
-              <button class="play-video w-16 h-16 rounded-full bg-white/30 backdrop-blur-sm border border-white/50 flex items-center justify-center hover:scale-110 transition-transform duration-300" data-url="${profile.homeShowVideo}">
-                <ion-icon name="play" class="text-white text-2xl ml-1"></ion-icon>
+            <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+              <button class="play-video w-12 h-12 rounded-full bg-white/25 backdrop-blur-sm border border-white/40 flex items-center justify-center" data-url="${profile.homeShowVideo}">
+                <ion-icon name="play" class="text-white text-xl ml-0.5"></ion-icon>
               </button>
             </div>
           ` : ''}
         </div>
-        <div class="p-6">
-          ${profile.description ? `<p class=\"text-glass-secondary mb-4 leading-relaxed\">${profile.description}</p>` : ''}
+        <!-- Content - compact -->
+        <div class="p-4">
+          ${profile.description ? `<p class="text-glass-secondary text-sm mb-3 line-clamp-2">${profile.description}</p>` : ''}
           ${profile.specialOffer ? `
-            <div class="glass-card p-4 mb-4 border border-yellow-400/30 bg-gradient-to-r from-yellow-400/10 to-orange-400/10">
-              <div class="flex items-center gap-2 mb-2">
-                <ion-icon name="star" class="text-yellow-400"></ion-icon>
-                <span class="font-semibold text-glass">Special Offer</span>
+            <div class="rounded-xl p-3 mb-3 border border-yellow-400/20 bg-yellow-400/10">
+              <div class="flex items-center gap-1.5 mb-1">
+                <ion-icon name="star" class="text-yellow-400 text-sm"></ion-icon>
+                <span class="font-semibold text-glass text-sm">Special Offer</span>
               </div>
-              <p class="text-glass-secondary text-sm">${profile.specialOffer}</p>
+              <p class="text-glass-secondary text-xs">${profile.specialOffer}</p>
             </div>
           ` : ''}
           ${profile.businessCardFront ? `
-            <div class="mb-6">
-              <div class="flex items-center gap-2 mb-3">
-                <ion-icon name="card-outline" class="text-blue-400"></ion-icon>
-                <span class="font-semibold text-glass">Business Card</span>
+            <div class="mb-3">
+              <div class="flex items-center gap-1.5 mb-2">
+                <ion-icon name="card-outline" class="text-blue-400 text-sm"></ion-icon>
+                <span class="font-medium text-glass text-sm">Business Card</span>
               </div>
-              <div class="flex gap-4 overflow-x-auto">
-                <img src="${profile.businessCardFront}" class="w-40 h-24 object-cover rounded-lg border border-white/20" onerror="this.style.display='none'">
-                ${profile.businessCardBack ? `<img src="${profile.businessCardBack}" class="w-40 h-24 object-cover rounded-lg border border-white/20" onerror="this.style.display='none'">` : ''}
+              <div class="flex gap-2 overflow-x-auto">
+                <img src="${profile.businessCardFront}" class="w-32 h-20 object-cover rounded-lg border border-white/15" onerror="this.style.display='none'">
+                ${profile.businessCardBack ? `<img src="${profile.businessCardBack}" class="w-32 h-20 object-cover rounded-lg border border-white/15" onerror="this.style.display='none'">` : ''}
               </div>
             </div>
           ` : ''}
           ${selectedSocials.length ? `
-            <div class="grid grid-cols-4 gap-3 mb-4">
+            <div class="flex gap-2">
               ${selectedSocials.map(s => `
-                <button class="social-link glass-button p-3 text-center hover:bg-white/25 transition-colors" data-url="${profile[s] || '#'}">
-                  <ion-icon name="logo-${s}" class="text-2xl text-white mb-1"></ion-icon>
-                  <div class="text-xs text-glass-secondary capitalize">${s}</div>
+                <button class="social-link glass-button p-2 hover:bg-white/20 transition-colors" data-url="${profile[s] || '#'}">
+                  <ion-icon name="logo-${s}" class="text-lg text-white"></ion-icon>
                 </button>
               `).join('')}
             </div>
@@ -345,10 +348,13 @@ export default function Vendors(root) {
       const handler = (e) => {
         if (e.target === el) {
           el.removeEventListener('transitionend', handler);
+          clearTimeout(safety);
           resolve();
         }
       };
       el.addEventListener('transitionend', handler);
+      // Safety: resolve after 500ms if transition never fires (interrupted / removed from DOM)
+      const safety = setTimeout(() => { el.removeEventListener('transitionend', handler); resolve(); }, 500);
     });
   }
 
@@ -409,6 +415,8 @@ window.saveListing = function(vendorId) {
     if (attendeeId) {
       saveVendorForAttendee(attendeeId, vendorId);
       import("../utils/ui.js").then(({ Toast }) => { Toast("Vendor saved!"); });
+    } else {
+      import("../utils/ui.js").then(({ Toast }) => { Toast("Create your business card first to save vendors"); });
     }
   });
 };

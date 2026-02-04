@@ -8,12 +8,12 @@ import { hasSeenWalkthrough, setWalkthroughSeen } from '../store.js';
 // Tour configuration for different user roles
 export const TOUR_CONFIGS = {
   general: {
-    title: 'Welcome to Winn-Pro!',
+    title: 'Welcome to WinnPro!',
     subtitle: 'Your Digital Trade Show Companion',
     steps: [
       {
         title: 'Welcome! 👋',
-        description: 'Winn-Pro makes attending trade shows easy. Create your digital business card, discover vendors, and make connections that matter.',
+        description: 'WinnPro makes attending trade shows easy. Create your digital business card, discover vendors, and make connections that matter.',
         icon: 'sparkles',
         gradient: 'from-blue-500 to-purple-500'
       },

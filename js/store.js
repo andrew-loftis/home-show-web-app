@@ -66,6 +66,37 @@
 
 const LS_KEY = "homeshow:v1";
 const OLD_LS_KEY = "leadpass:v1";
+
+// Synchronous helpers to get show info without circular dependency
+// shows.js imports firebase modules dynamically, so we avoid importing it at top level
+function getCurrentShowIdSync() {
+  try {
+    const stored = localStorage.getItem('winnpro_selected_show');
+    return stored || 'putnam-spring-2026';
+  } catch {
+    return 'putnam-spring-2026';
+  }
+}
+
+function getCurrentShowNameSync() {
+  try {
+    const showId = getCurrentShowIdSync();
+    const cachedShows = localStorage.getItem('winnpro_shows_cache');
+    if (cachedShows) {
+      const shows = JSON.parse(cachedShows);
+      return shows[showId]?.shortName || '';
+    }
+  } catch {}
+  return '';
+}
+
+// Cached Firestore SDK module — avoids repeated dynamic imports on every call
+let _fsm = null;
+async function getFsm() {
+  if (!_fsm) _fsm = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+  return _fsm;
+}
+
 let listeners = [];
 let state = {
   role: null,
@@ -73,7 +104,7 @@ let state = {
   hasOnboarded: false,
   isOnline: true,
   vendorLoginId: null,
-  theme: "light",
+  theme: "dark",
   user: null, // { uid, displayName, email, photoURL }
   isAdmin: false,
   myVendor: null, // { id, approved } if user owns a vendor
@@ -154,7 +185,7 @@ function hydrateStore() {
             // Determine if user owns a vendor
             try {
               const db = getDb();
-              const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+              const { collection, query, where, getDocs, limit } = await getFsm();
               const q = query(collection(db, 'vendors'), where('ownerUid', '==', user.uid), limit(1));
               const snap = await getDocs(q);
               let mine = null;
@@ -165,7 +196,7 @@ function hydrateStore() {
             let attendeeRole = null;
             try {
               const db = getDb();
-              const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+              const { collection, query, where, getDocs, limit } = await getFsm();
               const q = query(collection(db, 'attendees'), where('ownerUid', '==', user.uid), limit(1));
               const snap = await getDocs(q);
               let att = null;
@@ -184,7 +215,7 @@ function hydrateStore() {
               state.role = attendeeRole;
             } else {
               // Fallback to automatic detection
-              state.role = mine ? 'vendor' : 'attendee';
+              state.role = state.myVendor ? 'vendor' : 'attendee';
             }
             
             // Load per-user preferences (e.g., theme)
@@ -208,12 +239,14 @@ function hydrateStore() {
       // Live vendors subscription (approved only)
       try {
         const db = getDb();
-        const { collection, query, where, onSnapshot, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+        const { collection, query, where, onSnapshot, limit } = await getFsm();
         const q = query(collection(db, 'vendors'), where('approved', '==', true));
         onSnapshot(q, (snap) => {
           const list = [];
           snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
-          state.vendors = list;
+          // Filter by current show — legacy vendors without showId belong to default show
+          const currentShow = getCurrentShowIdSync();
+          state.vendors = list.filter(v => (v.showId || 'putnam-spring-2026') === currentShow);
           persist();
           notify();
         });
@@ -221,7 +254,7 @@ function hydrateStore() {
       // Real-time attendee doc for current user
       try {
         const db = getDb();
-        const { collection, query, where, limit, onSnapshot } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+        const { collection, query, where, limit, onSnapshot } = await getFsm();
         const attach = (uid) => {
           const q = query(collection(db, 'attendees'), where('ownerUid', '==', uid), limit(1));
           onSnapshot(q, (snap) => {
@@ -243,7 +276,7 @@ function hydrateStore() {
       // Real-time vendor leads for my vendor (if owner)
       try {
         const db = getDb();
-        const { collection, query, where, onSnapshot, orderBy } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+        const { collection, query, where, onSnapshot, orderBy } = await getFsm();
         const attachLeads = (vendorId) => {
           const q = query(collection(db, 'leads'), where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'));
           onSnapshot(q, (snap) => {
@@ -302,7 +335,7 @@ async function setRole(role) {
     try {
       const { getDb } = await import("./firebase.js");
       const db = getDb();
-      const { doc, updateDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { doc, updateDoc } = await getFsm();
       
       const attendeeId = state.attendees[0].id;
       await updateDoc(doc(db, 'attendees', attendeeId), {
@@ -403,6 +436,8 @@ async function upsertAttendee(payload) {
       };
       const base = {
         ownerUid: state.user.uid,
+        showId: getCurrentShowIdSync(),
+        showName: getCurrentShowNameSync(),
         name: payload.name ?? att?.name ?? '',
         email: payload.email ?? att?.email ?? '',
         phone: payload.phone ?? att?.phone ?? '',
@@ -414,7 +449,7 @@ async function upsertAttendee(payload) {
       };
       const { getDb } = await import('./firebase.js');
       const db = getDb();
-      const { collection, query, where, getDocs, limit, addDoc, doc, setDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { collection, query, where, getDocs, limit, addDoc, doc, setDoc, serverTimestamp } = await getFsm();
       // Look for existing attendee by ownerUid
       let remoteId = null;
       try {
@@ -491,7 +526,7 @@ function saveBusinessCard(attendeeId, vendorId) {
   persist();
   notify();
 }
-async function addLead(attendeeId, vendorId, method = "card_share") {
+async function addLead(attendeeId, vendorId, method = "card_share", emailOptions = {}) {
   if (!ensureAccountOrPrompt(method === 'card_share' ? 'share your card' : 'record a lead')) return null;
   const lead = {
     id: uuid(),
@@ -509,7 +544,12 @@ async function addLead(attendeeId, vendorId, method = "card_share") {
       await createLead(attendeeId, vendorId, state.user.uid, {
         exchangeMethod: method,
         emailSent: lead.emailSent,
-        cardShared: lead.cardShared
+        cardShared: lead.cardShared,
+        ...emailOptions.data
+      }, {
+        sendEmail: emailOptions.sendEmail,
+        vendorEmail: emailOptions.vendorEmail,
+        vendorBusinessName: emailOptions.vendorBusinessName
       });
     } catch {}
   }
@@ -578,10 +618,10 @@ function topVendorsByLeadCount() {
     .sort((a, b) => b.leadCount - a.leadCount)
     .slice(0, 5);
 }
-async function shareBusinessCard(attendeeId, vendorId) {
+async function shareBusinessCard(attendeeId, vendorId, emailOptions = {}) {
   const attendee = state.attendees.find(a => a.id === attendeeId);
   if (!attendee?.card) return false;
-  await addLead(attendeeId, vendorId, "card_share");
+  await addLead(attendeeId, vendorId, "card_share", emailOptions);
   return true;
 }
 // UUID and short code helpers

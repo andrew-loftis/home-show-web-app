@@ -1,0 +1,58 @@
+# Netlify Functions Setup Guide
+
+## Environment Variables Required
+
+### For Email Functions (SendGrid)
+- SENDGRID_API_KEY: Your SendGrid API key
+- FROM_EMAIL: Verified sender email address
+- APP_NAME: Application name for branding (default: "WinnPro Shows")
+- APP_URL: Base URL for links in emails
+
+### For Stripe Functions
+- STRIPE_SECRET_KEY: Your Stripe secret key
+- STRIPE_WEBHOOK_SECRET: Webhook signing secret
+
+### For Firebase Admin Functions (Vendor Import)
+- FIREBASE_PROJECT_ID: Your Firebase project ID
+- FIREBASE_CLIENT_EMAIL: Service account client email
+- FIREBASE_PRIVATE_KEY: Service account private key (with \n for newlines)
+
+## Getting Firebase Admin Credentials
+
+1. Go to Firebase Console > Project Settings > Service Accounts
+2. Click "Generate New Private Key"
+3. Download the JSON file
+4. Extract these values for Netlify environment variables:
+   - project_id → FIREBASE_PROJECT_ID
+   - client_email → FIREBASE_CLIENT_EMAIL
+   - private_key → FIREBASE_PRIVATE_KEY
+
+Note: When adding FIREBASE_PRIVATE_KEY to Netlify:
+- Keep the entire string including -----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY-----
+- Keep the \n characters (Netlify handles them correctly)
+
+## Functions Available
+
+1. send-email.js - Transactional emails via SendGrid
+2. create-checkout.js - Stripe checkout session creation
+3. create-invoice.js - Stripe invoice creation
+4. get-stripe-invoices.js - Fetch vendor invoices
+5. stripe-webhook.js - Handle Stripe webhook events
+6. send-push.js - Push notifications
+7. create-vendor-account.js - Create Firebase Auth accounts for imported vendors
+8. send-password-reset.js - Trigger password reset emails
+
+## Vendor Import Feature
+
+The admin Import tab allows migrating vendors from Scan2Scan:
+
+1. **CSV Import**: Upload a CSV with columns: name, email, category, phone, booth, website
+2. **Manual Import**: Add vendors one at a time with form
+
+Both methods:
+- Create a vendor document in Firestore
+- Create a Firebase Auth account (if doesn't exist)
+- Optionally send password reset email so vendor can log in
+- Optionally auto-approve vendors
+
+The vendor will receive an email with a link to set their password and access their dashboard.

@@ -7,7 +7,7 @@ import { logTagged } from './logger.js';
 
 // FCM Vapid Key (public key for web push)
 // This should be set in index.html or config: window.FCM_VAPID_KEY
-const getVapidKey = () => window.FCM_VAPID_KEY || null;
+const getVapidKey = () => window.FCM_VAPID_KEY || localStorage.getItem('fcmVapidKey') || null;
 
 let messaging = null;
 let currentToken = null;
@@ -158,10 +158,10 @@ export async function onForegroundMessage(callback) {
       // Show notification manually for foreground
       if (Notification.permission === 'granted') {
         const { title, body, icon } = payload.notification || {};
-        new Notification(title || 'Winn-Pro', {
+        new Notification(title || 'WinnPro Shows', {
           body: body || 'You have a new notification',
-          icon: icon || '/assets/icons/icon-192.svg',
-          badge: '/assets/icons/icon-192.svg',
+          icon: icon || '/assets/House Logo Only.png',
+          badge: '/assets/House Logo Only.png',
           tag: 'winnpro-notification',
           data: payload.data
         });
@@ -185,8 +185,8 @@ export function showLocalNotification(title, options = {}) {
   }
   
   return new Notification(title, {
-    icon: '/assets/icons/icon-192.svg',
-    badge: '/assets/icons/icon-192.svg',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'winnpro-local',
     ...options
   });

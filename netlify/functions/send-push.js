@@ -5,7 +5,7 @@
  * 
  * Environment Variables Required:
  * - FIREBASE_SERVICE_ACCOUNT: JSON stringified Firebase service account
- * - APP_NAME: Application name for branding (default: "Winn-Pro Show")
+ * - APP_NAME: Application name for branding (default: "WinnPro Shows")
  * - APP_URL: Base URL for notification click links
  */
 
@@ -48,8 +48,8 @@ const notificationTemplates = {
   paymentReceived: (data) => ({
     title: `💳 Payment Confirmed!`,
     body: `Thank you! We received your $${data.amount} payment for ${data.description || 'booth rental'}.`,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'payment',
     data: {
       type: 'payment_received',
@@ -61,8 +61,8 @@ const notificationTemplates = {
   invoiceSent: (data) => ({
     title: `📄 Invoice Ready`,
     body: `Your invoice for $${data.amount} is ready. Tap to view and pay.`,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'invoice',
     data: {
       type: 'invoice_sent',
@@ -76,8 +76,8 @@ const notificationTemplates = {
   vendorApproved: (data) => ({
     title: `🎉 You're Approved!`,
     body: `Welcome to ${data.appName || 'the show'}! Your vendor registration has been approved.`,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'vendor-status',
     data: {
       type: 'vendor_approved',
@@ -89,8 +89,8 @@ const notificationTemplates = {
   boothAssigned: (data) => ({
     title: `📍 Booth Assigned`,
     body: `You've been assigned booth ${data.boothNumber}. View your location on the map.`,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'booth',
     data: {
       type: 'booth_assigned',
@@ -104,8 +104,8 @@ const notificationTemplates = {
   newLead: (data) => ({
     title: `🎯 New Lead!`,
     body: `${data.attendeeName || 'Someone'} just connected with your booth.`,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'lead',
     data: {
       type: 'new_lead',
@@ -119,8 +119,8 @@ const notificationTemplates = {
   eventReminder: (data) => ({
     title: `⏰ ${data.appName || 'Event'} Reminder`,
     body: data.message || 'The event is starting soon!',
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'event',
     data: {
       type: 'event_reminder',
@@ -132,8 +132,8 @@ const notificationTemplates = {
   scheduleChange: (data) => ({
     title: `📅 Schedule Update`,
     body: data.message || 'There has been a change to the event schedule.',
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'schedule',
     data: {
       type: 'schedule_change',
@@ -146,8 +146,8 @@ const notificationTemplates = {
   announcement: (data) => ({
     title: data.title || `📢 ${data.appName || 'Event'} Update`,
     body: data.message,
-    icon: '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: 'announcement',
     data: {
       type: 'announcement',
@@ -160,8 +160,8 @@ const notificationTemplates = {
   custom: (data) => ({
     title: data.title,
     body: data.body,
-    icon: data.icon || '/assets/icons/icon-192x192.png',
-    badge: '/assets/icons/badge-72x72.png',
+    icon: data.icon || '/assets/House Logo Only.png',
+    badge: '/assets/House Logo Only.png',
     tag: data.tag || 'notification',
     data: {
       type: 'custom',
@@ -303,8 +303,8 @@ exports.handler = async (event, context) => {
       tokens         // Direct tokens (optional, for testing)
     } = JSON.parse(event.body);
 
-    const appName = process.env.APP_NAME || 'Winn-Pro Show';
-    const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+    const appName = process.env.APP_NAME || 'WinnPro Shows';
+    const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
 
     // Get notification content
     const templateFn = notificationTemplates[template];

@@ -92,7 +92,7 @@ function showInstallPrompt() {
             <span class="text-white font-bold text-sm">WP</span>
           </div>
           <div class="flex-1 min-w-0">
-            <h4 class="font-semibold text-glass text-sm">Install Winn-Pro</h4>
+            <h4 class="font-semibold text-glass text-sm">Install WinnPro</h4>
             <p class="text-glass-secondary text-xs mt-1">Add to your home screen for the best experience</p>
           </div>
           <button id="pwa-dismiss" class="text-glass-secondary hover:text-glass p-1">
@@ -156,7 +156,7 @@ export function renderInstallButton() {
         </div>
         <div>
           <div class="font-semibold text-glass">App Installed</div>
-          <div class="text-xs text-glass-secondary">Winn-Pro is installed on your device</div>
+          <div class="text-xs text-glass-secondary">WinnPro is installed on your device</div>
         </div>
       </div>
     `;
@@ -173,7 +173,7 @@ export function renderInstallButton() {
       </div>
       <div class="flex-1">
         <div class="font-semibold text-glass">Install App</div>
-        <div class="text-xs text-glass-secondary">Add Winn-Pro to your home screen</div>
+        <div class="text-xs text-glass-secondary">Add WinnPro to your home screen</div>
       </div>
       <ion-icon name="chevron-forward-outline" class="text-glass-secondary"></ion-icon>
     </button>

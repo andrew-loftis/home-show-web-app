@@ -15,7 +15,9 @@ export const EmailTemplates = {
   NEW_LEAD: 'newLead',
   ATTENDEE_WELCOME: 'attendeeWelcome',
   PAYMENT_CONFIRMATION: 'paymentConfirmation',
-  ADMIN_NOTIFICATION: 'adminNotification'
+  ADMIN_NOTIFICATION: 'adminNotification',
+  PASSWORD_RESET: 'passwordReset',
+  VENDOR_IMPORTED: 'vendorImported'
 };
 
 /**
@@ -67,6 +69,13 @@ export async function sendVendorRejectionEmail(vendorEmail, vendorData, reason =
     businessName: vendorData.businessName || vendorData.companyName,
     reason
   });
+}
+
+/**
+ * Send vendor denial notification (alias for rejection)
+ */
+export async function sendVendorDenialEmail(vendorEmail, vendorData) {
+  return sendVendorRejectionEmail(vendorEmail, vendorData, vendorData.reason || '');
 }
 
 /**

@@ -1,11 +1,11 @@
 {
   "appId": "app.winnpro.mobile",
-  "appName": "Winn-Pro Show",
+  "appName": "WinnPro Shows",
   "webDir": ".",
   "server": {
     "androidScheme": "https",
     "iosScheme": "https",
-    "hostname": "tn-shows.app"
+    "hostname": "winnpro-shows.app"
   },
   "plugins": {
     "SplashScreen": {

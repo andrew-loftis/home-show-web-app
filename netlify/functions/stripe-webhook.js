@@ -108,9 +108,9 @@ async function sendPaymentNotificationEmails(paymentData) {
     return;
   }
 
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@tn-shows.app';
-  const appName = process.env.APP_NAME || 'Winn-Pro Show';
-  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+  const fromEmail = process.env.FROM_EMAIL || 'noreply@winnpro-shows.app';
+  const appName = process.env.APP_NAME || 'WinnPro Shows';
+  const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
   const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
 
   try {
@@ -180,7 +180,7 @@ async function sendPaymentNotificationEmails(paymentData) {
 
 // Send push notification via send-push function
 async function sendPushNotification(options) {
-  const appUrl = process.env.APP_URL || 'https://tn-shows.app';
+  const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
   
   try {
     console.log(`Sending push notification: ${options.template}`);

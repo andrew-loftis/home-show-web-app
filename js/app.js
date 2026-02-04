@@ -2,9 +2,20 @@ import { hydrateStore, subscribe, getState } from "./store.js";
 import { initRouter, navigate, renderCurrentView } from "./router.js";
 import { Modal, Toast } from "./utils/ui.js";
 import { setupGlobalErrorHandlers } from "./utils/errorBoundary.js";
+import { renderShowSelector, initShowSelector, getCurrentShow, initShows } from "./shows.js";
 
 // Setup global error handlers early
 setupGlobalErrorHandlers();
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    // Required for web push token generation (FCM) and background notifications.
+    await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+  } catch (e) {
+    console.warn('[App] Service worker registration failed:', e);
+  }
+}
 
 // Setup foreground push notification listener (non-blocking)
 async function setupNotificationListener() {
@@ -32,17 +43,32 @@ function renderShell() {
   document.body.classList.toggle('theme-dark', state.theme === 'dark');
   const app = document.getElementById("app");
   app.innerHTML = "";
-  app.appendChild(renderHeader(state));
-  app.appendChild(renderTabbar(state));
-  const main = document.createElement("main");
-  // Ensure content can scroll above the fixed bottom tabbar and below sticky header
-  main.className = "pb-28 pt-2"; // Tailwind: padding-bottom ~7rem
-  app.appendChild(main);
+  
+  // Check if we're on the admin dashboard - it has its own layout
+  const currentHash = window.location.hash.replace('#', '') || '/home';
+  const isAdminPage = currentHash === '/admin' || currentHash.startsWith('/admin/');
+  
+  if (isAdminPage && state.isAdmin) {
+    // Admin page uses its own layout, but keep the standard bottom nav buttons.
+    app.appendChild(renderTabbar(state));
+    const main = document.createElement("main");
+    main.className = "admin-page-container";
+    app.appendChild(main);
+  } else {
+    // Standard app shell with header and tabbar
+    app.appendChild(renderHeader(state));
+    app.appendChild(renderTabbar(state));
+    const main = document.createElement("main");
+    // Ensure content can scroll below fixed header and above fixed tabbar
+    // Using CSS for safe-area-aware padding (see styles.css)
+    main.className = "main-content min-h-screen"; // Let CSS handle the padding
+    app.appendChild(main);
+  }
 }
 
 function renderHeader(state) {
   const header = document.createElement("header");
-  header.className = "flex items-center justify-between px-4 py-3 nav-glass shadow-glass sticky top-0 z-20";
+  header.className = "flex items-center justify-between px-3 py-2 nav-glass shadow-glass fixed top-0 left-0 right-0 z-30 safe-area-inset-top";
   const roleLabel = state.user ? (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Select Role') : 'Guest';
   
   // Role badge styling based on role type
@@ -53,19 +79,24 @@ function renderHeader(state) {
       : 'glass-button';
   
   header.innerHTML = `
-    <a href="#/home" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-      <img src="assets/logo-dark.svg" alt="Winn-Pro" class="h-10 w-auto" />
-    </a>
+    <div class="flex items-center gap-2">
+      <img src="/assets/House Logo Only.png" alt="WinnPro" class="w-8 h-8 object-contain">
+      ${renderShowSelector()}
+    </div>
     <div class="${roleBadgeClass} px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm">
       ${roleLabel}
     </div>
   `;
+  
+  // Initialize show selector after DOM is ready
+  setTimeout(() => initShowSelector(), 0);
+  
   return header;
 }
 
 function renderTabbar(state) {
   const tabbar = document.createElement("nav");
-  tabbar.className = "fixed bottom-0 left-0 right-0 nav-glass border-t border-white/10 z-20 safe-area-inset-bottom";
+  tabbar.className = "fixed bottom-0 left-0 right-0 nav-glass border-t border-white/10 z-30 safe-area-inset-bottom";
   
   // Role-adaptive tabs
   let tabs = [];
@@ -110,16 +141,32 @@ function renderTabbar(state) {
     <div class="bottom-tabbar">
       ${tabs.map(tab => {
         const isActive = currentHash === tab.route || currentHash.startsWith(tab.route + '/');
+        // Special handling for Home tab - use house logo image
+        if (tab.route === '/home') {
+          return `
+            <button class="group tab-item ${isActive ? 'tab-active' : ''}" 
+                    role="button" 
+                    tabindex="0" 
+                    aria-label="${tab.label}"
+                    onclick="window.location.hash='${tab.route}'">
+              <img src="/assets/House Logo Only.png" 
+                   alt="Home" 
+                   class="w-6 h-6 mb-1 object-contain ${isActive ? 'opacity-100' : 'opacity-60 group-hover:opacity-80'}"
+                   style="${isActive ? 'filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));' : ''}">
+              <span class="text-[10px] font-medium ${isActive ? 'text-blue-500' : 'tab-label'}">${tab.label}</span>
+            </button>
+          `;
+        }
         return `
-          <button class="group ${isActive ? 'bg-white/10' : ''}" 
+          <button class="group tab-item ${isActive ? 'tab-active' : ''}" 
                   role="button" 
                   tabindex="0" 
                   aria-label="${tab.label}"
                   onclick="window.location.hash='${tab.route}'">
             <ion-icon name="${isActive ? tab.iconActive : tab.icon}" 
-                      class="text-2xl mb-1 ${isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-300'}">
+                      class="text-2xl mb-1 ${isActive ? 'text-blue-500' : 'tab-icon'}">
             </ion-icon>
-            <span class="text-[10px] font-medium ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-400'}">${tab.label}</span>
+            <span class="text-[10px] font-medium ${isActive ? 'text-blue-500' : 'tab-label'}">${tab.label}</span>
           </button>
         `;
       }).join("")}
@@ -156,12 +203,25 @@ async function initAdsSystem() {
 }
 
 function boot() {
-  console.log('[App] Booting V-1.5...');
+  console.log('[App] Booting V-2.23...');
   hydrateStore();
   // Expose getState globally for some views
   window.getState = getState;
+  
+  // Initialize shows from Firestore (non-blocking)
+  initShows().then(() => {
+    console.log('[App] Shows initialized');
+    // Re-render if shows loaded after initial render
+    scheduleRender();
+  }).catch(e => {
+    console.warn('[App] Shows init failed, using defaults:', e);
+  });
+  
   // Initialize router; let it render on hash changes
   initRouter(renderShell);
+
+  // Register service worker early (non-blocking)
+  registerServiceWorker();
   // Render once after boot
   scheduleRender();
   // On any state change (e.g., theme toggle), coalesce renders

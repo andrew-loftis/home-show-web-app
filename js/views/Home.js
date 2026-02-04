@@ -2,6 +2,8 @@ import { getState, currentVendor, leadsForVendor } from "../store.js";
 import { shouldShowTour, markTourComplete, maybeRunTour } from "../utils/tour.js";
 import { Toast } from "../utils/ui.js";
 import { initLazyBackgrounds } from "../utils/lazyImages.js";
+import { getCurrentShow, getTimeUntilShow, isShowLive, getActiveShows, setCurrentShow, getCurrentShowId } from "../shows.js";
+import { handleAuthError } from "../utils/authErrors.js";
 
 // Compact card renderer for preview
 function renderCompactCard(attendee) {
@@ -53,7 +55,7 @@ async function getVendorLeadCount(vendorId) {
     const { collection, query, where, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
     
     const leadsRef = collection(db, 'leads');
-    const q = query(leadsRef, where('vendor_id', '==', vendorId));
+    const q = query(leadsRef, where('vendorId', '==', vendorId));
     const snapshot = await getCountFromServer(q);
     return snapshot.data().count;
   } catch (error) {
@@ -64,72 +66,105 @@ async function getVendorLeadCount(vendorId) {
 
 export default async function Home(root) {
   const state = getState();
+  const currentShow = getCurrentShow();
+  const showLive = isShowLive(currentShow.id);
+  const timeUntil = getTimeUntilShow(currentShow.id);
+  
   let html = "";
   if (!state.user || state.user.isAnonymous) {
     // Guest experience: sign-in/sign-up section prominent
+    const gradientClass = currentShow.season === 'spring' ? 'show-gradient-spring' : 'show-gradient-fall';
     html = `
       <div class="container-glass fade-in">
-        <!-- Hero Section -->
-        <div class="relative overflow-hidden rounded-2xl glass-card mb-8 p-8">
-          <div class="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-3xl -mr-12 -mt-12"></div>
-          <div class="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 rounded-full blur-2xl -ml-8 -mb-8"></div>
+        <!-- Hero Section - Responsive -->
+        <div class="relative overflow-hidden rounded-xl sm:rounded-2xl mb-4 sm:mb-6 p-4 sm:p-6 ${gradientClass}">
+          <div class="absolute top-0 right-0 w-24 sm:w-32 h-24 sm:h-32 bg-white/15 rounded-full blur-2xl -mr-6 -mt-6"></div>
           
           <div class="relative text-center">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 text-blue-300 text-xs font-medium mb-4">
-              <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              Live Event
+            <div class="inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] sm:text-xs font-medium mb-2 sm:mb-3">
+              ${showLive ? `
+                <span class="w-1.5 sm:w-2 h-1.5 sm:h-2 bg-green-400 rounded-full animate-pulse"></span>
+                Live Now
+              ` : timeUntil ? `
+                <ion-icon name="calendar-outline" class="text-xs sm:text-sm"></ion-icon>
+                ${timeUntil}
+              ` : `
+                <ion-icon name="${currentShow.icon}" class="text-xs sm:text-sm"></ion-icon>
+                ${currentShow.season === 'spring' ? 'Spring' : 'Fall'} Show
+              `}
             </div>
-            <h1 class="text-3xl md:text-4xl font-bold mb-3 text-glass">Putnam County<br><span class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Home Show 2025</span></h1>
-            <p class="text-lg text-glass-secondary mb-4">Swap cards. Discover vendors. Connect fast.</p>
-            <button id="startTour" class="inline-flex items-center gap-2 glass-button px-4 py-2">
-              <ion-icon name="help-circle-outline"></ion-icon>
-              Take a Quick Tour
+            <h1 class="text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-white drop-shadow-lg">${currentShow.name.replace(' Home Show', '')}<br><span class="text-white/90 text-base sm:text-xl">Home Show</span></h1>
+            <p class="text-[10px] sm:text-xs text-white/80">${currentShow.displayDate}</p>
+            <p class="text-[10px] sm:text-xs text-white/70 mb-2 sm:mb-3">${currentShow.venue} • ${currentShow.location}</p>
+            <button id="startTour" class="inline-flex items-center gap-1 sm:gap-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs sm:text-sm font-medium border border-white/30 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl transition-all">
+              <ion-icon name="help-circle-outline" class="text-sm sm:text-base"></ion-icon>
+              Take a Tour
             </button>
           </div>
         </div>
         
-        <!-- Sign Up CTA -->
-        <div class="glass-card p-6 md:p-8 mb-8">
-          <h3 class="text-xl font-semibold mb-2 text-glass text-center">Get Started</h3>
-          <p class="text-glass-secondary text-center mb-6">Sign in to create your card, save vendors, and share your info.</p>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button class="brand-bg p-3 flex items-center justify-center gap-2" id="homeGoogleSignIn">
+        <!-- Show Selector -->
+        <div class="flex justify-center gap-2 mb-4 sm:mb-6">
+          ${getActiveShows().map(s => `
+            <button class="show-select-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${s.id === getCurrentShowId() 
+              ? (s.season === 'spring' ? 'bg-blue-600 text-white' : 'bg-orange-600 text-white') 
+              : 'bg-white/10 text-glass-secondary hover:bg-white/20'}" data-show-id="${s.id}">
+              ${s.shortName}
+            </button>
+          `).join('')}
+        </div>
+        
+        <!-- Sign Up CTA - Responsive -->
+        <div class="glass-card mb-4 sm:mb-6">
+          <h3 class="text-sm sm:text-lg font-semibold mb-0.5 sm:mb-1 text-glass text-center">Get Started</h3>
+          <p class="text-glass-secondary text-center text-xs sm:text-sm mb-3 sm:mb-4">Sign in to save vendors and share your info</p>
+          <div class="space-y-2">
+            <button class="brand-bg w-full py-2.5 sm:py-3 flex items-center justify-center gap-2 text-xs sm:text-sm" id="homeGoogleSignIn">
               <ion-icon name="logo-google"></ion-icon>
               Continue with Google
             </button>
-            <button class="glass-button p-3 flex items-center justify-center gap-2" id="homeEmailSignIn">
-              <ion-icon name="mail-outline"></ion-icon>
-              Sign in with Email
+            <!-- Sign in with Apple (iOS only) -->
+            <button class="glass-button w-full py-2.5 sm:py-3 flex items-center justify-center gap-2 text-xs sm:text-sm hidden" id="homeAppleSignIn" style="background: #000; color: #fff; border-color: #333;">
+              <ion-icon name="logo-apple"></ion-icon>
+              Sign in with Apple
             </button>
-            <button class="glass-button p-3 flex items-center justify-center gap-2" id="homeSignUp">
-              <ion-icon name="person-add-outline"></ion-icon>
-              Create Account
-            </button>
+            <div class="grid grid-cols-2 gap-2">
+              <button class="glass-button py-2 sm:py-3 flex items-center justify-center gap-1.5 text-xs sm:text-sm" id="homeEmailSignIn">
+                <ion-icon name="mail-outline"></ion-icon>
+                Email
+              </button>
+              <button class="glass-button py-2 sm:py-3 flex items-center justify-center gap-1.5 text-xs sm:text-sm" id="homeSignUp">
+                <ion-icon name="person-add-outline"></ion-icon>
+                Sign Up
+              </button>
+            </div>
           </div>
         </div>
         
-        <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="glass-card p-6 group hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-transparent hover:border-blue-500/30" onclick="window.location.hash='/vendors'">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-600 to-blue-400 flex items-center justify-center flex-shrink-0">
-                <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+        <!-- Quick Actions - Responsive -->
+        <div class="space-y-2 sm:space-y-3">
+          <div class="action-card p-3 sm:p-4 group cursor-pointer" onclick="window.location.hash='/vendors'">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="storefront-outline" class="text-white text-sm sm:text-lg"></ion-icon>
               </div>
-              <div>
-                <h3 class="text-lg font-semibold mb-1 text-glass group-hover:text-blue-400 transition-colors">Browse Vendors</h3>
-                <p class="text-glass-secondary text-sm">Explore the directory and save your favorites</p>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm sm:text-base font-semibold text-glass">Browse Vendors</h3>
+                <p class="text-glass-secondary text-[10px] sm:text-xs">Explore the directory</p>
               </div>
+              <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
             </div>
           </div>
-          <div class="glass-card p-6 group hover:scale-[1.02] transition-all duration-300 cursor-pointer border border-transparent hover:border-purple-500/30" onclick="window.location.hash='/map'">
-            <div class="flex items-start gap-4">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 flex items-center justify-center flex-shrink-0">
-                <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+          <div class="action-card p-3 sm:p-4 group cursor-pointer" onclick="window.location.hash='/map'">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="map-outline" class="text-white text-sm sm:text-lg"></ion-icon>
               </div>
-              <div>
-                <h3 class="text-lg font-semibold mb-1 text-glass group-hover:text-purple-400 transition-colors">Interactive Map</h3>
-                <p class="text-glass-secondary text-sm">Find booths and navigate the venue</p>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm sm:text-base font-semibold text-glass">Interactive Map</h3>
+                <p class="text-glass-secondary text-[10px] sm:text-xs">Find booths easily</p>
               </div>
+              <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
             </div>
           </div>
         </div>
@@ -141,24 +176,31 @@ export default async function Home(root) {
     
     html = `
       <div class="container-glass fade-in">
-        <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold mb-3 text-glass">Welcome Back</h1>
-          <p class="text-xl text-glass-secondary">${hasCard ? 'Your digital business card is ready to share!' : 'Create your digital business card and connect with amazing vendors'}</p>
-          <button id="startTour" class="glass-button px-4 py-2 mt-2">
-            <ion-icon name="help-circle-outline" class="mr-2"></ion-icon>
-            Take a Tour
-          </button>
+        <!-- Welcome header - responsive -->
+        <div class="text-center mb-4 sm:mb-6">
+          <h1 class="text-lg sm:text-2xl font-bold mb-0.5 sm:mb-1 text-glass">Welcome Back</h1>
+          <p class="text-xs sm:text-sm text-glass-secondary">${hasCard ? 'Your card is ready to share' : 'Create your digital business card'}</p>
+        </div>
+        
+        <!-- Show Selector -->
+        <div class="flex justify-center gap-2 mb-4 sm:mb-6">
+          ${getActiveShows().map(s => `
+            <button class="show-select-btn px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${s.id === getCurrentShowId() 
+              ? (s.season === 'spring' ? 'bg-blue-600 text-white' : 'bg-orange-600 text-white') 
+              : 'bg-white/10 text-glass-secondary hover:bg-white/20'}" data-show-id="${s.id}">
+              ${s.shortName}
+            </button>
+          `).join('')}
         </div>
         
         ${hasCard ? `
-          <div class="glass-card p-8 mb-8">
-            <div class="flex items-center justify-between mb-4">
-              <div>
-                <h3 class="text-xl font-semibold text-glass">Your Business Card</h3>
-                <p class="text-glass-secondary">Ready to share with vendors</p>
-              </div>
-              <button class="brand-bg px-4 py-2" onclick="window.location.hash='/my-card'">
-                Edit Card
+          <!-- Card preview - responsive -->
+          <div class="glass-card mb-4 sm:mb-5">
+            <div class="flex items-center justify-between mb-2 sm:mb-3">
+              <h3 class="text-sm sm:text-base font-semibold text-glass">Your Card</h3>
+              <button class="glass-button px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm" onclick="window.location.hash='/my-card'">
+                <ion-icon name="create-outline" class="mr-0.5 sm:mr-1"></ion-icon>
+                Edit
               </button>
             </div>
             <div class="max-w-xs mx-auto">
@@ -166,34 +208,67 @@ export default async function Home(root) {
             </div>
           </div>
         ` : `
-          <div class="glass-card p-8 mb-8 text-center">
-            <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-600 to-teal-500 mx-auto mb-4 flex items-center justify-center">
-              <ion-icon name="card-outline" class="text-white text-2xl"></ion-icon>
+          <!-- Create card CTA - responsive -->
+          <div class="glass-card mb-4 sm:mb-5 text-center py-4 sm:py-6">
+            <div class="w-10 sm:w-12 h-10 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 mx-auto mb-2 sm:mb-3 flex items-center justify-center">
+              <ion-icon name="card-outline" class="text-white text-lg sm:text-xl"></ion-icon>
             </div>
-            <h3 class="text-xl font-semibold mb-2 text-glass">Your Digital Business Card</h3>
-            <p class="text-glass-secondary mb-6">Share your information instantly with vendors you're interested in</p>
-            <button class="brand-bg px-8 py-4 text-lg font-semibold" onclick="window.location.hash='/my-card'">
-              Create My Business Card
+            <h3 class="text-sm sm:text-lg font-semibold mb-0.5 sm:mb-1 text-glass">Digital Business Card</h3>
+            <p class="text-glass-secondary text-xs sm:text-sm mb-3 sm:mb-4">Share your info with vendors instantly</p>
+            <button class="brand-bg px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-semibold" onclick="window.location.hash='/my-card'">
+              Create My Card
             </button>
           </div>
         `}
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/vendors'">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-slate-600 to-slate-800 mb-4 flex items-center justify-center">
-              <ion-icon name="storefront-outline" class="text-white text-xl"></ion-icon>
+        <!-- Quick actions - responsive -->
+        <div class="space-y-2 sm:space-y-3">
+          <div class="action-card p-3 sm:p-4 cursor-pointer" onclick="window.location.hash='/vendors'">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="storefront-outline" class="text-white text-sm sm:text-lg"></ion-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm sm:text-base font-semibold text-glass">Browse Vendors</h3>
+                <p class="text-glass-secondary text-[10px] sm:text-xs">Find services for your home</p>
+              </div>
+              <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-glass">Browse Vendors</h3>
-            <p class="text-glass-secondary text-sm">Explore vendor galleries and find the perfect services for your needs</p>
           </div>
           
-          <div class="glass-card p-6 group hover:scale-105 transition-transform duration-300 cursor-pointer" onclick="window.location.hash='/map'">
-            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-gray-600 to-gray-800 mb-4 flex items-center justify-center">
-              <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
+          <div class="action-card p-3 sm:p-4 cursor-pointer" onclick="window.location.hash='/map'">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="map-outline" class="text-white text-sm sm:text-lg"></ion-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm sm:text-base font-semibold text-glass">Interactive Map</h3>
+                <p class="text-glass-secondary text-[10px] sm:text-xs">Navigate vendor booths</p>
+              </div>
+              <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
             </div>
-            <h3 class="text-lg font-semibold mb-2 text-glass">Interactive Map</h3>
-            <p class="text-glass-secondary text-sm">Navigate the venue and locate vendor booths with ease</p>
           </div>
+          
+          <div class="action-card p-3 sm:p-4 cursor-pointer" onclick="window.location.hash='/saved-vendors'">
+            <div class="flex items-center gap-2.5 sm:gap-3">
+              <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-500 to-slate-400 flex items-center justify-center flex-shrink-0">
+                <ion-icon name="bookmark-outline" class="text-white text-sm sm:text-lg"></ion-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="text-sm sm:text-base font-semibold text-glass">Saved Vendors</h3>
+                <p class="text-glass-secondary text-[10px] sm:text-xs">Your favorites list</p>
+              </div>
+              <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tour button - responsive -->
+        <div class="text-center mt-4 sm:mt-5">
+          <button id="startTour" class="glass-button px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm">
+            <ion-icon name="help-circle-outline" class="mr-0.5 sm:mr-1"></ion-icon>
+            Take a Tour
+          </button>
         </div>
       </div>
     `;
@@ -246,7 +321,7 @@ export default async function Home(root) {
                 </div>
               </div>
               <div class="flex items-start gap-4 opacity-50">
-                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                <div class="w-8 h-8 rounded-full icon-circle flex-shrink-0">
                   <ion-icon name="mail-outline" class="text-glass-secondary"></ion-icon>
                 </div>
                 <div>
@@ -255,7 +330,7 @@ export default async function Home(root) {
                 </div>
               </div>
               <div class="flex items-start gap-4 opacity-50">
-                <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                <div class="w-8 h-8 rounded-full icon-circle flex-shrink-0">
                   <ion-icon name="storefront-outline" class="text-glass-secondary"></ion-icon>
                 </div>
                 <div>
@@ -379,9 +454,21 @@ export default async function Home(root) {
       `;
     }
   } else if (state.role === "admin") {
-    // Count pending vendors for admin dashboard
-    const pendingVendors = (state.allVendors || []).filter(v => !v.approved).length;
-    const approvedVendors = (state.vendors || []).length;
+    // Fetch real counts from Firestore for admin stats
+    let pendingVendors = 0;
+    let approvedVendors = (state.vendors || []).length;
+    let totalAttendees = 0;
+    try {
+      const { getDb } = await import("../firebase.js");
+      const db = getDb();
+      const { collection, query, where, getCountFromServer } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const [pendingSnap, attendeeSnap] = await Promise.all([
+        getCountFromServer(query(collection(db, 'vendors'), where('approved', '==', false), where('status', '!=', 'denied'))),
+        getCountFromServer(collection(db, 'attendees'))
+      ]);
+      pendingVendors = pendingSnap.data().count || 0;
+      totalAttendees = attendeeSnap.data().count || 0;
+    } catch {}
     
     html = `
       <div class="container-glass fade-in">
@@ -417,7 +504,7 @@ export default async function Home(root) {
             <div class="text-xs text-glass-secondary">Pending Review</div>
           </div>
           <div class="glass-card p-4 text-center">
-            <div class="text-3xl font-bold text-glass">${(state.attendees || []).length}</div>
+            <div class="text-3xl font-bold text-glass">${totalAttendees}</div>
             <div class="text-xs text-glass-secondary">Attendees</div>
           </div>
           <div class="glass-card p-4 text-center">
@@ -491,11 +578,29 @@ export default async function Home(root) {
 
   // Wire up home auth buttons if present
   if (!state.user || state.user.isAnonymous) {
-    import("../firebase.js").then(({ signInWithGoogle, signInWithEmailPassword, signUpWithEmailPassword }) => {
+    import("../firebase.js").then(({ signInWithGoogle, signInWithApple, signInWithEmailPassword, signUpWithEmailPassword, isIOSDevice }) => {
       const g = root.querySelector('#homeGoogleSignIn');
       const e = root.querySelector('#homeEmailSignIn');
       const s = root.querySelector('#homeSignUp');
       const go = root.querySelector('#goToMyCard');
+      const appleBtn = root.querySelector('#homeAppleSignIn');
+      
+      // Show Apple Sign In button on iOS devices
+      if (appleBtn && isIOSDevice()) {
+        appleBtn.classList.remove('hidden');
+        appleBtn.onclick = async (event) => {
+          event.preventDefault();
+          try {
+            console.log('[Home] Starting Apple sign in...');
+            await signInWithApple();
+            console.log('[Home] Apple sign in successful');
+          } catch (error) {
+            console.error('[Home] Apple sign in failed:', error);
+            handleAuthError(error, 'Apple');
+          }
+        };
+      }
+      
       if (g) g.onclick = async (event) => { 
         event.preventDefault();
         try { 
@@ -504,19 +609,7 @@ export default async function Home(root) {
           console.log('[Home] Google sign in successful');
         } catch (error) {
           console.error('[Home] Google sign in failed:', error);
-          console.error('[Home] Error code:', error.code);
-          console.error('[Home] Error message:', error.message);
-          if (error.code === 'auth/popup-closed-by-user') {
-            // User closed popup, no action needed
-          } else if (error.code === 'auth/popup-blocked') {
-            Toast('Please allow popups for this site');
-          } else if (error.code === 'auth/cancelled-popup-request') {
-            // Multiple popups, ignore
-          } else if (error.code === 'auth/network-request-failed') {
-            Toast('Network error. Please check your connection.');
-          } else {
-            Toast('Sign in failed: ' + (error.code || error.message || 'Unknown error'));
-          }
+          handleAuthError(error, 'Google');
         }
       };
       if (e) e.onclick = () => { window.location.hash = '/more'; };
@@ -555,4 +648,17 @@ export default async function Home(root) {
       });
     };
   }
+  
+  // Wire up show selector buttons
+  root.querySelectorAll('.show-select-btn').forEach(btn => {
+    btn.onclick = () => {
+      const showId = btn.dataset.showId;
+      if (showId && showId !== getCurrentShowId()) {
+        setCurrentShow(showId);
+        // Re-render the page with new show
+        Home(root);
+        Toast(`Switched to ${getActiveShows().find(s => s.id === showId)?.shortName || showId}`);
+      }
+    };
+  });
 }

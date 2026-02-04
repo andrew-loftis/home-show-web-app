@@ -94,6 +94,12 @@ service cloud.firestore {
       allow update: if true; // Allow impression tracking updates
     }
 
+    // Shows collection - Public read, Admin write
+    match /shows/{showId} {
+      allow read: if true; // Everyone can read shows (public data)
+      allow write: if isAdmin(); // Only admins can manage shows
+    }
+
     // ADMIN COMPLETE ACCESS - catch-all for any other collections
     match /{document=**} { 
       allow read, write: if isAdmin(); // Admin can access EVERYTHING

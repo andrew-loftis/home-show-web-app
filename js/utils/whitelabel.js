@@ -12,15 +12,15 @@
 const DEFAULT_CONFIG = {
   // Show/Event Identity
   show: {
-    name: 'Winn-Pro Show',
+    name: 'WinnPro Shows',
     tagline: 'Your Dream Home Starts Here',
     year: new Date().getFullYear(),
     dates: 'March 15-17, 2024',
     location: 'Convention Center',
     address: '123 Main Street, City, ST 12345',
     description: 'The region\'s premier trade show event featuring hundreds of exhibitors.',
-    website: 'https://tn-shows.app',
-    supportEmail: 'support@tn-shows.app',
+    website: 'https://winnpro-shows.app',
+    supportEmail: 'support@winnpro-shows.app',
     socialMedia: {
       facebook: '',
       instagram: '',
@@ -53,11 +53,14 @@ const DEFAULT_CONFIG = {
 
   // Logo and Images
   assets: {
-    logo: '/assets/logo.svg',
-    logoLight: '/assets/logo-light.svg',
-    logoDark: '/assets/logo-dark.svg',
-    favicon: '/assets/favicon.ico',
-    appIcon: '/assets/app-icon-512.png',
+    logo: '/assets/WinnPro Show Logo and Words without Background.png',
+    logoLight: '/assets/WinnPro Show Logo and Words without Background.png',
+    logoDark: '/assets/WinnPro Show Logo and Words with Background.png',
+    logoIcon: '/assets/House Logo Only.png',
+    logoWords: '/assets/WinnPro Shows Words Only.png',
+    loadingVideo: '/assets/House loading video.mp4',
+    favicon: '/assets/House Logo Only.png',
+    appIcon: '/assets/House Logo Only.png',
     heroImage: '/assets/hero-bg.jpg',
     mapImage: '/assets/floor-plan.png',
     defaultVendorLogo: '/assets/default-vendor.png',
@@ -142,7 +145,7 @@ const DEFAULT_CONFIG = {
     privacyPolicyUrl: '/privacy',
     termsUrl: '/terms',
     vendorAgreementUrl: '/vendor-agreement',
-    copyrightHolder: 'Winn-Pro Show Inc.',
+    copyrightHolder: 'WinnPro Shows LLC',
     cookieNotice: true
   },
 

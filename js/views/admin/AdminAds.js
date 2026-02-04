@@ -5,6 +5,7 @@
 
 import { getAdminDb, getFirestoreModule, setButtonLoading } from '../../utils/admin.js';
 import { ConfirmDialog, AlertDialog, Toast, Modal, closeModal } from '../../utils/ui.js';
+import { uploadImage } from '../../firebase.js';
 
 /**
  * Render the ads tab HTML template
@@ -67,13 +68,16 @@ export function renderAdsTab() {
 
 /**
  * Load ads data and render the list
+ * @param {HTMLElement} root - The root container element
+ * @param {Object} options - Additional options (includes showId for show filtering)
  */
-export async function loadAds(root) {
+export async function loadAds(root, options = {}) {
+  const { showId = null } = options;
   const adsList = root.querySelector('#adsList');
   if (!adsList) return;
 
   try {
-    console.log('[AdminAds] Loading ads...');
+    console.log('[AdminAds] Loading ads...', showId ? `for show: ${showId}` : '(all shows)');
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
 
@@ -299,11 +303,45 @@ async function showAdFormModal(root, adId = null) {
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-glass-secondary mb-1">Image URL</label>
-          <input type="url" name="imageUrl" value="${ad.imageUrl}"
-                 class="w-full px-3 py-2 rounded border border-white/20 bg-white/10 text-glass"
-                 placeholder="https://example.com/ad-image.jpg">
-          <p class="text-xs text-glass-secondary mt-1">Leave blank for a gradient background with title</p>
+          <label class="block text-sm font-medium text-glass-secondary mb-1">Ad Image</label>
+          <div class="space-y-3">
+            <!-- Current Image Preview -->
+            <div id="imagePreviewContainer" class="${ad.imageUrl ? '' : 'hidden'}">
+              <div class="relative inline-block">
+                <img id="imagePreview" src="${ad.imageUrl || ''}" alt="Ad preview" 
+                     class="w-full max-w-xs h-32 object-cover rounded-lg border border-white/20">
+                <button type="button" id="removeImageBtn" 
+                        class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-sm hover:bg-red-600">
+                  <ion-icon name="close"></ion-icon>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Upload Button -->
+            <div id="uploadContainer" class="${ad.imageUrl ? 'hidden' : ''}">
+              <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/30 rounded-lg cursor-pointer hover:border-brand hover:bg-white/5 transition-colors">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                  <ion-icon name="cloud-upload-outline" class="text-3xl text-glass-secondary mb-2"></ion-icon>
+                  <p class="text-sm text-glass-secondary">Click to upload image</p>
+                  <p class="text-xs text-glass-secondary mt-1">PNG, JPG, GIF up to 5MB</p>
+                </div>
+                <input type="file" name="imageFile" id="imageFileInput" accept="image/*" class="hidden">
+              </label>
+            </div>
+            
+            <!-- Upload Progress -->
+            <div id="uploadProgress" class="hidden">
+              <div class="flex items-center gap-3">
+                <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                  <div id="uploadProgressBar" class="h-full bg-brand transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span id="uploadProgressText" class="text-sm text-glass-secondary">0%</span>
+              </div>
+            </div>
+            
+            <!-- Hidden field to store the image URL -->
+            <input type="hidden" name="imageUrl" id="imageUrlInput" value="${ad.imageUrl || ''}">
+          </div>
         </div>
         
         <div class="grid grid-cols-2 gap-4">
@@ -408,6 +446,69 @@ async function showAdFormModal(root, adId = null) {
   const dismissSettings = content.querySelector('#dismissSettings');
   autoDismissCheck.onchange = () => {
     dismissSettings.classList.toggle('hidden', !autoDismissCheck.checked);
+  };
+
+  // Image upload handling
+  const imageFileInput = content.querySelector('#imageFileInput');
+  const imagePreviewContainer = content.querySelector('#imagePreviewContainer');
+  const imagePreview = content.querySelector('#imagePreview');
+  const uploadContainer = content.querySelector('#uploadContainer');
+  const uploadProgress = content.querySelector('#uploadProgress');
+  const uploadProgressBar = content.querySelector('#uploadProgressBar');
+  const uploadProgressText = content.querySelector('#uploadProgressText');
+  const imageUrlInput = content.querySelector('#imageUrlInput');
+  const removeImageBtn = content.querySelector('#removeImageBtn');
+
+  // Handle file selection
+  imageFileInput.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      Toast('Image must be less than 5MB');
+      return;
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      Toast('Please select an image file');
+      return;
+    }
+
+    try {
+      // Show progress
+      uploadContainer.classList.add('hidden');
+      uploadProgress.classList.remove('hidden');
+
+      // Upload the image
+      const imageUrl = await uploadImage(file, 'ads', (progress) => {
+        uploadProgressBar.style.width = `${progress}%`;
+        uploadProgressText.textContent = `${progress}%`;
+      });
+
+      // Update UI with uploaded image
+      imageUrlInput.value = imageUrl;
+      imagePreview.src = imageUrl;
+      uploadProgress.classList.add('hidden');
+      imagePreviewContainer.classList.remove('hidden');
+
+      Toast('Image uploaded successfully');
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      Toast('Failed to upload image');
+      uploadProgress.classList.add('hidden');
+      uploadContainer.classList.remove('hidden');
+    }
+  };
+
+  // Handle remove image
+  removeImageBtn.onclick = () => {
+    imageUrlInput.value = '';
+    imagePreview.src = '';
+    imagePreviewContainer.classList.add('hidden');
+    uploadContainer.classList.remove('hidden');
+    imageFileInput.value = '';
   };
 
   // Close modal function

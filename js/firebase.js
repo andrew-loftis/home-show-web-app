@@ -3,10 +3,33 @@
 // we will initialize it with window.FIREBASE_CONFIG if present.
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithCredential, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit as qLimit, connectFirestoreEmulator, arrayUnion, arrayRemove, getCountFromServer, setLogLevel } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 import { deleteUser as fbDeleteUser } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytesResumable, uploadBytes, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+
+// Lazy import show utilities to avoid circular dependency
+// shows.js imports firebase modules dynamically, so we can't import it at the top level
+let showsModule = null;
+async function getShowsModule() {
+  if (!showsModule) {
+    showsModule = await import('./shows.js');
+  }
+  return showsModule;
+}
+
+// Synchronous helpers that return defaults if shows not loaded yet
+function getCurrentShowIdSync() {
+  try {
+    // Try to get from localStorage directly as fallback
+    const stored = localStorage.getItem('winnpro_selected_show');
+    return stored || 'putnam-spring-2026';
+  } catch {
+    return 'putnam-spring-2026';
+  }
+}
+
+const DEFAULT_SHOW_ID_FALLBACK = 'putnam-spring-2026';
 
 let initialized = false;
 
@@ -58,6 +81,167 @@ export async function signInWithGoogle() {
   const auth = getAuth();
   const provider = new GoogleAuthProvider();
   return signInWithPopup(auth, provider);
+}
+
+// Sign in with Apple (works on iOS and web)
+export async function signInWithApple() {
+  const auth = getAuth();
+  const provider = new OAuthProvider('apple.com');
+  provider.addScope('email');
+  provider.addScope('name');
+  return signInWithPopup(auth, provider);
+}
+
+// Check if running on iOS
+export function isIOSDevice() {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+// Check if biometric authentication is available
+export async function isBiometricAvailable() {
+  if (typeof window === 'undefined') return false;
+  // Check for Web Authentication API (WebAuthn)
+  if (!window.PublicKeyCredential) return false;
+  try {
+    // Check if platform authenticator (Face ID, Touch ID, Windows Hello) is available
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    return available;
+  } catch {
+    return false;
+  }
+}
+
+// Store credentials for biometric login
+const BIOMETRIC_STORAGE_KEY = 'winnpro_biometric_credential';
+
+// Save credential ID for biometric re-login
+export function saveBiometricCredential(credentialId, userEmail) {
+  try {
+    localStorage.setItem(BIOMETRIC_STORAGE_KEY, JSON.stringify({
+      credentialId: credentialId,
+      userEmail: userEmail,
+      timestamp: Date.now()
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Get saved biometric credential
+export function getSavedBiometricCredential() {
+  try {
+    const saved = localStorage.getItem(BIOMETRIC_STORAGE_KEY);
+    if (!saved) return null;
+    return JSON.parse(saved);
+  } catch {
+    return null;
+  }
+}
+
+// Clear biometric credential
+export function clearBiometricCredential() {
+  try {
+    localStorage.removeItem(BIOMETRIC_STORAGE_KEY);
+  } catch {}
+}
+
+// Register biometric credential (Face ID / Touch ID)
+export async function registerBiometric(userEmail) {
+  if (!await isBiometricAvailable()) {
+    throw new Error('Biometric authentication not available');
+  }
+  
+  // Generate a random challenge
+  const challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+  
+  // Create credential options for platform authenticator (Face ID / Touch ID)
+  const createCredentialOptions = {
+    publicKey: {
+      challenge: challenge,
+      rp: {
+        name: 'WinnPro Shows',
+        id: window.location.hostname
+      },
+      user: {
+        id: new TextEncoder().encode(userEmail),
+        name: userEmail,
+        displayName: userEmail.split('@')[0]
+      },
+      pubKeyCredParams: [
+        { alg: -7, type: 'public-key' },   // ES256
+        { alg: -257, type: 'public-key' }  // RS256
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: 'platform', // Use Face ID / Touch ID
+        userVerification: 'required',
+        residentKey: 'preferred'
+      },
+      timeout: 60000,
+      attestation: 'none'
+    }
+  };
+  
+  try {
+    const credential = await navigator.credentials.create(createCredentialOptions);
+    if (credential) {
+      // Convert credential ID to base64 for storage
+      const credentialIdBase64 = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      saveBiometricCredential(credentialIdBase64, userEmail);
+      return { success: true, credentialId: credentialIdBase64 };
+    }
+    throw new Error('Failed to create credential');
+  } catch (error) {
+    console.error('Biometric registration failed:', error);
+    throw error;
+  }
+}
+
+// Authenticate with biometric (Face ID / Touch ID)
+export async function authenticateWithBiometric() {
+  const saved = getSavedBiometricCredential();
+  if (!saved) {
+    throw new Error('No biometric credential saved');
+  }
+  
+  if (!await isBiometricAvailable()) {
+    throw new Error('Biometric authentication not available');
+  }
+  
+  // Generate a random challenge
+  const challenge = new Uint8Array(32);
+  crypto.getRandomValues(challenge);
+  
+  // Convert stored credential ID back to ArrayBuffer
+  const credentialIdArray = Uint8Array.from(atob(saved.credentialId), c => c.charCodeAt(0));
+  
+  const getCredentialOptions = {
+    publicKey: {
+      challenge: challenge,
+      allowCredentials: [{
+        id: credentialIdArray,
+        type: 'public-key',
+        transports: ['internal']
+      }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  };
+  
+  try {
+    const assertion = await navigator.credentials.get(getCredentialOptions);
+    if (assertion) {
+      // Biometric verified successfully - return the stored email
+      return { success: true, email: saved.userEmail };
+    }
+    throw new Error('Biometric verification failed');
+  } catch (error) {
+    console.error('Biometric authentication failed:', error);
+    throw error;
+  }
 }
 
 export async function signOutUser() {
@@ -221,15 +405,23 @@ export async function saveUserPreferences(uid, prefs) {
   }
 }
 
-// Fetch approved vendors from Firestore
-export async function fetchApprovedVendors() {
+// Fetch approved vendors from Firestore (filtered by current show)
+export async function fetchApprovedVendors(options = {}) {
   try {
     const db = getFirestore();
+    const showId = options.showId || getCurrentShowIdSync();
+    
+    // Query for approved vendors
     const q = query(collection(db, 'vendors'), where('approved', '==', true));
     const snap = await getDocs(q);
     const results = [];
     snap.forEach((docSnap) => {
-      results.push({ id: docSnap.id, ...docSnap.data() });
+      const data = docSnap.data();
+      // Filter by show - legacy data without showId belongs to default show
+      const docShowId = data.showId || DEFAULT_SHOW_ID_FALLBACK;
+      if (!showId || docShowId === showId) {
+        results.push({ id: docSnap.id, ...data });
+      }
     });
     return results;
   } catch (e) {
@@ -328,10 +520,22 @@ export async function createLead(attendeeId, vendorId, createdByUid, data = {}, 
   try {
     const db = getFirestore();
     const col = collection(db, 'leads');
+    // Get show info synchronously from localStorage
+    const currentShowId = getCurrentShowIdSync();
+    let currentShowName = '';
+    try {
+      const cachedShows = localStorage.getItem('winnpro_shows_cache');
+      if (cachedShows) {
+        const shows = JSON.parse(cachedShows);
+        currentShowName = shows[currentShowId]?.shortName || '';
+      }
+    } catch {}
     const payload = {
       attendeeId,
       vendorId,
       createdByUid,
+      showId: currentShowId,
+      showName: currentShowName,
       createdAt: serverTimestamp(),
       timestamp: Date.now(),
       ...data
@@ -361,13 +565,21 @@ export async function createLead(attendeeId, vendorId, createdByUid, data = {}, 
   }
 }
 
-export async function getLeadsForVendor(vendorId, max = 50) {
+export async function getLeadsForVendor(vendorId, max = 50, options = {}) {
   try {
     const db = getFirestore();
+    const showId = options.showId || getCurrentShowIdSync();
     const qy = query(collection(db, 'leads'), where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'), qLimit(max));
     const snap = await getDocs(qy);
     const out = [];
-    snap.forEach(d => out.push({ id: d.id, ...d.data() }));
+    snap.forEach(d => {
+      const data = d.data();
+      // Filter by show - legacy data without showId belongs to default show
+      const docShowId = data.showId || DEFAULT_SHOW_ID_FALLBACK;
+      if (!showId || docShowId === showId) {
+        out.push({ id: d.id, ...data });
+      }
+    });
     return out;
   } catch (e) {
     console.warn('Failed to fetch leads for vendor', e);

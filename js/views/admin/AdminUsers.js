@@ -5,6 +5,7 @@
 
 import { getAdminDb, getFirestoreModule, setButtonLoading, exportCsv, debounce } from '../../utils/admin.js';
 import { ConfirmDialog, AlertDialog, Toast } from '../../utils/ui.js';
+import { DEFAULT_SHOW_ID } from '../../shows.js';
 
 // Module state
 let lastUsers = [];
@@ -50,10 +51,10 @@ export function renderUsersTab() {
  * Load users data and render the list
  * @param {HTMLElement} root - The root container element
  * @param {Function} showUserModal - Callback to show user profile modal
- * @param {Object} options - Additional options
+ * @param {Object} options - Additional options (includes showId for show filtering)
  */
 export async function loadUsers(root, showUserModal, options = {}) {
-  const { resetPage = true } = options;
+  const { resetPage = true, showId = null } = options;
   
   const usersList = root.querySelector('#usersList');
   const paginationEl = root.querySelector('#userPagination');
@@ -65,7 +66,7 @@ export async function loadUsers(root, showUserModal, options = {}) {
   }
 
   try {
-    console.log('[AdminUsers] Loading users...');
+    console.log('[AdminUsers] Loading users...', showId ? `for show: ${showId}` : '(all shows)');
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
 
@@ -80,6 +81,12 @@ export async function loadUsers(root, showUserModal, options = {}) {
     let users = [];
     attendeesSnap.forEach(doc => users.push({ id: doc.id, ...doc.data() }));
     console.log('[AdminUsers] Users loaded:', users.length);
+
+    // Filter by show if specified (legacy data without showId belongs to default show)
+    if (showId) {
+      users = users.filter(u => (u.showId || DEFAULT_SHOW_ID) === showId);
+      console.log('[AdminUsers] Users after show filter:', users.length);
+    }
 
     // Apply filters
     const q = String(root.querySelector('#userSearch')?.value || '').trim().toLowerCase();
