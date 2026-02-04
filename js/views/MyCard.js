@@ -28,24 +28,21 @@ export default function MyCard(root, forceEdit = false) {
     if (!forceEdit && hasCardContent) {
       root.innerHTML = `
         <div class="container-glass fade-in">
-          <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold mb-2 text-glass">My Business Card</h1>
-            <p class="text-glass-secondary">Your digital business card</p>
+          <div class="text-center mb-4">
+            <h1 class="text-lg font-bold mb-0.5 text-glass">My Business Card</h1>
+            <p class="text-glass-secondary text-xs">Your digital business card</p>
           </div>
           
           ${renderAttendeeCard(attendee)}
           
-          <div class="text-center mb-8">
-            <button id="editCardBtn" class="glass-button px-6 py-3 text-glass font-medium">
-              <ion-icon name="create-outline" class="mr-2"></ion-icon>
-              Edit Business Card
+          <div class="flex gap-2 mt-4">
+            <button id="editCardBtn" class="glass-button flex-1 py-2 text-xs text-glass font-medium">
+              <ion-icon name="create-outline" class="mr-1"></ion-icon>
+              Edit Card
             </button>
-          </div>
-          
-          <div class="text-center">
-            <button class="glass-button px-6 py-3 text-glass font-medium" onclick="window.location.hash='/saved-vendors'">
-              <ion-icon name="bookmark-outline" class="mr-2"></ion-icon>
-              View My Saved Vendors
+            <button class="glass-button flex-1 py-2 text-xs text-glass font-medium" onclick="window.location.hash='/saved-vendors'">
+              <ion-icon name="bookmark-outline" class="mr-1"></ion-icon>
+              Saved Vendors
             </button>
           </div>
         </div>
@@ -65,39 +62,39 @@ export default function MyCard(root, forceEdit = false) {
     }
     root.innerHTML = `
       <div class="container-glass fade-in">
-        <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold mb-2 text-glass">My Business Card</h1>
-          <p class="text-glass-secondary">Create and customize your digital business card</p>
+        <div class="text-center mb-3">
+          <h1 class="text-lg font-bold mb-0.5 text-glass">My Business Card</h1>
+          <p class="text-glass-secondary text-xs">Create your digital card</p>
         </div>
         
-        <div id="cardPreview">
+        <div id="cardPreview" class="mb-3">
           ${attendee?.card ? renderAttendeeCard(attendee) : `
-            <div class="glass-card overflow-hidden mb-8 max-w-md mx-auto shadow-glass">
-              <div class="h-40 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>
-              <div class="p-6 relative">
-                <div class="w-20 h-20 rounded-full border-4 border-white/50 absolute -top-10 left-6 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center">
-                  <span class="text-white font-bold text-xl">?</span>
+            <div class="glass-card overflow-hidden max-w-sm mx-auto">
+              <div class="h-20 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>
+              <div class="p-3 relative">
+                <div class="w-10 h-10 rounded-full border-2 border-white/50 absolute -top-5 left-3 bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-sm flex items-center justify-center">
+                  <span class="text-white font-bold text-sm">?</span>
                 </div>
-                <div class="mt-12">
-                  <div class="font-bold text-xl text-glass mb-1">Your Name</div>
-                  <div class="text-sm text-glass-secondary mb-4 leading-relaxed">Your bio will appear here...</div>
+                <div class="mt-6">
+                  <div class="font-bold text-sm text-glass mb-0.5">Your Name</div>
+                  <div class="text-[10px] text-glass-secondary">Your bio will appear here...</div>
                 </div>
               </div>
             </div>
           `}
         </div>
         
-        <div class="glass-card p-8 slide-up">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="w-10 h-10 rounded-full bg-gradient-to-r from-slate-600 to-blue-600 flex items-center justify-center">
-              <ion-icon name="person-outline" class="text-white text-lg"></ion-icon>
+        <div class="glass-card slide-up">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-600 to-blue-600 flex items-center justify-center">
+              <ion-icon name="person-outline" class="text-white text-sm"></ion-icon>
             </div>
-            <h3 class="text-xl font-semibold text-glass">Personal Information</h3>
+            <h3 class="text-base font-semibold text-glass">Personal Info</h3>
           </div>
           
-          <form id="cardForm" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-2">
+          <form id="cardForm" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1">
                 <label class="block text-sm font-medium text-glass">Profile Image</label>
                 <div class="space-y-2">
                   <input name="profileImage" placeholder="https://your-image-url.com" value="${attendee?.card?.profileImage || ''}" class="w-full" placeholder="Image URL (optional)">
@@ -626,26 +623,43 @@ export default function MyCard(root, forceEdit = false) {
       
       uploadProfileImage?.addEventListener('click', () => profileImageFile.click());
       uploadBackgroundImage?.addEventListener('click', () => backgroundImageFile.click());
-      
-      profileImageFile?.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            root.querySelector('input[name="profileImage"]').value = event.target.result;
-            updatePreview();
-          };
-          reader.readAsDataURL(e.target.files[0]);
+
+      // Use Firebase Storage for persistent uploads (same as attendee path)
+      const { uploadImage } = await import('../firebase.js');
+
+      profileImageFile?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          if (uploadProfileImage) { uploadProfileImage.disabled = true; uploadProfileImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
+          const url = await uploadImage(file, 'attendees', (pct) => {
+            if (uploadProfileImage) uploadProfileImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
+          });
+          root.querySelector('input[name="profileImage"]').value = url;
+          if (uploadProfileImage) { uploadProfileImage.disabled = false; uploadProfileImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Image'; }
+          updatePreview();
+        } catch (err) {
+          if (uploadProfileImage) { uploadProfileImage.disabled = false; uploadProfileImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Image'; }
+          const { Toast } = await import('../utils/ui.js');
+          Toast('Upload failed: ' + err.message);
         }
       });
-      
-      backgroundImageFile?.addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            root.querySelector('input[name="backgroundImage"]').value = event.target.result;
-            updatePreview();
-          };
-          reader.readAsDataURL(e.target.files[0]);
+
+      backgroundImageFile?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          if (uploadBackgroundImage) { uploadBackgroundImage.disabled = true; uploadBackgroundImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
+          const url = await uploadImage(file, 'attendees', (pct) => {
+            if (uploadBackgroundImage) uploadBackgroundImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
+          });
+          root.querySelector('input[name="backgroundImage"]').value = url;
+          if (uploadBackgroundImage) { uploadBackgroundImage.disabled = false; uploadBackgroundImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Background'; }
+          updatePreview();
+        } catch (err) {
+          if (uploadBackgroundImage) { uploadBackgroundImage.disabled = false; uploadBackgroundImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Background'; }
+          const { Toast } = await import('../utils/ui.js');
+          Toast('Upload failed: ' + err.message);
         }
       });
       
