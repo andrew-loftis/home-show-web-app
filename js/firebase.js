@@ -355,7 +355,7 @@ export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
   } catch (err) {
     // Detect likely CORS/preflight issues and fallback to simple upload
     const m = String(err && (err.message || err.code || err)).toLowerCase();
-    const looksLikeCors = m.includes('preflight') || m.includes('cors') || m.includes('err_failed') || m.includes('blocked');
+    const looksLikeCors = m.includes('preflight') || m.includes('cors') || m.includes('err_failed') || m.includes('blocked') || m.includes('412');
     if (looksLikeCors) {
       try {
         if (typeof onProgress === 'function') { try { onProgress(0); } catch {} }
