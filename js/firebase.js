@@ -343,7 +343,8 @@ export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
   };
 
   // If a global flag is set, bypass resumable uploads to avoid CORS preflight
-  const forceSimple = (typeof window !== 'undefined' && window.FORCE_SIMPLE_UPLOAD === true);
+  // Default to simple upload for now to avoid 412 CORS errors
+  const forceSimple = (typeof window !== 'undefined' && (window.FORCE_SIMPLE_UPLOAD === true || window.FORCE_SIMPLE_UPLOAD !== false));
   try {
     if (forceSimple) {
       if (typeof onProgress === 'function') { try { onProgress(0); } catch {} }
