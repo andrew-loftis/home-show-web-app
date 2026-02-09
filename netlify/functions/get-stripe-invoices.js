@@ -1,35 +1,41 @@
 /**
  * Get Stripe Invoices
  * Fetches invoice data from Stripe for admin dashboard
- * 
+ *
  * Environment Variables Required:
  * - STRIPE_SECRET_KEY: Your Stripe secret key
+ * - FIREBASE_SERVICE_ACCOUNT: JSON Firebase service account (for auth verification)
  */
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { verifyAdmin } = require('./utils/verify-admin');
 
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Only allow POST to prevent caching and allow body params
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // Require admin authentication — this endpoint exposes financial data
+  const auth = await verifyAdmin(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
   }
 
   try {
-    const { action, invoiceId, vendorEmail, limit = 100 } = JSON.parse(event.body || '{}');
+    const { action, invoiceId, vendorEmail, limit: rawLimit = 100 } = JSON.parse(event.body || '{}');
+
+    // Cap limit to prevent abuse
+    const limit = Math.min(Math.max(parseInt(rawLimit, 10) || 10, 1), 100);
 
     // Action: Get single invoice status
     if (action === 'getInvoice' && invoiceId) {
@@ -60,9 +66,11 @@ exports.handler = async (event, context) => {
 
     // Action: Get invoices for a specific customer email
     if (action === 'getCustomerInvoices' && vendorEmail) {
-      // First find the customer
+      // Normalize email
+      const normalizedEmail = String(vendorEmail).trim().toLowerCase();
+
       const customers = await stripe.customers.list({
-        email: vendorEmail,
+        email: normalizedEmail,
         limit: 1
       });
 
@@ -171,11 +179,8 @@ exports.handler = async (event, context) => {
     // Action: Get balance/summary
     if (action === 'getBalance') {
       const balance = await stripe.balance.retrieve();
-      
-      // Get recent successful charges
-      const charges = await stripe.charges.list({
-        limit: 10
-      });
+
+      const charges = await stripe.charges.list({ limit: 10 });
 
       const recentRevenue = charges.data
         .filter(c => c.status === 'succeeded')
@@ -199,27 +204,22 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 400,
       headers,
-      body: JSON.stringify({ 
-        error: 'Invalid action. Use: getInvoice, getCustomerInvoices, listAll, listPayments, or getBalance' 
+      body: JSON.stringify({
+        error: 'Invalid action. Use: getInvoice, getCustomerInvoices, listAll, listPayments, or getBalance'
       })
     };
 
   } catch (error) {
     console.error('Stripe API error:', error);
-    
-    // Check if it's a Stripe error
+
     if (error.type === 'StripeInvalidRequestError') {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: error.message })
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ error: error.message }) };
     }
 
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Failed to fetch Stripe data', details: error.message })
+      body: JSON.stringify({ error: 'Failed to fetch Stripe data' })
     };
   }
 };

@@ -372,7 +372,7 @@ export default function MyCard(root, forceEdit = false) {
     function setupLivePreview(attendee) {
       const form = root.querySelector('#cardForm');
       if (!form) return;
-      
+
       const updatePreview = () => {
         const fd = new FormData(form);
         const updatedCard = {
@@ -393,8 +393,7 @@ export default function MyCard(root, forceEdit = false) {
             location: fd.get("location")
           }
         };
-        
-        // Update the card preview
+
         const cardPreview = root.querySelector('#cardPreview');
         if (cardPreview) {
           if (updatedCard.name || updatedCard.card.profileImage || updatedCard.card.backgroundImage || updatedCard.card.bio) {
@@ -402,19 +401,18 @@ export default function MyCard(root, forceEdit = false) {
           }
         }
       };
-      
-      // Add event listeners for live preview
-      const inputs = form.querySelectorAll('input, textarea');
-      inputs.forEach(input => {
-        if (input.type === 'file') return; // Skip file inputs
-        input.addEventListener('input', updatePreview);
-        input.addEventListener('change', updatePreview);
-      });
-      
-      // Listen for form-level events to catch dynamic updates
-      form.addEventListener('input', updatePreview);
-      form.addEventListener('change', updatePreview);
-      
+
+      // Debounced version to prevent preview flicker on fast typing
+      let _previewTimer = null;
+      const debouncedPreview = () => {
+        clearTimeout(_previewTimer);
+        _previewTimer = setTimeout(updatePreview, 250);
+      };
+
+      // Add event listeners with debounce
+      form.addEventListener('input', debouncedPreview);
+      form.addEventListener('change', updatePreview); // Immediate on dropdowns/checkboxes
+
       // Initial preview update
       setTimeout(updatePreview, 100);
     }
@@ -671,7 +669,7 @@ export default function MyCard(root, forceEdit = false) {
         const formData = new FormData(cardForm);
         const cardData = {
           profileImage: formData.get('profileImage'),
-          backgroundImage: formData.get('backgroundImage'), 
+          backgroundImage: formData.get('backgroundImage'),
           profileImageX: parseFloat(formData.get('profileImageX')),
           profileImageY: parseFloat(formData.get('profileImageY')),
           profileImageZoom: parseFloat(formData.get('profileImageZoom')),
@@ -680,7 +678,7 @@ export default function MyCard(root, forceEdit = false) {
           bio: formData.get('bio'),
           location: formData.get('location')
         };
-        
+
         const previewAttendee = {
           name: formData.get('name'),
           email: formData.get('email'),
@@ -688,12 +686,18 @@ export default function MyCard(root, forceEdit = false) {
           interests: formData.getAll('interests'),
           card: cardData
         };
-        
+
         root.querySelector('#cardPreview').innerHTML = renderAttendeeCard(previewAttendee);
       };
-      
-      // Add input event listeners for real-time updates
-      cardForm.addEventListener('input', updatePreview);
+
+      // Debounced version to prevent flicker on fast typing
+      let _vendorPreviewTimer = null;
+      const debouncedVendorPreview = () => {
+        clearTimeout(_vendorPreviewTimer);
+        _vendorPreviewTimer = setTimeout(updatePreview, 250);
+      };
+
+      cardForm.addEventListener('input', debouncedVendorPreview);
       cardForm.addEventListener('change', updatePreview);
       
       // Form submission

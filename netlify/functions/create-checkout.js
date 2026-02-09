@@ -8,6 +8,7 @@
  */
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { verifyAuth } = require('./utils/verify-admin');
 
 // Booth pricing tiers
 const BOOTH_PRICES = {
@@ -37,7 +38,7 @@ exports.handler = async (event, context) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
@@ -54,14 +55,18 @@ exports.handler = async (event, context) => {
     };
   }
 
+  // Verify authenticated user
+  const auth = await verifyAuth(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
+  }
+
   try {
-    const { 
+    const {
       vendorId,
       vendorEmail,
       vendorName,
-      boothType = 'standard',
-      customAmount, // Optional: override price (in cents)
-      customDescription // Optional: override description
+      boothType = 'standard'
     } = JSON.parse(event.body);
 
     if (!vendorId || !vendorEmail) {
@@ -72,10 +77,13 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Normalize email
+    const normalizedEmail = String(vendorEmail).trim().toLowerCase();
+
     // Get booth pricing
     const booth = BOOTH_PRICES[boothType] || BOOTH_PRICES['standard'];
-    const amount = customAmount || booth.price;
-    const description = customDescription || booth.description;
+    const amount = booth.price;
+    const description = booth.description;
     const productName = booth.name;
 
     // Site URL for redirects
@@ -84,7 +92,7 @@ exports.handler = async (event, context) => {
     // Create or retrieve Stripe customer
     let customer;
     const existingCustomers = await stripe.customers.list({
-      email: vendorEmail,
+      email: normalizedEmail,
       limit: 1
     });
 
@@ -92,7 +100,7 @@ exports.handler = async (event, context) => {
       customer = existingCustomers.data[0];
     } else {
       customer = await stripe.customers.create({
-        email: vendorEmail,
+        email: normalizedEmail,
         name: vendorName || 'Vendor',
         metadata: {
           vendorId,

@@ -203,10 +203,10 @@ function renderVendorCards(state) {
             <div class="flex-shrink-0 w-64 sm:w-72 snap-start">
               ${renderAttendeeCard(attendee, true)}
               <div class="flex gap-2 mt-2">
-                <button class="glass-button flex-1 py-2 text-xs" onclick="window.location.hash='/vendor-lead/${lead.id}'">
+                <button class="glass-button flex-1 py-3 text-xs touch-target" onclick="window.location.hash='/vendor-lead/${lead.id}'">
                   <ion-icon name="eye-outline" class="mr-1"></ion-icon>View
                 </button>
-                <button class="glass-button flex-1 py-2 text-xs" onclick="window._saveContactToDevice({name:'${(attendee.name || '').replace(/'/g, "\\'")}',email:'${attendee.email || ''}',phone:'${attendee.phone || ''}',location:'${(attendee.card?.location || '').replace(/'/g, "\\'")}',bio:'${(attendee.card?.bio || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}'})">
+                <button class="glass-button flex-1 py-3 text-xs touch-target" onclick="window._saveContactToDevice({name:'${(attendee.name || '').replace(/'/g, "\\'")}',email:'${attendee.email || ''}',phone:'${attendee.phone || ''}',location:'${(attendee.card?.location || '').replace(/'/g, "\\'")}',bio:'${(attendee.card?.bio || '').replace(/'/g, "\\'").replace(/\n/g, ' ')}'})">
                   <ion-icon name="person-add-outline" class="mr-1"></ion-icon>Save
                 </button>
               </div>
@@ -310,10 +310,10 @@ function renderAttendeeCards(state) {
               <div class="flex-shrink-0 w-64 sm:w-72 snap-start">
                 ${renderVendorCard(vendor)}
                 <div class="flex gap-2 mt-2">
-                  <button class="glass-button flex-1 py-2 text-xs" onclick="window.location.hash='/vendor/${vendor.id}'">
+                  <button class="glass-button flex-1 py-3 text-xs touch-target" onclick="window.location.hash='/vendor/${vendor.id}'">
                     <ion-icon name="eye-outline" class="mr-1"></ion-icon>View
                   </button>
-                  <button class="glass-button flex-1 py-2 text-xs" onclick="window._saveContactToDevice({name:'${(vendor.name || '').replace(/'/g, "\\'")}',email:'${vendor.email || ''}',phone:'${vendor.phone || ''}',org:'${(vendor.name || '').replace(/'/g, "\\'")}',location:'Booth ${vendor.booth || ''}'})">
+                  <button class="glass-button flex-1 py-3 text-xs touch-target" onclick="window._saveContactToDevice({name:'${(vendor.name || '').replace(/'/g, "\\'")}',email:'${vendor.email || ''}',phone:'${vendor.phone || ''}',org:'${(vendor.name || '').replace(/'/g, "\\'")}',location:'Booth ${vendor.booth || ''}'})">
                     <ion-icon name="person-add-outline" class="mr-1"></ion-icon>Save
                   </button>
                 </div>
@@ -368,7 +368,7 @@ function renderSentRow(lead, state) {
         <div class="text-glass font-medium">${vendor?.name || 'Vendor'}</div>
         <div class="text-xs text-glass-secondary">${lead.exchangeMethod === 'card_share' ? 'Card shared' : 'Manual'} • ${time}</div>
       </div>
-      <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/vendor/${vendor?.id}'">View</button>
+      <button class="glass-button px-3 py-2 text-sm touch-target" onclick="window.location.hash='/vendor/${vendor?.id}'">View</button>
     </div>
   `;
 }
@@ -380,7 +380,7 @@ function renderSavedVendor(vendor) {
         <div class="text-glass font-medium">${vendor.name}</div>
         <div class="text-xs text-glass-secondary">Booth ${vendor.booth} • ${vendor.category}</div>
       </div>
-      <button class="glass-button px-3 py-1 text-sm" onclick="window.location.hash='/vendor/${vendor.id}'">Open</button>
+      <button class="glass-button px-3 py-2 text-sm touch-target" onclick="window.location.hash='/vendor/${vendor.id}'">Open</button>
     </div>
   `;
 }

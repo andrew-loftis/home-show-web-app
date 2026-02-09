@@ -7,22 +7,18 @@ service firebase.storage {
     }
     function isAdmin() {
       return isSignedIn()
-             && get(/databases/(default)/documents/users/$(request.auth.uid)).data.security.isAdmin == true;
-    }
-    function isVendorOwner(vendorId) {
-      return isSignedIn()
-             && get(/databases/(default)/documents/vendors/$(vendorId)).data.ownerUid == request.auth.uid;
+             && firestore.exists(/databases/(default)/documents/adminEmails/$(request.auth.token.email));
     }
     function isImage() {
       return request.resource != null
              && request.resource.contentType.matches('image/.*');
     }
     function withinSizeLimit() {
-      // 10 MB max (adjust if you need)
+      // 10 MB max per file
       return request.resource.size < 10 * 1024 * 1024;
     }
 
-    // Public read for all uploaded images
+    // Public read for all uploaded images (they are served via download URLs)
     match /{allPaths=**} {
       allow read: if true;
     }
@@ -32,10 +28,19 @@ service firebase.storage {
       allow write: if request.auth.uid == uid && isImage() && withinSizeLimit();
     }
 
+    // Attendee uploads (alternate path): users/{uid}/attendees/...
+    match /users/{uid}/attendees/{path=**} {
+      allow write: if request.auth.uid == uid && isImage() && withinSizeLimit();
+    }
+
     // Vendor uploads: vendors/{vendorId}/{uid}/...
     match /vendors/{vendorId}/{uid}/{path=**} {
-      allow write: if (request.auth.uid == uid && isImage() && withinSizeLimit())
-                   && (isVendorOwner(vendorId) || isAdmin());
+      allow write: if request.auth.uid == uid && isImage() && withinSizeLimit();
+    }
+
+    // Admin can upload anywhere
+    match /{allPaths=**} {
+      allow write: if isAdmin() && isImage() && withinSizeLimit();
     }
   }
 }

@@ -1,4 +1,5 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { verifyAdmin } = require('./utils/verify-admin');
 
 exports.handler = async (event) => {
   const headers = {
@@ -12,11 +13,13 @@ exports.handler = async (event) => {
   }
 
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // Require admin authentication
+  const auth = await verifyAdmin(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
   }
 
   try {
@@ -62,7 +65,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Invoice is already paid and cannot be voided.', status: invoice.status }),
+        body: JSON.stringify({ error: 'Invoice is already paid and cannot be voided. Use a refund instead.', status: invoice.status }),
       };
     }
 
@@ -76,7 +79,8 @@ exports.handler = async (event) => {
         success: true,
         invoiceId: voided.id,
         status: voided.status,
-        action: 'void'
+        action: 'void',
+        voidedBy: auth.email
       }),
     };
   } catch (error) {

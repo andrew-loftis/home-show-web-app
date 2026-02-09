@@ -19,8 +19,6 @@
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-const SENDGRID_API_URL = 'https://api.sendgrid.com/v3/mail/send';
-
 // Initialize Firebase Admin SDK for Firestore updates
 let admin = null;
 let db = null;
@@ -81,18 +79,24 @@ async function updateVendorPaymentStatus(vendorId, status, paymentData = {}) {
   }
 }
 
-// Create payment record in Firestore
-async function createPaymentRecord(data) {
+// Create payment record in Firestore (idempotent — uses stripe event/intent ID as doc ID)
+async function createPaymentRecord(data, idempotencyId) {
   try {
     const firestore = await initFirebase();
     if (!firestore) return null;
-    
-    const paymentRef = firestore.collection('payments').doc();
+
+    // Use a stable ID derived from the Stripe event to prevent duplicate records on webhook retry
+    const docId = idempotencyId || data.stripePaymentIntentId || data.stripeSessionId || data.stripeInvoiceId || data.stripeChargeId;
+    const paymentRef = docId
+      ? firestore.collection('payments').doc(docId)
+      : firestore.collection('payments').doc();
+
+    // merge: true ensures retried webhooks update rather than fail
     await paymentRef.set({
       ...data,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
-    
+    }, { merge: true });
+
     return paymentRef.id;
   } catch (error) {
     console.error('Failed to create payment record:', error);
@@ -108,8 +112,6 @@ async function sendPaymentNotificationEmails(paymentData) {
     return;
   }
 
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@winnpro-shows.app';
-  const appName = process.env.APP_NAME || 'WinnPro Shows';
   const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
   const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
 
@@ -205,7 +207,7 @@ async function sendPushNotification(options) {
     return null;
   }
 }
-exports.handler = async (event, context) => {
+exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Stripe-Signature',
@@ -229,19 +231,26 @@ exports.handler = async (event, context) => {
 
   let stripeEvent;
 
+  // Webhook signature verification is REQUIRED in production
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not configured — rejecting webhook');
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Webhook secret not configured on server' })
+    };
+  }
+
+  if (!sig) {
+    return {
+      statusCode: 401,
+      headers,
+      body: JSON.stringify({ error: 'Missing Stripe-Signature header' })
+    };
+  }
+
   try {
-    // Verify webhook signature if secret is configured
-    if (webhookSecret && sig) {
-      stripeEvent = stripe.webhooks.constructEvent(
-        event.body,
-        sig,
-        webhookSecret
-      );
-    } else {
-      // For development/testing without signature verification
-      stripeEvent = JSON.parse(event.body);
-      console.warn('Webhook signature verification skipped');
-    }
+    stripeEvent = stripe.webhooks.constructEvent(event.body, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return {

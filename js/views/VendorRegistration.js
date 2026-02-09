@@ -74,8 +74,20 @@ export default async function VendorRegistration(root) {
     });
     return;
   }
-  let step = 1;
-  let data = {};
+  // Restore draft from localStorage if the user navigated away mid-registration
+  const DRAFT_KEY = 'winnpro_vendor_reg_draft';
+  let draft = {};
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}'); } catch {}
+  let step = draft._step || 1;
+  let data = { ...draft };
+  delete data._step;
+
+  function saveDraft() {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, _step: step })); } catch {}
+  }
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+  }
   // Expanded categories
   const categories = [
     "Kitchen","Bath","Landscaping","Windows","Doors","Solar","Roofing","Flooring","HVAC","Painting",
@@ -103,50 +115,44 @@ export default async function VendorRegistration(root) {
   let takenBooths = new Set();
   let boothCategories = {}; // Map of boothId -> category
   
-  // Load booth availability with category data
+  // Load booth availability from boothReservations collection (source of truth)
+  // Falls back to vendor docs for legacy data
   const loadBoothAvailability = async () => {
     try {
       const { getDb } = await import("../firebase.js");
       const db = getDb();
       const { collection, getDocs, where, query } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-      
+
       takenBooths.clear();
       boothCategories = {};
-      
-      // Get all approved vendors and their booths with categories
+
+      const showId = getCurrentShowId();
+
+      // Primary source: boothReservations collection (written atomically during registration)
+      try {
+        const resQ = query(collection(db, 'boothReservations'), where('showId', '==', showId));
+        const resSnap = await getDocs(resQ);
+        resSnap.forEach(d => {
+          const r = d.data();
+          // Doc ID format: {showId}_{boothId}
+          const boothId = d.id.replace(`${showId}_`, '');
+          takenBooths.add(boothId);
+          boothCategories[boothId] = r.category || 'General';
+        });
+      } catch {}
+
+      // Also check vendor docs for legacy data (vendors created before boothReservations existed)
       const q = query(collection(db, 'vendors'), where('approved', '==', true));
       const snap = await getDocs(q);
-      
+
       snap.forEach(doc => {
         const data = doc.data();
+        if ((data.showId || 'putnam-spring-2026') !== showId) return;
         const category = data.category || 'General';
-        
+
         if (data.booths && Array.isArray(data.booths)) {
           data.booths.forEach(booth => {
-            takenBooths.add(booth);
-            boothCategories[booth] = category;
-          });
-        } else if (data.booth) {
-          // Handle legacy single booth format
-          const booths = data.booth.split(',').map(b => b.trim());
-          booths.forEach(booth => {
-            takenBooths.add(booth);
-            boothCategories[booth] = category;
-          });
-        }
-      });
-      
-      // Also check pending applications to prevent double-booking
-      const pendingQ = query(collection(db, 'vendors'), where('approved', '==', false), where('status', '!=', 'denied'));
-      const pendingSnap = await getDocs(pendingQ);
-      
-      pendingSnap.forEach(doc => {
-        const data = doc.data();
-        const category = data.category || 'General';
-        
-        if (data.booths && Array.isArray(data.booths)) {
-          data.booths.forEach(booth => {
-            if (!takenBooths.has(booth)) { // Don't overwrite approved booths
+            if (!takenBooths.has(booth)) {
               takenBooths.add(booth);
               boothCategories[booth] = category;
             }
@@ -161,7 +167,34 @@ export default async function VendorRegistration(root) {
           });
         }
       });
-      
+
+      // Also check pending applications
+      const pendingQ = query(collection(db, 'vendors'), where('approved', '==', false), where('status', '!=', 'denied'));
+      const pendingSnap = await getDocs(pendingQ);
+
+      pendingSnap.forEach(doc => {
+        const data = doc.data();
+        if ((data.showId || 'putnam-spring-2026') !== showId) return;
+        const category = data.category || 'General';
+
+        if (data.booths && Array.isArray(data.booths)) {
+          data.booths.forEach(booth => {
+            if (!takenBooths.has(booth)) {
+              takenBooths.add(booth);
+              boothCategories[booth] = category;
+            }
+          });
+        } else if (data.booth) {
+          const booths = data.booth.split(',').map(b => b.trim());
+          booths.forEach(booth => {
+            if (!takenBooths.has(booth)) {
+              takenBooths.add(booth);
+              boothCategories[booth] = category;
+            }
+          });
+        }
+      });
+
       return takenBooths;
     } catch (error) {
       console.error('Failed to load booth availability:', error);
@@ -400,18 +433,27 @@ export default async function VendorRegistration(root) {
       e.preventDefault();
       const fd = new FormData(e.target);
       if (step===1) {
+        const companyName = (fd.get("companyName") || '').trim();
+        const contactName = (fd.get("contactName") || '').trim();
+        if (!companyName) { Toast('Please enter your company name'); return; }
+        if (!contactName) { Toast('Please enter a contact name'); return; }
         data.showId = fd.get("showId");
         data.showName = SHOWS[data.showId]?.shortName || '';
-        data.companyName = fd.get("companyName");
-        data.contactName = fd.get("contactName");
+        data.companyName = companyName;
+        data.contactName = contactName;
         // Update global show context to match selection
         setCurrentShow(data.showId);
         step++;
+        saveDraft();
         await render();
       } else if (step===2) {
-        data.email = fd.get("email");
-        data.phone = fd.get("phone");
+        const email = (fd.get("email") || '').trim().toLowerCase();
+        const phone = (fd.get("phone") || '').trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { Toast('Please enter a valid email address'); return; }
+        data.email = email;
+        data.phone = phone;
         step++;
+        saveDraft();
         await render();
       } else if (step===3) {
         const selectedCategory = fd.get("category");
@@ -433,63 +475,105 @@ export default async function VendorRegistration(root) {
         data.boothCount = boothCount;
         data.totalPrice = totalPrice;
         step++;
+        saveDraft();
         await render();
       } else if (step===4) {
         // Collect additional services
         data.needsPower = fd.get("needsPower") === 'on';
         data.needsTable = fd.get("needsTable") === 'on';
         data.chairCount = parseInt(fd.get("chairCount")) || 0;
-        
+
         // Calculate additional costs
         data.powerCost = data.needsPower ? POWER_FEE : 0;
         data.tableCost = data.needsTable ? TABLE_FEE : 0;
         data.chairCost = data.chairCount * CHAIR_FEE;
         data.totalPrice = data.boothCount * BOOTH_PRICE + data.powerCost + data.tableCost + data.chairCost;
-        
+
         step++;
+        saveDraft();
         await render();
       } else if (step===5) {
         // Validate agreement checkboxes
         if (!fd.get("agreeTerms")) { Toast('Please agree to the terms and conditions'); return; }
         if (!fd.get("agreePayment")) { Toast('Please acknowledge the payment terms'); return; }
         if (!fd.get("agreeInsurance")) { Toast('Please acknowledge the insurance requirement'); return; }
-        // Submit to Firestore: vendors with approved=false
+        // Submit to Firestore with transaction to prevent booth race condition
         import("../firebase.js").then(async ({ getDb }) => {
           try {
             const db = getDb();
-            const { collection, addDoc, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-            await addDoc(collection(db, 'vendors'), {
-              // Show association (from Step 1 selection)
-              showId: data.showId,
-              showName: data.showName,
-              name: data.companyName,
-              category: data.category,
-              booth: data.booths.join(', '),
-              booths: data.booths,
-              boothCount: data.boothCount,
-              totalPrice: data.totalPrice,
-              contactEmail: data.email,
-              contactPhone: data.phone || '',
-              logoUrl: '',
-              ownerUid: state.user.uid,
-              approved: false,
-              // Additional services
-              needsPower: data.needsPower || false,
-              needsTable: data.needsTable || false,
-              chairCount: data.chairCount || 0,
-              powerCost: data.powerCost || 0,
-              tableCost: data.tableCost || 0,
-              chairCost: data.chairCost || 0,
-              status: 'pending',
-              verified: false,
-              profile: {},
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
+            const { collection, doc, setDoc, getDocs, query, where, runTransaction, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+            const showId = data.showId;
+
+            // Use a transaction: reserve booth docs then create vendor
+            await runTransaction(db, async (txn) => {
+              // 1. Check each selected booth is still available via boothReservations docs
+              const conflicts = [];
+              for (const boothId of data.booths) {
+                const ref = doc(db, 'boothReservations', `${showId}_${boothId}`);
+                const snap = await txn.get(ref);
+                if (snap.exists()) conflicts.push(boothId);
+              }
+              if (conflicts.length > 0) {
+                throw new Error(`BOOTH_TAKEN:${conflicts.join(',')}`);
+              }
+
+              // 2. Create vendor doc
+              const vendorRef = doc(collection(db, 'vendors'));
+              txn.set(vendorRef, {
+                showId: showId,
+                showName: data.showName,
+                name: data.companyName,
+                category: data.category,
+                booth: data.booths.join(', '),
+                booths: data.booths,
+                boothCount: data.boothCount,
+                totalPrice: data.totalPrice,
+                contactEmail: (data.email || '').trim().toLowerCase(),
+                contactPhone: data.phone || '',
+                logoUrl: '',
+                ownerUid: state.user.uid,
+                approved: false,
+                needsPower: data.needsPower || false,
+                needsTable: data.needsTable || false,
+                chairCount: data.chairCount || 0,
+                powerCost: data.powerCost || 0,
+                tableCost: data.tableCost || 0,
+                chairCost: data.chairCost || 0,
+                status: 'pending',
+                verified: false,
+                profile: {},
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              });
+
+              // 3. Reserve each booth atomically
+              for (const boothId of data.booths) {
+                const ref = doc(db, 'boothReservations', `${showId}_${boothId}`);
+                txn.set(ref, {
+                  vendorId: vendorRef.id,
+                  vendorName: data.companyName,
+                  category: data.category,
+                  showId: showId,
+                  status: 'pending',
+                  reservedAt: serverTimestamp()
+                });
+              }
             });
+
+            clearDraft();
             Modal(document.createTextNode("Registration submitted! Waiting for admin approval."));
             setTimeout(() => { Modal(null); navigate("/home"); }, 1400);
           } catch (e) {
-            Toast("Failed to submit registration");
+            if (e.message && e.message.startsWith('BOOTH_TAKEN:')) {
+              const taken = e.message.replace('BOOTH_TAKEN:', '');
+              Toast(`Booth(s) ${taken} were just claimed by another vendor. Please select different booths.`);
+              step = 3;
+              await loadBoothAvailability();
+              await render();
+            } else {
+              console.error('Registration failed:', e);
+              Toast("Failed to submit registration. Please try again.");
+            }
           }
         });
       }

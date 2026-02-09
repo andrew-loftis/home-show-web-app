@@ -531,6 +531,14 @@ export default async function Home(root) {
             <ion-icon name="server-outline" class="text-2xl text-orange-400 mb-2"></ion-icon>
             <div class="text-sm font-medium text-glass">Data Manager</div>
           </button>
+          <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/my-card'">
+            <ion-icon name="card-outline" class="text-2xl text-cyan-400 mb-2"></ion-icon>
+            <div class="text-sm font-medium text-glass">My Card</div>
+          </button>
+          <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/cards'">
+            <ion-icon name="swap-horizontal-outline" class="text-2xl text-pink-400 mb-2"></ion-icon>
+            <div class="text-sm font-medium text-glass">Card Swap</div>
+          </button>
         </div>
         
         <!-- Main Admin Tools -->

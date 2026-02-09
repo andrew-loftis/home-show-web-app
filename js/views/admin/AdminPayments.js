@@ -6,10 +6,18 @@
 
 import { getAdminDb, getFirestoreModule, exportCsv, debounce, setButtonLoading } from '../../utils/admin.js';
 
+async function getIdToken() {
+  try {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    return await getAuth().currentUser?.getIdToken();
+  } catch { return null; }
+}
+
 async function voidStripeInvoice(invoiceId) {
+  const token = await getIdToken();
   const response = await fetch('/.netlify/functions/void-invoice', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
     body: JSON.stringify({ invoiceId })
   });
   const data = await response.json().catch(() => ({}));
@@ -913,9 +921,10 @@ export function getLastPayments() {
  */
 async function fetchStripeData(action, params = {}) {
   try {
+    const token = await getIdToken();
     const response = await fetch('/.netlify/functions/get-stripe-invoices', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
       body: JSON.stringify({ action, ...params })
     });
     

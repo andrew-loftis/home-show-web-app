@@ -19,6 +19,7 @@ import { renderPaymentsTab, loadPayments } from "./admin/AdminPayments.js";
 import { renderAdsTab, loadAds as loadAdsTab } from "./admin/AdminAds.js";
 import { renderImportTab, setupImportListeners } from "./admin/AdminImport.js";
 import { renderShowsTab, loadShows as loadShowsTab } from "./admin/AdminShows.js";
+import { renderFloorPlanTab, loadFloorPlan } from "./admin/AdminFloorPlan.js";
 
 // Import shows for admin filter
 import { SHOWS, getAllShows, getCurrentShowId, setCurrentShow, getCurrentShow, DEFAULT_SHOW_ID, initShows } from "../shows.js";
@@ -63,6 +64,7 @@ export default function AdminDashboard(root) {
         { key: 'users', icon: 'people-outline', label: 'Users' },
         { key: 'leads', icon: 'swap-horizontal-outline', label: 'Leads' },
         { key: 'booths', icon: 'map-outline', label: 'Booth Map' },
+        { key: 'floorplan', icon: 'image-outline', label: 'Floor Plan' },
       ]
     },
     {
@@ -270,7 +272,8 @@ export default function AdminDashboard(root) {
       import: 'Import vendor data from CSV or other sources',
       payments: 'Process payments and view transactions',
       ads: 'Manage promotional content and banners',
-      admins: 'Manage admin user access'
+      admins: 'Manage admin user access',
+      floorplan: 'Configure floor plan layout and booth placement'
     };
     return descriptions[activeTab] || '';
   }
@@ -295,6 +298,8 @@ export default function AdminDashboard(root) {
         return renderPaymentsTab();
       case 'ads':
         return renderAdsTab();
+      case 'floorplan':
+        return renderFloorPlanTab();
       case 'shows':
         return renderShowsTab();
       case 'admins':
@@ -338,6 +343,9 @@ export default function AdminDashboard(root) {
         break;
       case 'ads':
         await loadAdsTab(root, showFilter);
+        break;
+      case 'floorplan':
+        await loadFloorPlan(root, showFilter);
         break;
       case 'shows':
         await loadShowsTab(root);
@@ -519,7 +527,31 @@ export default function AdminDashboard(root) {
             </button>
           </div>
         </div>
+
+        <!-- Search & Lead Type Filters -->
+        <div class="glass-card p-4">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="flex-1 relative">
+              <ion-icon name="search-outline" class="absolute left-3 top-1/2 -translate-y-1/2 text-glass-secondary"></ion-icon>
+              <input type="text" id="leadsSearchInput" placeholder="Search by name or email..."
+                     class="w-full pl-10 pr-3 py-2 bg-glass-surface border border-glass-border rounded text-glass text-sm" />
+            </div>
+            <div class="flex gap-2 flex-wrap" id="leadsTypeFilter">
+              <button class="leads-type-btn px-3 py-2 rounded text-sm font-medium bg-brand text-white" data-type="all">
+                All Types
+              </button>
+              <button class="leads-type-btn px-3 py-2 rounded text-sm font-medium bg-glass-surface border border-glass-border text-glass-secondary" data-type="card_share">
+                <ion-icon name="swap-horizontal-outline" class="mr-1"></ion-icon>Card Share
+              </button>
+              <button class="leads-type-btn px-3 py-2 rounded text-sm font-medium bg-glass-surface border border-glass-border text-glass-secondary" data-type="manual">
+                <ion-icon name="create-outline" class="mr-1"></ion-icon>Manual
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div id="leadsStats" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+        <div id="leadsFilteredCount" class="text-sm text-glass-secondary"></div>
         <div id="leadsList" class="space-y-3">
           <div class="glass-card p-8 text-center text-glass-secondary">
             Loading leads...
@@ -531,6 +563,9 @@ export default function AdminDashboard(root) {
 
   let allLeadsData = [];
   let allVendorsMap = {};
+  let leadsSearchQuery = '';
+  let leadsTypeFilter = 'all';
+  let leadsSearchDebounceTimer = null;
 
   async function loadLeads() {
     const listEl = root.querySelector('#leadsList');
@@ -538,6 +573,8 @@ export default function AdminDashboard(root) {
     const filterEl = root.querySelector('#leadsVendorFilter');
     const refreshBtn = root.querySelector('#refreshLeadsBtn');
     const exportBtn = root.querySelector('#exportLeadsBtn');
+    const searchInput = root.querySelector('#leadsSearchInput');
+    const typeFilterBtns = root.querySelectorAll('.leads-type-btn');
     if (!listEl) return;
 
     // Wire up refresh
@@ -551,6 +588,37 @@ export default function AdminDashboard(root) {
       exportBtn._listenerAdded = true;
       exportBtn.addEventListener('click', () => exportLeadsCsv());
     }
+
+    // Wire up search (debounced 300ms)
+    if (searchInput && !searchInput._listenerAdded) {
+      searchInput._listenerAdded = true;
+      searchInput.value = leadsSearchQuery; // Restore previous query
+      searchInput.addEventListener('input', () => {
+        clearTimeout(leadsSearchDebounceTimer);
+        leadsSearchDebounceTimer = setTimeout(() => {
+          leadsSearchQuery = searchInput.value.trim();
+          renderLeadsList();
+        }, 300);
+      });
+    }
+
+    // Wire up lead type filter buttons
+    typeFilterBtns.forEach(btn => {
+      if (btn._listenerAdded) return;
+      btn._listenerAdded = true;
+      btn.addEventListener('click', () => {
+        leadsTypeFilter = btn.dataset.type;
+        // Update button styles
+        root.querySelectorAll('.leads-type-btn').forEach(b => {
+          if (b.dataset.type === leadsTypeFilter) {
+            b.className = 'leads-type-btn px-3 py-2 rounded text-sm font-medium bg-brand text-white';
+          } else {
+            b.className = 'leads-type-btn px-3 py-2 rounded text-sm font-medium bg-glass-surface border border-glass-border text-glass-secondary';
+          }
+        });
+        renderLeadsList();
+      });
+    });
 
     try {
       const db = await getAdminDb();
@@ -574,7 +642,7 @@ export default function AdminDashboard(root) {
             .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
             .map(v => `<option value="${v.id}">${v.name || v.companyName || v.id}</option>`)
             .join('');
-        
+
         if (!filterEl._listenerAdded) {
           filterEl._listenerAdded = true;
           filterEl.addEventListener('change', () => renderLeadsList());
@@ -646,23 +714,70 @@ export default function AdminDashboard(root) {
     `;
   }
 
+  /**
+   * Applies all active filters (vendor, type, search) and returns the filtered leads array.
+   * Shared by both renderLeadsList and exportLeadsCsv.
+   */
+  function getFilteredLeads() {
+    const filterEl = root.querySelector('#leadsVendorFilter');
+    const vendorFilter = filterEl?.value || 'all';
+    let filtered = allLeadsData;
+
+    // Vendor filter
+    if (vendorFilter !== 'all') {
+      filtered = filtered.filter(l => l.vendorId === vendorFilter);
+    }
+
+    // Lead type filter (exchangeMethod)
+    if (leadsTypeFilter !== 'all') {
+      filtered = filtered.filter(l => {
+        const method = (l.exchangeMethod || '').toLowerCase();
+        if (leadsTypeFilter === 'card_share') {
+          return method === 'card_share' || method === 'card share';
+        }
+        if (leadsTypeFilter === 'manual') {
+          return method === 'manual' || method === '';
+        }
+        return true;
+      });
+    }
+
+    // Text search filter (name or email, case-insensitive)
+    if (leadsSearchQuery) {
+      const q = leadsSearchQuery.toLowerCase();
+      filtered = filtered.filter(l => {
+        const name = (l.name || l.attendeeName || '').toLowerCase();
+        const email = (l.email || l.attendeeEmail || '').toLowerCase();
+        return name.includes(q) || email.includes(q);
+      });
+    }
+
+    return filtered;
+  }
+
   function renderLeadsList() {
     const listEl = root.querySelector('#leadsList');
-    const filterEl = root.querySelector('#leadsVendorFilter');
+    const countEl = root.querySelector('#leadsFilteredCount');
     if (!listEl) return;
 
-    const vendorFilter = filterEl?.value || 'all';
-    let filteredLeads = allLeadsData;
+    const filteredLeads = getFilteredLeads();
+    const hasActiveFilters = leadsTypeFilter !== 'all' || leadsSearchQuery || (root.querySelector('#leadsVendorFilter')?.value || 'all') !== 'all';
 
-    if (vendorFilter !== 'all') {
-      filteredLeads = filteredLeads.filter(l => l.vendorId === vendorFilter);
+    // Show filtered count when filters are active
+    if (countEl) {
+      if (hasActiveFilters) {
+        countEl.textContent = `Showing ${filteredLeads.length} of ${allLeadsData.length} leads`;
+      } else {
+        countEl.textContent = '';
+      }
     }
 
     if (filteredLeads.length === 0) {
       listEl.innerHTML = `
         <div class="glass-card p-8 text-center text-glass-secondary">
           <ion-icon name="swap-horizontal-outline" class="text-4xl mb-2"></ion-icon>
-          <p>No leads found${vendorFilter !== 'all' ? ' for this vendor' : ''}</p>
+          <p>No leads found${hasActiveFilters ? ' matching your filters' : ''}</p>
+          ${hasActiveFilters ? '<p class="text-xs mt-2">Try adjusting your search or filter criteria</p>' : ''}
         </div>
       `;
       return;
@@ -698,19 +813,55 @@ export default function AdminDashboard(root) {
               const phone = lead.phone || lead.attendeePhone || '';
               const date = lead.createdAt?.toDate?.() || new Date(lead.createdAt || 0);
               const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              
+              const method = (lead.exchangeMethod || '').toLowerCase();
+              const isCardShare = method === 'card_share' || method === 'card share';
+              const methodLabel = isCardShare ? 'Card Share' : 'Manual';
+              const methodBadgeClass = isCardShare
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'bg-yellow-500/20 text-yellow-400';
+              const notesEscaped = (lead.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
               return `
-                <div class="bg-glass-surface/50 rounded p-3 flex items-center justify-between">
-                  <div>
-                    <p class="font-medium text-glass">${name}</p>
-                    <div class="text-sm text-glass-secondary flex flex-wrap gap-3">
-                      ${email ? `<span><ion-icon name="mail-outline" class="mr-1"></ion-icon>${email}</span>` : ''}
-                      ${phone ? `<span><ion-icon name="call-outline" class="mr-1"></ion-icon>${phone}</span>` : ''}
+                <div class="bg-glass-surface/50 rounded p-3" data-lead-id="${lead.id}">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <p class="font-medium text-glass">${name}</p>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${methodBadgeClass}">
+                          <ion-icon name="${isCardShare ? 'swap-horizontal-outline' : 'create-outline'}" style="font-size:12px"></ion-icon>
+                          ${methodLabel}
+                        </span>
+                      </div>
+                      <div class="text-sm text-glass-secondary flex flex-wrap gap-3 mt-1">
+                        ${email ? `<span><ion-icon name="mail-outline" class="mr-1"></ion-icon>${email}</span>` : ''}
+                        ${phone ? `<span><ion-icon name="call-outline" class="mr-1"></ion-icon>${phone}</span>` : ''}
+                      </div>
                     </div>
-                    ${lead.notes ? `<p class="text-xs text-glass-secondary mt-1">Notes: ${lead.notes}</p>` : ''}
+                    <div class="text-xs text-glass-secondary text-right whitespace-nowrap">
+                      ${dateStr}
+                    </div>
                   </div>
-                  <div class="text-xs text-glass-secondary text-right">
-                    ${dateStr}
+                  <!-- Inline editable notes -->
+                  <div class="mt-2 lead-notes-container" data-lead-id="${lead.id}">
+                    <div class="lead-notes-display cursor-pointer group flex items-start gap-2" data-lead-id="${lead.id}" title="Click to edit notes">
+                      <ion-icon name="document-text-outline" class="text-glass-secondary mt-0.5" style="font-size:14px"></ion-icon>
+                      <span class="text-xs ${lead.notes ? 'text-glass-secondary' : 'text-glass-secondary/50 italic'} group-hover:text-glass transition-colors">
+                        ${lead.notes ? notesEscaped : 'Add notes...'}
+                      </span>
+                      <ion-icon name="pencil-outline" class="text-glass-secondary/50 group-hover:text-brand transition-colors ml-auto" style="font-size:12px"></ion-icon>
+                    </div>
+                    <div class="lead-notes-edit hidden" data-lead-id="${lead.id}">
+                      <textarea class="lead-notes-textarea w-full p-2 bg-glass-surface border border-glass-border rounded text-glass text-xs resize-none"
+                                rows="2" placeholder="Add notes about this lead..." data-lead-id="${lead.id}">${lead.notes || ''}</textarea>
+                      <div class="flex justify-end gap-2 mt-1">
+                        <button class="lead-notes-cancel text-xs px-2 py-1 border border-glass-border rounded text-glass-secondary hover:text-glass" data-lead-id="${lead.id}">
+                          Cancel
+                        </button>
+                        <button class="lead-notes-save text-xs px-2 py-1 bg-brand rounded text-white" data-lead-id="${lead.id}">
+                          Save
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               `;
@@ -719,23 +870,109 @@ export default function AdminDashboard(root) {
         </div>
       `;
     }).join('');
+
+    // Wire up inline notes editing
+    wireLeadNotesListeners();
+  }
+
+  /**
+   * Attaches click/save/cancel listeners for inline lead notes editing.
+   */
+  function wireLeadNotesListeners() {
+    // Click to open edit mode
+    root.querySelectorAll('.lead-notes-display').forEach(el => {
+      if (el._listenerAdded) return;
+      el._listenerAdded = true;
+      el.addEventListener('click', () => {
+        const leadId = el.dataset.leadId;
+        const container = root.querySelector(`.lead-notes-container[data-lead-id="${leadId}"]`);
+        if (!container) return;
+        container.querySelector('.lead-notes-display').classList.add('hidden');
+        container.querySelector('.lead-notes-edit').classList.remove('hidden');
+        const textarea = container.querySelector('.lead-notes-textarea');
+        if (textarea) {
+          textarea.focus();
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
+      });
+    });
+
+    // Cancel button
+    root.querySelectorAll('.lead-notes-cancel').forEach(btn => {
+      if (btn._listenerAdded) return;
+      btn._listenerAdded = true;
+      btn.addEventListener('click', () => {
+        const leadId = btn.dataset.leadId;
+        const container = root.querySelector(`.lead-notes-container[data-lead-id="${leadId}"]`);
+        if (!container) return;
+        // Restore original value
+        const lead = allLeadsData.find(l => l.id === leadId);
+        const textarea = container.querySelector('.lead-notes-textarea');
+        if (textarea && lead) textarea.value = lead.notes || '';
+        container.querySelector('.lead-notes-edit').classList.add('hidden');
+        container.querySelector('.lead-notes-display').classList.remove('hidden');
+      });
+    });
+
+    // Save button
+    root.querySelectorAll('.lead-notes-save').forEach(btn => {
+      if (btn._listenerAdded) return;
+      btn._listenerAdded = true;
+      btn.addEventListener('click', async () => {
+        const leadId = btn.dataset.leadId;
+        const container = root.querySelector(`.lead-notes-container[data-lead-id="${leadId}"]`);
+        if (!container) return;
+        const textarea = container.querySelector('.lead-notes-textarea');
+        const newNotes = textarea?.value?.trim() || '';
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
+        try {
+          const db = await getAdminDb();
+          const fsm = await getFirestoreModule();
+          await fsm.updateDoc(fsm.doc(db, 'leads', leadId), { notes: newNotes });
+
+          // Update local data
+          const lead = allLeadsData.find(l => l.id === leadId);
+          if (lead) lead.notes = newNotes;
+
+          Toast('Notes saved', 'success');
+
+          // Re-render the list to reflect changes
+          renderLeadsList();
+        } catch (err) {
+          console.error('[AdminDashboard] Failed to save lead notes:', err);
+          Toast('Failed to save notes', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Save';
+        }
+      });
+    });
   }
 
   function exportLeadsCsv() {
-    if (allLeadsData.length === 0) {
-      Toast('No leads to export');
+    const filteredLeads = getFilteredLeads();
+
+    if (filteredLeads.length === 0) {
+      Toast('No leads to export (check your filters)');
       return;
     }
 
-    const headers = ['Vendor', 'Attendee Name', 'Email', 'Phone', 'Notes', 'Date'];
-    const rows = allLeadsData.map(lead => {
+    const hasActiveFilters = leadsTypeFilter !== 'all' || leadsSearchQuery || (root.querySelector('#leadsVendorFilter')?.value || 'all') !== 'all';
+
+    const headers = ['Vendor', 'Attendee Name', 'Email', 'Phone', 'Exchange Method', 'Notes', 'Date'];
+    const rows = filteredLeads.map(lead => {
       const vendor = allVendorsMap[lead.vendorId] || {};
       const date = lead.createdAt?.toDate?.() || new Date(lead.createdAt || 0);
+      const method = (lead.exchangeMethod || '').toLowerCase();
+      const isCardShare = method === 'card_share' || method === 'card share';
       return [
         vendor.name || vendor.companyName || lead.vendorId || '',
         lead.name || lead.attendeeName || '',
         lead.email || lead.attendeeEmail || '',
         lead.phone || lead.attendeePhone || '',
+        isCardShare ? 'Card Share' : 'Manual',
         lead.notes || '',
         date.toISOString()
       ];
@@ -752,7 +989,7 @@ export default function AdminDashboard(root) {
     a.download = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    Toast('Leads exported successfully');
+    Toast(`${filteredLeads.length} lead${filteredLeads.length !== 1 ? 's' : ''} exported${hasActiveFilters ? ' (filtered)' : ''}`);
   }
 
   // ========================================
@@ -1301,9 +1538,12 @@ export default function AdminDashboard(root) {
           showId: adminShowId || ''
         };
 
+        // Get auth token for authenticated request
+        const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+        const idToken = await getAuth().currentUser?.getIdToken();
         const response = await fetch('/.netlify/functions/create-invoice', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}) },
           body: JSON.stringify(paymentData)
         });
         

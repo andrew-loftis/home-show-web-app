@@ -3,22 +3,25 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Helper functions
-    function isSignedIn() { 
-      return request.auth != null && request.auth.uid != null; 
-    }
-    
-    function isOwner(uid) { 
-      return isSignedIn() && request.auth.uid == uid; 
-    }
-    
-    // ADMIN CHECK - Complete access for andrew@houseofkna.com
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.email == 'andrew@houseofkna.com';
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
     }
 
-    // Admin registry - COMPLETE ACCESS for admins
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ADMIN CHECK - uses adminEmails collection for dynamic multi-admin support
+    // Checks if the authenticated user's email has a document in adminEmails
+    function isAdmin() {
+      return isSignedIn()
+             && request.auth.token.email != null
+             && exists(/databases/$(database)/documents/adminEmails/$(request.auth.token.email));
+    }
+
+    // Admin registry - only admins can manage, anyone signed in can check membership
     match /adminEmails/{emailId} {
-      allow read, write: if true; // Public read for admin checking
+      allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
 
@@ -51,15 +54,28 @@ service cloud.firestore {
 
     // Leads collection - ROLE-BASED ACCESS
     match /leads/{leadId} {
-      allow read, write: if isAdmin(); // Admin can see/edit ALL leads
-      // Vendors can see leads for their booths
-      allow read: if isSignedIn() && exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId)) &&
-                  get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid;
-      // Attendees can see their own leads
-      allow read: if isSignedIn() && exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)) &&
-                  get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid;
-      // Anyone can create leads
+      allow read, write: if isAdmin();
+      // Vendors can see leads addressed to them (vendorOwnerUid denormalized for efficiency)
+      allow read: if isSignedIn() && resource.data.vendorOwnerUid == request.auth.uid;
+      // Fallback: check vendor ownership (N+1 but covers legacy leads without vendorOwnerUid)
+      allow read: if isSignedIn() && resource.data.vendorOwnerUid == null
+                  && exists(/databases/$(database)/documents/vendors/$(resource.data.vendorId))
+                  && get(/databases/$(database)/documents/vendors/$(resource.data.vendorId)).data.ownerUid == request.auth.uid;
+      // Attendees can see their own leads via denormalized field
+      allow read: if isSignedIn() && resource.data.attendeeOwnerUid == request.auth.uid;
+      // Fallback for legacy leads
+      allow read: if isSignedIn() && resource.data.attendeeOwnerUid == null
+                  && exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId))
+                  && get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid;
+      // Signed-in users can create leads
       allow create: if isSignedIn();
+    }
+
+    // Booth reservations - atomic booth claiming during vendor registration
+    match /boothReservations/{reservationId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn(); // Anyone can check booth availability
+      allow create: if isSignedIn(); // Created atomically in transaction with vendor doc
     }
 
     // Booth layout collection - ADMIN COMPLETE ACCESS
@@ -89,9 +105,18 @@ service cloud.firestore {
 
     // Ads collection - Admin controlled popup ads
     match /ads/{adId} {
-      allow read, write: if isAdmin(); // Admin COMPLETE access
-      allow read: if resource.data.active == true; // Anyone can read active ads
-      allow update: if true; // Allow impression tracking updates
+      allow read, write: if isAdmin();
+      allow read: if resource.data.active == true;
+      // Impression tracking: signed-in users can only update impression/click counters
+      allow update: if isSignedIn()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['impressions', 'clicks', 'lastImpression']);
+    }
+
+    // Floor plan configs - admin writes, signed-in users read (access gated in app)
+    match /floorPlanConfigs/{showId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn();
     }
 
     // Shows collection - Public read, Admin write
@@ -100,9 +125,21 @@ service cloud.firestore {
       allow write: if isAdmin(); // Only admins can manage shows
     }
 
+    // Payments collection - admin + vendor read their own
+    match /payments/{paymentId} {
+      allow read, write: if isAdmin();
+      allow read: if isSignedIn() && resource.data.vendorOwnerUid == request.auth.uid;
+    }
+
+    // FCM tokens - users manage their own
+    match /fcmTokens/{tokenId} {
+      allow read, write: if isAdmin();
+      allow read, write: if isSignedIn() && request.auth.uid == tokenId;
+    }
+
     // ADMIN COMPLETE ACCESS - catch-all for any other collections
-    match /{document=**} { 
-      allow read, write: if isAdmin(); // Admin can access EVERYTHING
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

@@ -3,6 +3,31 @@
  * Frontend utility for Stripe checkout integration
  */
 
+/**
+ * Get the current Firebase user's ID token for authenticating Netlify function calls.
+ * Returns the token string or null if not signed in.
+ */
+async function getAuthToken() {
+  try {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    const user = getAuth().currentUser;
+    if (!user) return null;
+    return await user.getIdToken();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build headers for authenticated Netlify function calls.
+ */
+async function authHeaders() {
+  const token = await getAuthToken();
+  const h = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return h;
+}
+
 // Booth pricing display
 export const BOOTH_TYPES = {
   standard: {
@@ -47,9 +72,7 @@ export async function createCheckoutSession(options) {
   try {
     const response = await fetch('/.netlify/functions/create-checkout', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         vendorId,
         vendorEmail,
@@ -111,9 +134,7 @@ export async function createInvoice(options) {
   try {
     const response = await fetch('/.netlify/functions/create-invoice', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         customerEmail: vendorEmail,
         amount: Math.round(amount * 100), // Convert to cents
@@ -243,9 +264,7 @@ export async function getVendorInvoices(vendorEmail) {
   try {
     const response = await fetch('/.netlify/functions/get-stripe-invoices', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: await authHeaders(),
       body: JSON.stringify({
         action: 'getCustomerInvoices',
         vendorEmail

@@ -1,6 +1,8 @@
 ﻿import { getState } from "../store.js";
 import { Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
+import { compressProfileImage, compressBackgroundImage, compressGalleryImage } from "../utils/imageResize.js";
+import { uploadImage as firebaseUploadImage } from "../firebase.js";
 
 // Vendor categories (same as registration)
 const CATEGORIES = [
@@ -90,18 +92,53 @@ export default async function EditVendorProfile(root) {
   };
   let dirty = false;
 
-  const uploadImage = (file) => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.readAsDataURL(file);
-    });
+  // Track active uploads so we don't save while uploads are in progress
+  let activeUploads = 0;
+
+  /**
+   * Compress and upload an image to Firebase Storage.
+   * Returns the download URL.
+   * @param {File} file - The file to upload
+   * @param {'profile'|'background'|'gallery'} type - Determines compression preset
+   * @param {function} [onProgress] - Progress callback (0-100)
+   * @returns {Promise<string>} Download URL from Firebase Storage
+   */
+  const uploadToStorage = async (file, type = 'gallery', onProgress) => {
+    // Step 1: Compress the image based on type
+    let compressed;
+    switch (type) {
+      case 'profile':
+        compressed = await compressProfileImage(file);
+        break;
+      case 'background':
+        compressed = await compressBackgroundImage(file);
+        break;
+      case 'gallery':
+      default:
+        compressed = await compressGalleryImage(file);
+        break;
+    }
+
+    // Give the blob a name for the storage path
+    const safeName = (file.name || 'image.jpg').replace(/[^a-zA-Z0-9._-]/g, '_');
+    const namedBlob = new File([compressed], safeName, { type: compressed.type || 'image/jpeg' });
+
+    // Step 2: Upload to Firebase Storage under vendors/{vendorId}/
+    const pathPrefix = `vendors/${vendor.id}`;
+    const url = await firebaseUploadImage(namedBlob, pathPrefix, onProgress);
+    return url;
   };
 
   const saveProfile = async () => {
+    // Prevent saving while images are still uploading
+    if (activeUploads > 0) {
+      Toast('Please wait for image uploads to finish before saving');
+      return;
+    }
+
     try {
       const state = getState();
-      
+
       // Check permissions - user must be owner or admin
       const isOwner = state.user && vendor.ownerUid === state.user.uid;
       const canWrite = isOwner || state.isAdmin;
@@ -185,8 +222,8 @@ export default async function EditVendorProfile(root) {
         <div class="mb-4 flex justify-between items-center">
           <h2 class="text-xl font-bold text-glass">Edit Business Profile</h2>
           <div class="flex gap-2">
-            <button id="saveBtn" class="brand-bg px-4 py-2 rounded text-sm ${dirty ? '' : 'opacity-50'}" ${dirty ? '' : 'disabled'}>
-              ${dirty ? 'Save Changes' : 'Saved'}
+            <button id="saveBtn" class="brand-bg px-4 py-2 rounded text-sm ${dirty && !activeUploads ? '' : 'opacity-50'}" ${dirty && !activeUploads ? '' : 'disabled'}>
+              ${activeUploads ? 'Uploading...' : (dirty ? 'Save Changes' : 'Saved')}
             </button>
             <button id="previewBtn" class="glass-button px-4 py-2 rounded text-sm">Preview</button>
           </div>
@@ -276,9 +313,13 @@ export default async function EditVendorProfile(root) {
                 ${!profile.backgroundImage ? '<span class="text-gray-500">Click to upload</span>' : ''}
               </div>
               <input type="file" id="backgroundFile" accept="image/*" style="display:none">
-              <div class="flex gap-2">
-                <button id="uploadBackground" class="glass-button px-4 py-2">Upload Background</button>
+              <div class="flex gap-2 items-center">
+                <button id="uploadBackground" class="glass-button px-4 py-2 flex items-center gap-2">
+                  <ion-icon name="cloud-upload-outline"></ion-icon>
+                  <span id="uploadBackgroundText">Upload Background</span>
+                </button>
                 ${profile.backgroundImage ? '<button id="removeBackground" class="glass-button px-4 py-2 text-red-400">Remove</button>' : ''}
+                <span id="backgroundProgress" class="text-xs text-glass-secondary hidden"></span>
               </div>
             </div>
           </div>
@@ -297,7 +338,10 @@ export default async function EditVendorProfile(root) {
                     ${profile.profileImage ? '<img src="' + profile.profileImage + '" class="w-full h-full object-cover">' : '<span class="text-gray-600 text-xl">👤</span>'}
                   </div>
                   <input type="file" id="profileFile" accept="image/*" style="display:none">
-                  <button id="uploadProfile" class="glass-button px-3 py-1 text-sm">Change Photo</button>
+                  <button id="uploadProfile" class="glass-button px-3 py-1 text-sm flex items-center gap-1">
+                    <span id="uploadProfileText">Change Photo</span>
+                  </button>
+                  <span id="profileProgress" class="text-xs text-glass-secondary hidden block mt-1"></span>
                 </div>
               </div>
               <div>
@@ -353,21 +397,22 @@ export default async function EditVendorProfile(root) {
             </div>
             
             <input type="file" id="galleryFile" accept="image/*" multiple style="display:none">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
               <button id="uploadGallery" class="glass-button px-4 py-2 text-sm flex items-center gap-2">
                 <ion-icon name="cloud-upload-outline"></ion-icon>
-                Upload Images
+                <span id="uploadGalleryText">Upload Images</span>
               </button>
               <span class="text-xs text-glass-secondary">${(profile.gallery || []).length}/8 images</span>
+              <span id="galleryProgress" class="text-xs text-glass-secondary hidden"></span>
             </div>
           </div>
         </div>
         
         <!-- Floating Save Button for Mobile -->
-        <div class="fixed bottom-20 right-4 md:hidden ${dirty ? '' : 'hidden'}">
-          <button id="saveBtnFloat" class="brand-bg px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
-            <ion-icon name="save-outline"></ion-icon>
-            Save
+        <div class="fixed bottom-20 right-4 md:hidden ${dirty && !activeUploads ? '' : 'hidden'}">
+          <button id="saveBtnFloat" class="brand-bg px-6 py-3 rounded-full shadow-lg flex items-center gap-2" ${activeUploads ? 'disabled' : ''}>
+            <ion-icon name="${activeUploads ? 'cloud-upload-outline' : 'save-outline'}"></ion-icon>
+            ${activeUploads ? 'Uploading...' : 'Save'}
           </button>
         </div>
       </div>
@@ -484,22 +529,86 @@ export default async function EditVendorProfile(root) {
     
     if (backgroundFile) {
       backgroundFile.onchange = async (e) => {
-        if (e.target.files[0]) {
-          const dataUrl = await uploadImage(e.target.files[0]);
-          profile.backgroundImage = dataUrl;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show instant local preview
+        const localUrl = URL.createObjectURL(file);
+        profile.backgroundImage = localUrl;
+        dirty = true;
+        render();
+
+        // Upload to Firebase Storage in background
+        const progressEl = root.querySelector('#backgroundProgress');
+        const btnText = root.querySelector('#uploadBackgroundText');
+        activeUploads++;
+        try {
+          if (progressEl) { progressEl.classList.remove('hidden'); progressEl.textContent = 'Uploading 0%'; }
+          if (btnText) btnText.textContent = 'Uploading...';
+
+          const downloadUrl = await uploadToStorage(file, 'background', (pct) => {
+            if (progressEl) progressEl.textContent = `Uploading ${pct}%`;
+          });
+
+          // Replace local preview URL with the real Firebase Storage URL
+          URL.revokeObjectURL(localUrl);
+          profile.backgroundImage = downloadUrl;
           dirty = true;
+          Toast('Background image uploaded');
           render();
+        } catch (err) {
+          console.error('Background upload failed:', err);
+          // Revert to previous state on failure
+          URL.revokeObjectURL(localUrl);
+          profile.backgroundImage = vendor.profile?.backgroundImage || '';
+          dirty = true;
+          Toast('Failed to upload background image: ' + (err.message || 'Unknown error'));
+          render();
+        } finally {
+          activeUploads--;
         }
       };
     }
 
     if (profileFile) {
       profileFile.onchange = async (e) => {
-        if (e.target.files[0]) {
-          const dataUrl = await uploadImage(e.target.files[0]);
-          profile.profileImage = dataUrl;
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Show instant local preview
+        const localUrl = URL.createObjectURL(file);
+        profile.profileImage = localUrl;
+        dirty = true;
+        render();
+
+        // Upload to Firebase Storage in background
+        const progressEl = root.querySelector('#profileProgress');
+        const btnText = root.querySelector('#uploadProfileText');
+        activeUploads++;
+        try {
+          if (progressEl) { progressEl.classList.remove('hidden'); progressEl.textContent = 'Uploading 0%'; }
+          if (btnText) btnText.textContent = 'Uploading...';
+
+          const downloadUrl = await uploadToStorage(file, 'profile', (pct) => {
+            if (progressEl) progressEl.textContent = `Uploading ${pct}%`;
+          });
+
+          // Replace local preview URL with the real Firebase Storage URL
+          URL.revokeObjectURL(localUrl);
+          profile.profileImage = downloadUrl;
           dirty = true;
+          Toast('Profile image uploaded');
           render();
+        } catch (err) {
+          console.error('Profile upload failed:', err);
+          // Revert to previous state on failure
+          URL.revokeObjectURL(localUrl);
+          profile.profileImage = vendor.profile?.profileImage || '';
+          dirty = true;
+          Toast('Failed to upload profile image: ' + (err.message || 'Unknown error'));
+          render();
+        } finally {
+          activeUploads--;
         }
       };
     }
@@ -541,24 +650,88 @@ export default async function EditVendorProfile(root) {
       galleryFile.onchange = async (e) => {
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
-        
+
         // Initialize gallery array if needed
         if (!profile.gallery) profile.gallery = [];
-        
+
         // Limit to 8 total images
         const slotsAvailable = 8 - profile.gallery.length;
         const filesToAdd = files.slice(0, slotsAvailable);
-        
-        for (const file of filesToAdd) {
-          const dataUrl = await uploadImage(file);
-          profile.gallery.push(dataUrl);
+
+        if (files.length > slotsAvailable) {
+          Toast(`Only ${slotsAvailable} image(s) will be added. Maximum 8 images allowed.`);
         }
-        
+
+        if (!filesToAdd.length) return;
+
+        // Show local previews immediately for all files
+        const localUrls = filesToAdd.map(f => URL.createObjectURL(f));
+        const startIdx = profile.gallery.length;
+        localUrls.forEach(url => profile.gallery.push(url));
         dirty = true;
         render();
-        
-        if (files.length > slotsAvailable) {
-          Toast(`Only ${slotsAvailable} image(s) added. Maximum 8 images allowed.`);
+
+        // Upload each file to Firebase Storage
+        const progressEl = root.querySelector('#galleryProgress');
+        const btnText = root.querySelector('#uploadGalleryText');
+        activeUploads++;
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+          if (progressEl) { progressEl.classList.remove('hidden'); }
+          if (btnText) btnText.textContent = 'Uploading...';
+
+          for (let i = 0; i < filesToAdd.length; i++) {
+            const file = filesToAdd[i];
+            const galleryIdx = startIdx + i - failCount; // adjust for any removed failures
+            if (progressEl) progressEl.textContent = `Uploading ${i + 1}/${filesToAdd.length}...`;
+
+            try {
+              const downloadUrl = await uploadToStorage(file, 'gallery', (pct) => {
+                if (progressEl) progressEl.textContent = `Uploading ${i + 1}/${filesToAdd.length} (${pct}%)`;
+              });
+
+              // Replace local preview URL with real URL
+              URL.revokeObjectURL(localUrls[i]);
+              // Find the local URL in the gallery and replace it
+              const localIdx = profile.gallery.indexOf(localUrls[i]);
+              if (localIdx !== -1) {
+                profile.gallery[localIdx] = downloadUrl;
+              }
+              successCount++;
+            } catch (err) {
+              console.error(`Gallery upload failed for ${file.name}:`, err);
+              // Remove the failed local preview from gallery
+              URL.revokeObjectURL(localUrls[i]);
+              const localIdx = profile.gallery.indexOf(localUrls[i]);
+              if (localIdx !== -1) {
+                profile.gallery.splice(localIdx, 1);
+              }
+              failCount++;
+            }
+          }
+
+          dirty = true;
+          if (failCount > 0) {
+            Toast(`${successCount} image(s) uploaded, ${failCount} failed`);
+          } else if (successCount > 0) {
+            Toast(`${successCount} gallery image(s) uploaded`);
+          }
+          render();
+        } catch (err) {
+          console.error('Gallery upload error:', err);
+          Toast('Gallery upload failed: ' + (err.message || 'Unknown error'));
+          // Clean up any remaining local URLs
+          localUrls.forEach(url => {
+            URL.revokeObjectURL(url);
+            const idx = profile.gallery.indexOf(url);
+            if (idx !== -1) profile.gallery.splice(idx, 1);
+          });
+          dirty = true;
+          render();
+        } finally {
+          activeUploads--;
         }
       };
     }

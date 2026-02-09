@@ -1,28 +1,25 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { verifyAdmin } = require('./utils/verify-admin');
 
 exports.handler = async (event, context) => {
-  // Enable CORS
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 
-  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  // Require admin authentication
+  const auth = await verifyAdmin(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
   }
 
   try {
@@ -37,10 +34,23 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Validate amount is a positive integer (cents)
+    const parsedAmount = parseInt(amount, 10);
+    if (!Number.isFinite(parsedAmount) || parsedAmount < 100 || parsedAmount > 10000000) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Amount must be between $1.00 and $100,000.00 (in cents)' }),
+      };
+    }
+
+    // Normalize email
+    const normalizedEmail = String(customerEmail).trim().toLowerCase();
+
     // Create or get customer
     let customer;
     const existingCustomers = await stripe.customers.list({
-      email: customerEmail,
+      email: normalizedEmail,
       limit: 1,
     });
 
@@ -48,7 +58,7 @@ exports.handler = async (event, context) => {
       customer = existingCustomers.data[0];
     } else {
       customer = await stripe.customers.create({
-        email: customerEmail,
+        email: normalizedEmail,
         name: vendorName || 'Vendor',
         metadata: {
           vendorId: vendorId || '',
@@ -58,7 +68,9 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // Create invoice
+    // Create invoice with idempotency key to prevent duplicates on retry
+    const idempotencyKey = `invoice_${vendorId}_${parsedAmount}_${Date.now()}`;
+
     const invoice = await stripe.invoices.create({
       customer: customer.id,
       collection_method: 'send_invoice',
@@ -69,21 +81,29 @@ exports.handler = async (event, context) => {
         vendorName: vendorName || '',
         showId: showId || '',
         paymentType: paymentType || 'booth_rental',
+        createdByAdmin: auth.email,
       },
-    });
+    }, { idempotencyKey });
 
     // Create invoice item
     await stripe.invoiceItems.create({
       customer: customer.id,
       invoice: invoice.id,
-      amount: amount,
+      amount: parsedAmount,
       currency: 'usd',
       description: description,
     });
 
     // Finalize and send the invoice
     const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-    await stripe.invoices.sendInvoice(invoice.id);
+
+    // Try to send — if this fails, invoice still exists (admin can resend from Stripe dashboard)
+    try {
+      await stripe.invoices.sendInvoice(invoice.id);
+    } catch (sendErr) {
+      console.warn('Invoice created and finalized but send failed:', sendErr.message);
+      // Don't fail the whole request — invoice exists, admin can resend
+    }
 
     return {
       statusCode: 200,
@@ -92,8 +112,8 @@ exports.handler = async (event, context) => {
         success: true,
         invoiceId: invoice.id,
         invoiceUrl: finalizedInvoice.hosted_invoice_url,
-        amount: amount / 100,
-        customerEmail: customerEmail,
+        amount: parsedAmount / 100,
+        customerEmail: normalizedEmail,
       }),
     };
 
@@ -102,9 +122,8 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: error.message || 'Failed to create invoice',
-        details: error.stack || ''
       }),
     };
   }

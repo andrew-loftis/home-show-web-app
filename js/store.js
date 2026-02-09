@@ -98,6 +98,7 @@ async function getFsm() {
 }
 
 let listeners = [];
+let _firestoreUnsubs = []; // Track Firestore onSnapshot unsubscribers for cleanup
 let state = {
   role: null,
   walkthroughs: { general: false, attendee: false, vendor: false, admin: false },
@@ -226,9 +227,12 @@ function hydrateStore() {
               }
             } catch {}
           } else {
+            // User signed out — clean up Firestore listeners
+            detachListeners();
             state.user = null;
             state.isAdmin = false;
             state.myVendor = null;
+            state.leads = [];
             // When signed out, reflect Guest in header by clearing role
             state.role = null;
           }
@@ -236,12 +240,12 @@ function hydrateStore() {
           notify();
         });
       } catch {}
-      // Live vendors subscription (approved only)
+      // Live vendors subscription (approved only, capped at 500)
       try {
         const db = getDb();
         const { collection, query, where, onSnapshot, limit } = await getFsm();
-        const q = query(collection(db, 'vendors'), where('approved', '==', true));
-        onSnapshot(q, (snap) => {
+        const q = query(collection(db, 'vendors'), where('approved', '==', true), limit(500));
+        const unsub = onSnapshot(q, (snap) => {
           const list = [];
           snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
           // Filter by current show — legacy vendors without showId belong to default show
@@ -250,6 +254,7 @@ function hydrateStore() {
           persist();
           notify();
         });
+        _firestoreUnsubs.push(unsub);
       } catch {}
       // Real-time attendee doc for current user
       try {
@@ -257,7 +262,7 @@ function hydrateStore() {
         const { collection, query, where, limit, onSnapshot } = await getFsm();
         const attach = (uid) => {
           const q = query(collection(db, 'attendees'), where('ownerUid', '==', uid), limit(1));
-          onSnapshot(q, (snap) => {
+          const unsub = onSnapshot(q, (snap) => {
             let att = null;
             snap.forEach(d => { att = { id: d.id, ...d.data() }; });
             if (att) {
@@ -268,18 +273,19 @@ function hydrateStore() {
               notify();
             }
           });
+          _firestoreUnsubs.push(unsub);
         };
         // If already authenticated
         if (state.user?.uid) attach(state.user.uid);
         // Also attach when auth changes (observeAuth above will set state.user)
       } catch {}
-      // Real-time vendor leads for my vendor (if owner)
+      // Real-time vendor leads for my vendor (if owner), capped at 500
       try {
         const db = getDb();
-        const { collection, query, where, onSnapshot, orderBy } = await getFsm();
+        const { collection, query, where, onSnapshot, orderBy, limit } = await getFsm();
         const attachLeads = (vendorId) => {
-          const q = query(collection(db, 'leads'), where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'));
-          onSnapshot(q, (snap) => {
+          const q = query(collection(db, 'leads'), where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'), limit(500));
+          const unsub = onSnapshot(q, (snap) => {
             const rows = [];
             snap.forEach(d => {
               const ld = d.data();
@@ -291,12 +297,18 @@ function hydrateStore() {
             persist();
             notify();
           });
+          _firestoreUnsubs.push(unsub);
         };
         if (state.myVendor?.id) attachLeads(state.myVendor.id);
       } catch {}
     });
   } catch {}
   notify();
+}
+/** Detach all Firestore real-time listeners (call on logout). */
+function detachListeners() {
+  _firestoreUnsubs.forEach(fn => { try { fn(); } catch {} });
+  _firestoreUnsubs = [];
 }
 function persist() {
   localStorage.setItem(LS_KEY, JSON.stringify({
@@ -516,7 +528,9 @@ async function saveVendorForAttendee(attendeeId, vendorId) {
       const { addSavedVendor } = await import('./firebase.js');
       await addSavedVendor(attendeeId, vendorId);
     }
-  } catch {}
+  } catch (err) {
+    console.warn('Failed to save vendor to Firestore:', err.message);
+  }
   persist();
   notify();
 }
@@ -528,15 +542,32 @@ function saveBusinessCard(attendeeId, vendorId) {
 }
 async function addLead(attendeeId, vendorId, method = "card_share", emailOptions = {}) {
   if (!ensureAccountOrPrompt(method === 'card_share' ? 'share your card' : 'record a lead')) return null;
+
+  // Duplicate lead prevention — skip if same attendee+vendor pair exists within last 60s
+  const now = Date.now();
+  const duplicate = state.leads.find(
+    l => l.attendee_id === attendeeId && l.vendor_id === vendorId && (now - l.timestamp) < 60000
+  );
+  if (duplicate) {
+    console.warn('Duplicate lead suppressed (same pair within 60s)');
+    return duplicate;
+  }
+
   const lead = {
     id: uuid(),
     attendee_id: attendeeId,
     vendor_id: vendorId,
-    timestamp: Date.now(),
+    timestamp: now,
     exchangeMethod: method,
     emailSent: false,
     cardShared: method === "card_share"
   };
+
+  // Normalize email in options before sending
+  if (emailOptions.vendorEmail) {
+    emailOptions.vendorEmail = String(emailOptions.vendorEmail).trim().toLowerCase();
+  }
+
   // Try Firestore write if authenticated
   if (state.user && state.user.uid) {
     try {
@@ -551,7 +582,10 @@ async function addLead(attendeeId, vendorId, method = "card_share", emailOptions
         vendorEmail: emailOptions.vendorEmail,
         vendorBusinessName: emailOptions.vendorBusinessName
       });
-    } catch {}
+    } catch (err) {
+      console.error('Failed to create lead in Firestore:', err.message);
+      // Still create local lead so the UI reflects it — will sync on next load
+    }
   }
   state.leads.push(lead);
   saveVendorForAttendee(attendeeId, vendorId);
@@ -621,8 +655,8 @@ function topVendorsByLeadCount() {
 async function shareBusinessCard(attendeeId, vendorId, emailOptions = {}) {
   const attendee = state.attendees.find(a => a.id === attendeeId);
   if (!attendee?.card) return false;
-  await addLead(attendeeId, vendorId, "card_share", emailOptions);
-  return true;
+  const result = await addLead(attendeeId, vendorId, "card_share", emailOptions);
+  return !!result;
 }
 // UUID and short code helpers
 import { uuid, genShortCode } from "./utils/id.js";
@@ -662,6 +696,7 @@ function ensureAccountOrPrompt(action = 'continue') {
 
 export {
   hydrateStore,
+  detachListeners,
   subscribe,
   getState,
   setRole,

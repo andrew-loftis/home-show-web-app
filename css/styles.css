@@ -2004,7 +2004,42 @@ button, a, .no-callout {
   animation: shimmer 1.5s infinite;
 }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+/* ── Floor Plan Configurator ──────────────────────────────────────── */
+.fp-grid-line {
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.5;
+}
+
+.fp-booth-rect {
+  transition: fill 0.15s ease;
+}
+.fp-booth:hover .fp-booth-rect {
+  filter: brightness(1.2);
+}
+
+.fp-bank-item {
+  user-select: none;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.fp-bank-item:active {
+  transform: scale(0.95);
+}
+
+.fp-calibration-dot {
+  pointer-events: none;
+}
+
+#fp-canvas-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.2) transparent;
+}
+#fp-canvas-wrap::-webkit-scrollbar {
+  width: 8px; height: 8px;
+}
+#fp-canvas-wrap::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+}
+#fp-canvas-wrap::-webkit-scrollbar-track {
+  background: transparent;
 }

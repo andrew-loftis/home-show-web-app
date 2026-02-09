@@ -543,7 +543,7 @@ export function renderShowSelector() {
   // Multiple shows - render dropdown
   return `
     <div class="relative" id="show-selector-container">
-      <button id="show-selector-btn" class="flex items-center gap-2 glass-button px-3 py-1.5 rounded-lg">
+      <button id="show-selector-btn" class="flex items-center gap-2 glass-button px-3 py-2 rounded-lg touch-target">
         <span class="text-sm font-semibold text-white">${currentShow?.shortName || 'Select Show'}</span>
         <ion-icon name="chevron-down-outline" class="text-white/70 text-sm"></ion-icon>
       </button>
