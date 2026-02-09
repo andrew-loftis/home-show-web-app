@@ -117,7 +117,7 @@ export default function MyCard(root, forceEdit = false) {
                 <input type="hidden" name="profileImageY" value="${typeof attendee?.card?.profileImageY === 'number' ? attendee.card.profileImageY : 50}">
                 <input type="hidden" name="profileImageZoom" value="${typeof attendee?.card?.profileImageZoom === 'number' ? attendee.card.profileImageZoom : 100}">
               </div>
-              
+
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Background Image</label>
                 <div class="space-y-2">
@@ -128,11 +128,18 @@ export default function MyCard(root, forceEdit = false) {
                       <ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon>
                       Upload Background
                     </button>
+                    <button type="button" id="editBackgroundImagePos" class="glass-button px-3 py-2 ${attendee?.card?.backgroundImage ? '' : 'opacity-50 cursor-not-allowed'}" ${attendee?.card?.backgroundImage ? '' : 'disabled'}>
+                      <ion-icon name="move-outline" class="mr-1"></ion-icon>
+                      Edit Position
+                    </button>
                   </div>
                 </div>
+                <input type="hidden" name="backgroundImageX" value="${typeof attendee?.card?.backgroundImageX === 'number' ? attendee.card.backgroundImageX : 50}">
+                <input type="hidden" name="backgroundImageY" value="${typeof attendee?.card?.backgroundImageY === 'number' ? attendee.card.backgroundImageY : 50}">
+                <input type="hidden" name="backgroundImageZoom" value="${typeof attendee?.card?.backgroundImageZoom === 'number' ? attendee.card.backgroundImageZoom : 100}">
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Full Name *</label>
@@ -143,7 +150,7 @@ export default function MyCard(root, forceEdit = false) {
                 <input name="familySize" type="number" min="1" max="10" value="${attendee?.card?.familySize || 1}" class="w-full">
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Email Address *</label>
@@ -154,12 +161,12 @@ export default function MyCard(root, forceEdit = false) {
                 <input name="phone" value="${attendee?.phone || ''}" placeholder="(555) 123-4567" class="w-full">
               </div>
             </div>
-            
+
             <div class="space-y-2">
               <label class="block text-sm font-medium text-glass">Location</label>
               <input name="location" placeholder="Nashville, TN" value="${attendee?.card?.location || ''}" class="w-full">
             </div>
-            
+
             <div class="space-y-2">
               <label class="block text-sm font-medium text-glass">About Me</label>
               <textarea name="bio" rows="4" placeholder="Tell vendors about yourself and your home project..." class="w-full resize-none">${attendee?.card?.bio || ''}</textarea>
@@ -233,6 +240,9 @@ export default function MyCard(root, forceEdit = false) {
           profileImageY: parseFloat(fd.get("profileImageY")) || 50,
           profileImageZoom: parseFloat(fd.get("profileImageZoom")) || 100,
           backgroundImage: fd.get("backgroundImage"),
+          backgroundImageX: parseFloat(fd.get("backgroundImageX")) || 50,
+          backgroundImageY: parseFloat(fd.get("backgroundImageY")) || 50,
+          backgroundImageZoom: parseFloat(fd.get("backgroundImageZoom")) || 100,
           familySize: parseInt(fd.get("familySize")) || 1,
           visitingReasons: fd.getAll("visitingReasons"),
           bio: fd.get("bio"),
@@ -316,6 +326,9 @@ export default function MyCard(root, forceEdit = false) {
                 profileUploadBtn.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Image';
               }, 2000);
               Toast('Profile image uploaded successfully!');
+              // Enable edit position button
+              const editPosBtn = root.querySelector('#editProfileImagePos');
+              if (editPosBtn) { editPosBtn.disabled = false; editPosBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
               // Trigger live preview update
               const form = root.querySelector('#cardForm');
               if (form) {
@@ -355,6 +368,9 @@ export default function MyCard(root, forceEdit = false) {
                 backgroundUploadBtn.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Background';
               }, 2000);
               Toast('Background image uploaded successfully!');
+              // Enable edit position button
+              const editBgPosBtn = root.querySelector('#editBackgroundImagePos');
+              if (editBgPosBtn) { editBgPosBtn.disabled = false; editBgPosBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
               // Trigger live preview update
               const form = root.querySelector('#cardForm');
               if (form) {
@@ -369,7 +385,7 @@ export default function MyCard(root, forceEdit = false) {
         };
       }
     };
-    
+
     setupImageUpload();
     setupLivePreview(attendee);
     
@@ -392,6 +408,9 @@ export default function MyCard(root, forceEdit = false) {
             profileImageY: parseFloat(fd.get("profileImageY")) || 50,
             profileImageZoom: parseFloat(fd.get("profileImageZoom")) || 100,
             backgroundImage: fd.get("backgroundImage"),
+            backgroundImageX: parseFloat(fd.get("backgroundImageX")) || 50,
+            backgroundImageY: parseFloat(fd.get("backgroundImageY")) || 50,
+            backgroundImageZoom: parseFloat(fd.get("backgroundImageZoom")) || 100,
             familySize: parseInt(fd.get("familySize")) || 1,
             visitingReasons: fd.getAll("visitingReasons"),
             bio: fd.get("bio"),
@@ -556,7 +575,7 @@ export default function MyCard(root, forceEdit = false) {
                 <input type="hidden" name="profileImageY" value="${typeof attendee?.card?.profileImageY === 'number' ? attendee.card.profileImageY : 50}">
                 <input type="hidden" name="profileImageZoom" value="${typeof attendee?.card?.profileImageZoom === 'number' ? attendee.card.profileImageZoom : 100}">
               </div>
-              
+
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Background Image</label>
                 <div class="space-y-2">
@@ -567,11 +586,18 @@ export default function MyCard(root, forceEdit = false) {
                       <ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon>
                       Upload Background
                     </button>
+                    <button type="button" id="editBackgroundImagePos" class="glass-button px-3 py-2 ${attendee?.card?.backgroundImage ? '' : 'opacity-50 cursor-not-allowed'}" ${attendee?.card?.backgroundImage ? '' : 'disabled'}>
+                      <ion-icon name="move-outline" class="mr-1"></ion-icon>
+                      Edit Position
+                    </button>
                   </div>
                 </div>
+                <input type="hidden" name="backgroundImageX" value="${typeof attendee?.card?.backgroundImageX === 'number' ? attendee.card.backgroundImageX : 50}">
+                <input type="hidden" name="backgroundImageY" value="${typeof attendee?.card?.backgroundImageY === 'number' ? attendee.card.backgroundImageY : 50}">
+                <input type="hidden" name="backgroundImageZoom" value="${typeof attendee?.card?.backgroundImageZoom === 'number' ? attendee.card.backgroundImageZoom : 100}">
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Full Name *</label>
@@ -582,7 +608,7 @@ export default function MyCard(root, forceEdit = false) {
                 <input name="familySize" type="number" min="1" max="10" value="${attendee?.card?.familySize || 1}" class="w-full">
               </div>
             </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
                 <label class="block text-sm font-medium text-glass">Email Address *</label>
@@ -593,12 +619,12 @@ export default function MyCard(root, forceEdit = false) {
                 <input name="phone" value="${attendee?.phone || ''}" placeholder="(555) 123-4567" class="w-full">
               </div>
             </div>
-            
+
             <div class="space-y-2">
               <label class="block text-sm font-medium text-glass">Location</label>
               <input name="location" placeholder="Nashville, TN" value="${attendee?.card?.location || ''}" class="w-full">
             </div>
-            
+
             <div class="space-y-2">
               <label class="block text-sm font-medium text-glass">About Me</label>
               <textarea name="bio" rows="4" placeholder="Tell attendees about yourself and your business expertise..." class="w-full resize-none">${attendee?.card?.bio || ''}</textarea>
@@ -643,6 +669,8 @@ export default function MyCard(root, forceEdit = false) {
           });
           root.querySelector('input[name="profileImage"]').value = url;
           if (uploadProfileImage) { uploadProfileImage.disabled = false; uploadProfileImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Image'; }
+          const editPosBtn = root.querySelector('#editProfileImagePos');
+          if (editPosBtn) { editPosBtn.disabled = false; editPosBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
           updatePreview();
         } catch (err) {
           if (uploadProfileImage) { uploadProfileImage.disabled = false; uploadProfileImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Image'; }
@@ -665,6 +693,8 @@ export default function MyCard(root, forceEdit = false) {
           });
           root.querySelector('input[name="backgroundImage"]').value = url;
           if (uploadBackgroundImage) { uploadBackgroundImage.disabled = false; uploadBackgroundImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Background'; }
+          const editBgPosBtn = root.querySelector('#editBackgroundImagePos');
+          if (editBgPosBtn) { editBgPosBtn.disabled = false; editBgPosBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
           updatePreview();
         } catch (err) {
           if (uploadBackgroundImage) { uploadBackgroundImage.disabled = false; uploadBackgroundImage.innerHTML = '<ion-icon name="cloud-upload-outline" class="mr-1"></ion-icon> Upload Background'; }
@@ -672,7 +702,7 @@ export default function MyCard(root, forceEdit = false) {
           Toast('Upload failed: ' + err.message);
         }
       });
-      
+
       // Real-time preview updates
       const updatePreview = () => {
         const formData = new FormData(cardForm);
@@ -682,6 +712,9 @@ export default function MyCard(root, forceEdit = false) {
           profileImageX: parseFloat(formData.get('profileImageX')),
           profileImageY: parseFloat(formData.get('profileImageY')),
           profileImageZoom: parseFloat(formData.get('profileImageZoom')),
+          backgroundImageX: parseFloat(formData.get('backgroundImageX')),
+          backgroundImageY: parseFloat(formData.get('backgroundImageY')),
+          backgroundImageZoom: parseFloat(formData.get('backgroundImageZoom')),
           familySize: parseInt(formData.get('familySize')),
           visitingReasons: formData.getAll('visitingReasons'),
           bio: formData.get('bio'),
@@ -725,13 +758,16 @@ export default function MyCard(root, forceEdit = false) {
             profileImageX: parseFloat(formData.get('profileImageX')) || 50,
             profileImageY: parseFloat(formData.get('profileImageY')) || 50,
             profileImageZoom: parseFloat(formData.get('profileImageZoom')) || 100,
+            backgroundImageX: parseFloat(formData.get('backgroundImageX')) || 50,
+            backgroundImageY: parseFloat(formData.get('backgroundImageY')) || 50,
+            backgroundImageZoom: parseFloat(formData.get('backgroundImageZoom')) || 100,
             familySize: parseInt(formData.get('familySize')) || 1,
             visitingReasons: formData.getAll('visitingReasons'),
             bio: formData.get('bio'),
             location: formData.get('location')
           }
         };
-        
+
         upsertAttendee(payload);
         Toast("Personal business card saved! Ready for swapping! 🔄");
         setTimeout(() => {
@@ -770,7 +806,10 @@ function renderAttendeeCard(attendee, compact = false) {
   return `
     <div class="glass-card overflow-hidden mb-8 max-w-md mx-auto shadow-glass floating">
       ${card.backgroundImage ? `
-        <div class="h-40 bg-cover bg-center relative" style="background-image: url('${card.backgroundImage}')">
+        <div class="h-40 relative overflow-hidden">
+          <img src="${card.backgroundImage}" class="absolute inset-0 w-full h-full object-cover"
+               style="object-position:${(card.backgroundImageX ?? 50)}% ${(card.backgroundImageY ?? 50)}%;transform:scale(${(card.backgroundImageZoom ?? 100) / 100})"
+               onerror="this.style.display='none'" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
         </div>
       ` : `<div class="h-40 bg-gradient-to-br from-slate-700 via-gray-800 to-blue-900"></div>`}
@@ -831,69 +870,168 @@ function renderAttendeeCard(attendee, compact = false) {
   `;
 }
 
-// Modal editor to adjust profile image X/Y within the circular mask
-document.addEventListener('click', async (e) => {
-  const btn = e.target.closest('#editProfileImagePos');
-  if (!btn) return;
+// Instagram-style image position + zoom editor (drag, pinch, scroll)
+document.addEventListener('click', (e) => {
+  const profileBtn = e.target.closest('#editProfileImagePos');
+  const bgBtn = e.target.closest('#editBackgroundImagePos');
+  if (!profileBtn && !bgBtn) return;
+
+  const isProfile = !!profileBtn;
   const form = document.getElementById('cardForm');
   if (!form) return;
-  const url = (form.querySelector('input[name="profileImage"]')?.value || '').trim();
+
+  const imageField = isProfile ? 'profileImage' : 'backgroundImage';
+  const url = (form.querySelector(`input[name="${imageField}"]`)?.value || '').trim();
   if (!url) return;
-  const xInput = form.querySelector('input[name="profileImageX"]');
-  const yInput = form.querySelector('input[name="profileImageY"]');
-  const zoomInput = form.querySelector('input[name="profileImageZoom"]');
-  const initX = parseFloat(xInput?.value || '50');
-  const initY = parseFloat(yInput?.value || '50');
-  const initZoom = parseFloat(zoomInput?.value || '100');
-  const { Modal, closeModal } = await import('../utils/ui.js');
-  const wrapper = document.createElement('div');
-  wrapper.innerHTML = `
-    <div class="space-y-4">
-      <div class="text-lg font-semibold text-glass">Adjust Profile Image Position & Zoom</div>
-      <div class="w-40 h-40 rounded-full overflow-hidden border border-white/20 mx-auto relative glass-card">
-        <img id="posEditImg" src="${url}" style="width:100%;height:100%;object-fit:cover;object-position:${initX}% ${initY}%;transform:scale(${initZoom / 100})" />
+
+  const xInput  = form.querySelector(`input[name="${imageField}X"]`);
+  const yInput  = form.querySelector(`input[name="${imageField}Y"]`);
+  const zoomInput = form.querySelector(`input[name="${imageField}Zoom"]`);
+
+  let posX = parseFloat(xInput?.value || '50');
+  let posY = parseFloat(yInput?.value || '50');
+  let zoom = parseFloat(zoomInput?.value || '100');
+  const savedX = posX, savedY = posY, savedZoom = zoom;
+
+  // Build fullscreen editor overlay
+  const overlay = document.createElement('div');
+  overlay.innerHTML = `
+    <div class="img-editor-backdrop">
+      <div class="img-editor-header">
+        <button class="img-editor-cancel">Cancel</button>
+        <span class="img-editor-title">${isProfile ? 'Move & Zoom' : 'Adjust Background'}</span>
+        <button class="img-editor-done">Done</button>
       </div>
-      <div class="flex items-center gap-3">
-        <label class="text-sm text-gray-600 w-12">X</label>
-        <input type="range" id="posX" min="0" max="100" value="${initX}" class="flex-1">
-        <span id="posXVal" class="text-sm w-10 text-right">${initX}%</span>
+      <div class="img-editor-viewport-wrap">
+        <div class="img-editor-viewport ${isProfile ? 'img-editor-circle' : 'img-editor-rect'}">
+          <img src="${url}" class="img-editor-img" draggable="false"
+               style="object-position:${posX}% ${posY}%;transform:scale(${zoom/100})" />
+        </div>
+        <div class="img-editor-hint">Drag to move \u2022 ${('ontouchstart' in window) ? 'Pinch' : 'Scroll'} to zoom</div>
       </div>
-      <div class="flex items-center gap-3">
-        <label class="text-sm text-gray-600 w-12">Y</label>
-        <input type="range" id="posY" min="0" max="100" value="${initY}" class="flex-1">
-        <span id="posYVal" class="text-sm w-10 text-right">${initY}%</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <label class="text-sm text-gray-600 w-12">Zoom</label>
-        <input type="range" id="posZoom" min="50" max="200" value="${initZoom}" class="flex-1">
-        <span id="posZoomVal" class="text-sm w-10 text-right">${initZoom}%</span>
-      </div>
-      <div class="flex justify-end gap-2 pt-2">
-        <button class="glass-button px-3 py-2" id="cancelEditPos">Cancel</button>
-        <button class="brand-bg px-3 py-2" id="saveEditPos">Save</button>
+      <button class="img-editor-reset">Reset</button>
+      <div class="img-editor-zoom-bar">
+        <ion-icon name="remove-circle-outline"></ion-icon>
+        <input type="range" class="img-editor-zoom-slider" min="100" max="300" value="${zoom}" step="1">
+        <ion-icon name="add-circle-outline"></ion-icon>
       </div>
     </div>`;
-  Modal(wrapper);
-  const img = wrapper.querySelector('#posEditImg');
-  const posX = wrapper.querySelector('#posX');
-  const posY = wrapper.querySelector('#posY');
-  const posZoom = wrapper.querySelector('#posZoom');
-  const posXVal = wrapper.querySelector('#posXVal');
-  const posYVal = wrapper.querySelector('#posYVal');
-  const posZoomVal = wrapper.querySelector('#posZoomVal');
-  const apply = () => {
-    img.style.objectPosition = `${posX.value}% ${posY.value}%`;
-    img.style.transform = `scale(${posZoom.value / 100})`;
-    posXVal.textContent = `${posX.value}%`;
-    posYVal.textContent = `${posY.value}%`;
-    posZoomVal.textContent = `${posZoom.value}%`;
+
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+
+  const img = overlay.querySelector('.img-editor-img');
+  const viewport = overlay.querySelector('.img-editor-viewport');
+  const zoomSlider = overlay.querySelector('.img-editor-zoom-slider');
+
+  // Sensitivity: converts drag pixels → position % change
+  function getSens() {
+    const scale = zoom / 100;
+    // Higher scale = finer control (less % per pixel)
+    return 0.35 / Math.max(scale, 1);
+  }
+
+  function clamp() {
+    posX = Math.max(-10, Math.min(110, posX));
+    posY = Math.max(-10, Math.min(110, posY));
+    zoom = Math.max(100, Math.min(300, zoom));
+  }
+
+  function applyTransform() {
+    clamp();
+    img.style.objectPosition = `${posX}% ${posY}%`;
+    img.style.transform = `scale(${zoom / 100})`;
+    zoomSlider.value = String(Math.round(zoom));
+    // Push to form inputs for live preview
+    if (xInput)    xInput.value    = posX.toFixed(1);
+    if (yInput)    yInput.value    = posY.toFixed(1);
+    if (zoomInput) zoomInput.value = zoom.toFixed(0);
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // ── Drag via Pointer Events (mouse + single touch) ──
+  let dragging = false, startCX = 0, startCY = 0, startPX = 0, startPY = 0;
+
+  viewport.addEventListener('pointerdown', (ev) => {
+    dragging = true;
+    startCX = ev.clientX; startCY = ev.clientY;
+    startPX = posX; startPY = posY;
+    viewport.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+
+  viewport.addEventListener('pointermove', (ev) => {
+    if (!dragging) return;
+    const dx = ev.clientX - startCX;
+    const dy = ev.clientY - startCY;
+    const s = getSens();
+    posX = startPX - dx * s;
+    posY = startPY - dy * s;
+    applyTransform();
+    ev.preventDefault();
+  });
+
+  const endDrag = () => { dragging = false; };
+  viewport.addEventListener('pointerup', endDrag);
+  viewport.addEventListener('pointercancel', endDrag);
+
+  // ── Pinch-to-zoom (multi-touch) ──
+  let pinchDist0 = 0, pinchZoom0 = 100;
+
+  viewport.addEventListener('touchstart', (ev) => {
+    if (ev.touches.length === 2) {
+      const dx = ev.touches[0].clientX - ev.touches[1].clientX;
+      const dy = ev.touches[0].clientY - ev.touches[1].clientY;
+      pinchDist0 = Math.hypot(dx, dy);
+      pinchZoom0 = zoom;
+      ev.preventDefault();
+    }
+  }, { passive: false });
+
+  viewport.addEventListener('touchmove', (ev) => {
+    if (ev.touches.length === 2) {
+      const dx = ev.touches[0].clientX - ev.touches[1].clientX;
+      const dy = ev.touches[0].clientY - ev.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      zoom = pinchZoom0 * (dist / pinchDist0);
+      applyTransform();
+      ev.preventDefault();
+    }
+  }, { passive: false });
+
+  // ── Scroll-to-zoom (desktop) ──
+  viewport.addEventListener('wheel', (ev) => {
+    ev.preventDefault();
+    zoom += -ev.deltaY * 0.4;
+    applyTransform();
+  }, { passive: false });
+
+  // ── Zoom slider ──
+  zoomSlider.addEventListener('input', () => {
+    zoom = parseInt(zoomSlider.value);
+    applyTransform();
+  });
+
+  // ── Reset button ──
+  overlay.querySelector('.img-editor-reset').onclick = () => {
+    posX = 50; posY = 50; zoom = 100;
+    applyTransform();
   };
-  posX.oninput = apply; posY.oninput = apply; posZoom.oninput = apply; apply();
-  wrapper.querySelector('#cancelEditPos').onclick = () => closeModal();
-  wrapper.querySelector('#saveEditPos').onclick = () => {
-    if (xInput) xInput.value = String(posX.value);
-    if (yInput) yInput.value = String(posY.value);
-    if (zoomInput) zoomInput.value = String(posZoom.value);
-    closeModal();
+
+  // ── Cancel: revert to saved values ──
+  overlay.querySelector('.img-editor-cancel').onclick = () => {
+    posX = savedX; posY = savedY; zoom = savedZoom;
+    if (xInput)    xInput.value    = savedX.toFixed(1);
+    if (yInput)    yInput.value    = savedY.toFixed(1);
+    if (zoomInput) zoomInput.value = savedZoom.toFixed(0);
+    form.dispatchEvent(new Event('input', { bubbles: true }));
+    document.body.removeChild(overlay);
+    document.body.style.overflow = '';
+  };
+
+  // ── Done: keep current values (already in form inputs) ──
+  overlay.querySelector('.img-editor-done').onclick = () => {
+    document.body.removeChild(overlay);
+    document.body.style.overflow = '';
   };
 });

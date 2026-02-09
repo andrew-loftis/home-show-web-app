@@ -2043,3 +2043,99 @@ button, a, .no-callout {
 #fp-canvas-wrap::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ── Instagram-style Image Position Editor ───────────────────────── */
+.img-editor-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.96);
+  z-index: 9999;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.img-editor-header {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  z-index: 1;
+}
+.img-editor-title {
+  color: white; font-weight: 600; font-size: 16px;
+}
+.img-editor-cancel,
+.img-editor-done {
+  background: none; border: none; color: white;
+  font-size: 15px; cursor: pointer; padding: 8px 12px;
+  border-radius: 8px; transition: background 0.15s;
+}
+.img-editor-cancel:hover,
+.img-editor-done:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.img-editor-done {
+  color: #3b82f6; font-weight: 700;
+}
+.img-editor-viewport-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 16px;
+}
+.img-editor-viewport {
+  overflow: hidden; background: #111;
+  cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  position: relative;
+}
+.img-editor-viewport:active {
+  cursor: grabbing;
+}
+.img-editor-circle {
+  width: min(280px, 75vw); height: min(280px, 75vw);
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+}
+.img-editor-rect {
+  width: min(380px, 90vw); height: min(200px, 45vw);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+.img-editor-img {
+  width: 100%; height: 100%; object-fit: cover;
+  pointer-events: none;
+  will-change: transform;
+}
+.img-editor-hint {
+  color: rgba(255, 255, 255, 0.45); font-size: 13px;
+  text-align: center;
+}
+.img-editor-zoom-bar {
+  position: absolute; bottom: 0; left: 20px; right: 20px;
+  bottom: max(40px, calc(env(safe-area-inset-bottom) + 20px));
+  display: flex; align-items: center; gap: 12px; color: rgba(255,255,255,0.7);
+  max-width: 320px; margin: 0 auto;
+  font-size: 20px;
+}
+.img-editor-zoom-slider {
+  flex: 1; -webkit-appearance: none; appearance: none;
+  height: 3px; background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px; outline: none;
+}
+.img-editor-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 24px; height: 24px;
+  border-radius: 50%; background: white; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.img-editor-zoom-slider::-moz-range-thumb {
+  width: 24px; height: 24px; border: none;
+  border-radius: 50%; background: white; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.img-editor-reset {
+  position: absolute; bottom: max(90px, calc(env(safe-area-inset-bottom) + 70px));
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7); font-size: 12px; padding: 6px 16px;
+  border-radius: 20px; cursor: pointer; transition: background 0.15s;
+}
+.img-editor-reset:hover {
+  background: rgba(255,255,255,0.2);
+}

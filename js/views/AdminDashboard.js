@@ -206,17 +206,17 @@ export default function AdminDashboard(root) {
     if (sidebarToggle) {
       sidebarToggle.onclick = () => {
         sidebarOpen = true;
-        render();
+        render(); // sidebar-only change, no data reload
       };
     }
-    
+
     if (sidebarClose) {
       sidebarClose.onclick = () => {
         sidebarOpen = false;
         render();
       };
     }
-    
+
     if (sidebarOverlay) {
       sidebarOverlay.onclick = () => {
         sidebarOpen = false;
@@ -230,7 +230,7 @@ export default function AdminDashboard(root) {
         activeTab = btn.dataset.tab;
         sidebarOpen = false; // Close sidebar on mobile after selection
         render();
-        initializeTab();
+        initializeTab(); // Load data for the new tab
       };
     });
 
@@ -240,16 +240,15 @@ export default function AdminDashboard(root) {
         const newShowId = btn.dataset.showId;
         if (newShowId !== adminShowId) {
           adminShowId = newShowId;
-          // Also update the global show context (optional - could keep them separate)
           setCurrentShow(newShowId);
-          // Re-render and reload data for the new show
           render();
-          initializeTab();
+          initializeTab(); // Reload data for the new show
           Toast(`Now viewing: ${adminShow().shortName}`, 'success');
         }
       };
     });
 
+    // Initial data load for the active tab
     initializeTab();
   }
 

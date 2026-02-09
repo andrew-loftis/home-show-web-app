@@ -162,6 +162,9 @@ export async function loadFloorPlan(root, options = {}) {
   _root = root;
   _showId = options.showId || 'putnam-spring-2026';
 
+  // Wire toolbar listeners immediately so buttons work before data loads
+  wireListeners();
+
   try {
     const db = await getAdminDb();
     const fsm = await getFirestoreModule();
@@ -186,11 +189,12 @@ export async function loadFloorPlan(root, options = {}) {
 
     renderCanvas();
     updateScaleDisplay();
-    wireListeners();
   } catch (err) {
     console.error('[AdminFloorPlan] Load failed:', err);
+    // Ensure config exists so buttons work with defaults
+    if (!config) config = { ...DEFAULT_CONFIG };
     const container = root.querySelector('#fp-canvas-container');
-    if (container) container.innerHTML = '<p class="text-red-400 p-4">Failed to load floor plan config.</p>';
+    if (container) container.innerHTML = '<p class="text-red-400 p-4">Failed to load floor plan config. Buttons above still work.</p>';
   }
 }
 
@@ -470,6 +474,9 @@ function wirePropertyListeners() {
 
 // ── Upload background ─────────────────────────────────────────────────────
 async function handleUploadBackground() {
+  // Ensure config exists
+  if (!config) config = { ...DEFAULT_CONFIG };
+
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
@@ -711,6 +718,7 @@ async function handleDeleteBooth() {
 
 // ── Save to Firestore ─────────────────────────────────────────────────────
 async function handleSave() {
+  if (!config) { Toast('Nothing to save yet'); return; }
   const saveBtn = _root.querySelector('#fp-save-btn');
   try {
     setButtonLoading(saveBtn, true, 'Saving...');
