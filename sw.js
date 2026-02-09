@@ -1,7 +1,7 @@
-﻿// WinnPro Shows Service Worker v7
+﻿// WinnPro Shows Service Worker v8
 // Smart caching with reliable updates
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAME = 'winnpro-' + CACHE_VERSION;
 
 const PRECACHE_ASSETS = ['/offline.html'];

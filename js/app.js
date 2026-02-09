@@ -203,7 +203,7 @@ async function initAdsSystem() {
 }
 
 function boot() {
-  console.log('[App] Booting V-3.0...');
+  console.log('[App] Booting V-3.1...');
   hydrateStore();
   // Expose getState globally for some views
   window.getState = getState;
