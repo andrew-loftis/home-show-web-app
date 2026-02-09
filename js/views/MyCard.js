@@ -288,13 +288,14 @@ export default function MyCard(root, forceEdit = false) {
     // Set up image upload handlers
     const setupImageUpload = async () => {
       const { uploadImage } = await import('../firebase.js');
+      const { compressProfileImage, compressBackgroundImage } = await import('../utils/imageResize.js');
       const { Toast } = await import('../utils/ui.js');
 
       // Profile image upload
       const profileUploadBtn = root.querySelector('#uploadProfileImage');
       const profileFileInput = root.querySelector('#profileImageFile');
       const profileImageInput = root.querySelector('input[name="profileImage"]');
-      
+
       if (profileUploadBtn && profileFileInput) {
         profileUploadBtn.onclick = () => profileFileInput.click();
         profileFileInput.onchange = async (e) => {
@@ -302,8 +303,10 @@ export default function MyCard(root, forceEdit = false) {
           if (file) {
             try {
               profileUploadBtn.disabled = true;
+              profileUploadBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Compressing...';
+              const compressed = await compressProfileImage(file);
               profileUploadBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...';
-              const url = await uploadImage(file, 'attendees', (progress) => {
+              const url = await uploadImage(compressed, 'attendees', (progress) => {
                 profileUploadBtn.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${progress}%`;
               });
               profileImageInput.value = url;
@@ -331,7 +334,7 @@ export default function MyCard(root, forceEdit = false) {
       const backgroundUploadBtn = root.querySelector('#uploadBackgroundImage');
       const backgroundFileInput = root.querySelector('#backgroundImageFile');
       const backgroundImageInput = root.querySelector('input[name="backgroundImage"]');
-      
+
       if (backgroundUploadBtn && backgroundFileInput) {
         backgroundUploadBtn.onclick = () => backgroundFileInput.click();
         backgroundFileInput.onchange = async (e) => {
@@ -339,8 +342,10 @@ export default function MyCard(root, forceEdit = false) {
           if (file) {
             try {
               backgroundUploadBtn.disabled = true;
+              backgroundUploadBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Compressing...';
+              const compressed = await compressBackgroundImage(file);
               backgroundUploadBtn.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...';
-              const url = await uploadImage(file, 'attendees', (progress) => {
+              const url = await uploadImage(compressed, 'attendees', (progress) => {
                 backgroundUploadBtn.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${progress}%`;
               });
               backgroundImageInput.value = url;
@@ -628,10 +633,12 @@ export default function MyCard(root, forceEdit = false) {
         const file = e.target.files[0];
         if (!file) return;
         try {
-          // Import Firebase Storage uploader
           const { uploadImage } = await import('../firebase.js');
-          if (uploadProfileImage) { uploadProfileImage.disabled = true; uploadProfileImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
-          const url = await uploadImage(file, 'attendees', (pct) => {
+          const { compressProfileImage } = await import('../utils/imageResize.js');
+          if (uploadProfileImage) { uploadProfileImage.disabled = true; uploadProfileImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Compressing...'; }
+          const compressed = await compressProfileImage(file);
+          if (uploadProfileImage) uploadProfileImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...';
+          const url = await uploadImage(compressed, 'attendees', (pct) => {
             if (uploadProfileImage) uploadProfileImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
           });
           root.querySelector('input[name="profileImage"]').value = url;
@@ -648,10 +655,12 @@ export default function MyCard(root, forceEdit = false) {
         const file = e.target.files[0];
         if (!file) return;
         try {
-          // Import Firebase Storage uploader
           const { uploadImage } = await import('../firebase.js');
-          if (uploadBackgroundImage) { uploadBackgroundImage.disabled = true; uploadBackgroundImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...'; }
-          const url = await uploadImage(file, 'attendees', (pct) => {
+          const { compressBackgroundImage } = await import('../utils/imageResize.js');
+          if (uploadBackgroundImage) { uploadBackgroundImage.disabled = true; uploadBackgroundImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Compressing...'; }
+          const compressed = await compressBackgroundImage(file);
+          if (uploadBackgroundImage) uploadBackgroundImage.innerHTML = '<ion-icon name="hourglass-outline"></ion-icon> Uploading...';
+          const url = await uploadImage(compressed, 'attendees', (pct) => {
             if (uploadBackgroundImage) uploadBackgroundImage.innerHTML = `<ion-icon name="hourglass-outline"></ion-icon> ${pct}%`;
           });
           root.querySelector('input[name="backgroundImage"]').value = url;

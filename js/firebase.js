@@ -319,7 +319,14 @@ export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
   const path = `${basePrefix}/${Date.now()}_${safeName}`;
   const st = getStorage();
   const ref = storageRef(st, path);
-  const metadata = { contentType: file.type || 'application/octet-stream' };
+  // Detect content type: prefer file.type, fall back to extension, then default to jpeg
+  let detectedType = file.type;
+  if (!detectedType || detectedType === 'application/octet-stream') {
+    const ext = (safeName.split('.').pop() || '').toLowerCase();
+    const mimeMap = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml' };
+    detectedType = mimeMap[ext] || 'image/jpeg';
+  }
+  const metadata = { contentType: detectedType };
 
   const startResumable = () => new Promise((resolve, reject) => {
     const task = uploadBytesResumable(ref, file, metadata);
