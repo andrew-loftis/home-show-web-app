@@ -3,10 +3,68 @@ import { navigate } from "../router.js";
 import { getState } from "../store.js";
 import { renderErrorUI, renderNetworkError, renderAccessDenied } from "../utils/errorBoundary.js";
 import { getVendorInvoices, getInvoiceStatusDetails, formatCurrency, formatInvoiceDate } from "../utils/payments.js";
+import { getCurrentShowId } from "../shows.js";
+import { mergeDuplicateVendors } from "../utils/vendorMerge.js";
+import { getVendorContractUrl, isVendorContractSigned, formatVendorContractSignedAt, VENDOR_CONTRACT_SIGN_ROUTE } from "../utils/vendorContract.js";
 
 export default async function VendorDashboard(root) {
   const state = getState();
   
+  function getContractInfo(vendor) {
+    return {
+      signed: isVendorContractSigned(vendor),
+      signerName: vendor?.contractSignerName || '',
+      signedAtLabel: formatVendorContractSignedAt(vendor?.contractSignedAt),
+      contractUrl: getVendorContractUrl(vendor)
+    };
+  }
+
+  function renderContractStatusCard(vendor, options = {}) {
+    const info = getContractInfo(vendor);
+    const compact = options.compact === true;
+    if (info.signed) {
+      return `
+        <div class="glass-card ${compact ? 'p-4' : 'p-5'} border border-emerald-500/30 bg-emerald-500/10">
+          <div class="flex items-start gap-3">
+            <ion-icon name="checkmark-circle" class="text-2xl text-emerald-400"></ion-icon>
+            <div class="flex-1">
+              <div class="font-semibold text-emerald-300">Contract Signed</div>
+              <div class="text-sm text-glass-secondary mt-1">
+                ${info.signerName ? `Signer: ${info.signerName}` : 'Signer on file'}
+                ${info.signedAtLabel ? ` - Signed: ${info.signedAtLabel}` : ''}
+              </div>
+              <a href="${info.contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center mt-2 text-sm text-emerald-300 hover:text-emerald-200">
+                <ion-icon name="document-text-outline" class="mr-1"></ion-icon>View Contract
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="glass-card ${compact ? 'p-4' : 'p-5'} border-2 border-red-500/60 bg-red-500/10">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/50 flex items-center justify-center flex-shrink-0">
+            <ion-icon name="close-outline" class="text-red-300 text-3xl"></ion-icon>
+          </div>
+          <div class="flex-1">
+            <div class="font-semibold text-red-300">Contract Missing</div>
+            <p class="text-sm text-red-200 mt-1">This vendor account still needs a signed contract. Complete this immediately.</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button class="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-sm" onclick="window.location.hash='${VENDOR_CONTRACT_SIGN_ROUTE}'">
+                <ion-icon name="create-outline" class="mr-1"></ion-icon>Sign In App
+              </button>
+              <a href="${info.contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded text-white text-sm">
+                <ion-icon name="document-text-outline" class="mr-1"></ion-icon>View Source
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   if (!state.user) {
     renderAccessDenied(root, "vendor");
     return;
@@ -17,17 +75,24 @@ export default async function VendorDashboard(root) {
   let loadError = null;
   
   try {
-    const { getDb } = await import("../firebase.js");
+    const { getDb, claimVendorAccountByEmail } = await import("../firebase.js");
     const db = getDb();
-    const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+    const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
     
     const vendorsRef = collection(db, 'vendors');
-    // Query by ownerUid to match Firebase security rules
-    const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
-    const snapshot = await getDocs(q);
+    // Query by ownerUid first (fast path).
+    const qOwner = query(vendorsRef, where('ownerUid', '==', state.user.uid), limit(20));
+    let snapshot = await getDocs(qOwner);
+
+    // If no linked vendor found, attempt one claim pass then retry.
+    if (snapshot.empty) {
+      await claimVendorAccountByEmail({ showId: getCurrentShowId(), silent: true });
+      snapshot = await getDocs(qOwner);
+    }
     
     if (!snapshot.empty) {
-      vendorData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+      const owned = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      vendorData = mergeDuplicateVendors(owned, { fallbackShowId: getCurrentShowId() }).vendors[0] || owned[0];
     }
   } catch (error) {
     console.error('Error loading vendor data:', error);
@@ -130,6 +195,9 @@ export default async function VendorDashboard(root) {
                 <p><span class="font-medium">Submitted:</span> ${vendorData.createdAt ? new Date(vendorData.createdAt.toDate()).toLocaleDateString() : 'Recently'}</p>
               </div>
             </div>
+            <div class="mb-6 text-left">
+              ${renderContractStatusCard(vendorData, { compact: true })}
+            </div>
             <button class="glass-button px-6 py-2 rounded" onclick="window.location.hash='/edit-vendor'">
               <ion-icon name="create-outline" class="mr-2"></ion-icon>Edit Application
             </button>
@@ -164,7 +232,7 @@ export default async function VendorDashboard(root) {
     
     // Then fetch invoices asynchronously
     try {
-      const result = await getVendorInvoices(vendor.contactEmail);
+      const result = await getVendorInvoices(vendor.contactEmail, vendor.id, vendor.showId);
       if (result.success) {
         invoices = filterLiveInvoices(result.invoices);
       }
@@ -180,6 +248,7 @@ export default async function VendorDashboard(root) {
 
   function renderDashboard(vendor, paymentStatusInfo, invoices, invoicesLoading) {
     const visibleInvoices = filterLiveInvoices(invoices);
+    const contractInfo = getContractInfo(vendor);
 
     // Check if there are unpaid invoices
     const unpaidInvoices = visibleInvoices.filter(inv => inv.status === 'open');
@@ -200,6 +269,10 @@ export default async function VendorDashboard(root) {
                 <span class="${paymentStatusInfo.statusClass} px-2 py-1 rounded-full text-xs">
                   ${paymentStatusInfo.icon} ${paymentStatusInfo.text}
                 </span>
+                <span class="${contractInfo.signed ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'} px-2 py-1 rounded-full text-xs">
+                  <ion-icon name="${contractInfo.signed ? 'document-text-outline' : 'close-circle-outline'}" class="mr-1"></ion-icon>
+                  ${contractInfo.signed ? 'Contract Signed' : 'Contract Missing'}
+                </span>
               </div>
             </div>
             <div class="text-left sm:text-right">
@@ -211,8 +284,10 @@ export default async function VendorDashboard(root) {
 
         <!-- Dashboard Content -->
         <div class="p-4 md:p-6 bg-glass-surface rounded-b-xl">
+          ${renderContractStatusCard(vendor)}
+
           <!-- Quick Actions - Stack on mobile -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 my-6 md:my-8">
             <button class="glass-card p-4 hover:bg-glass-surface transition-colors text-left touch-target" onclick="editProfile()">
               <div class="flex items-center justify-between">
                 <div>
@@ -529,7 +604,7 @@ export default async function VendorDashboard(root) {
     window.refreshInvoices = async () => {
       Toast.show('Refreshing invoices...', 'info');
       try {
-        const result = await getVendorInvoices(vendor.contactEmail);
+      const result = await getVendorInvoices(vendor.contactEmail, vendor.id, vendor.showId);
         if (result.success) {
           const liveInvoices = filterLiveInvoices(result.invoices);
           renderDashboard(vendor, getPaymentStatusInfo(vendor, liveInvoices), liveInvoices, false);

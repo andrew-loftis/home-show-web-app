@@ -7,8 +7,8 @@
  * - SITE_URL: Base URL for success/cancel redirects (e.g., https://yoursite.netlify.app)
  */
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { verifyAuth } = require('./utils/verify-admin');
+const { getStripeContext } = require('./utils/stripe-context');
 
 // Booth pricing tiers
 const BOOTH_PRICES = {
@@ -62,12 +62,18 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const {
-      vendorId,
-      vendorEmail,
-      vendorName,
-      boothType = 'standard'
-    } = JSON.parse(event.body);
+      const {
+        vendorId,
+        vendorEmail,
+        vendorName,
+        boothType = 'standard',
+        showId = ''
+      } = JSON.parse(event.body);
+
+    const { stripe, requestOptions } = await getStripeContext({
+      showId: showId || '',
+      vendorId: vendorId || '',
+    });
 
     if (!vendorId || !vendorEmail) {
       return {
@@ -94,7 +100,7 @@ exports.handler = async (event, context) => {
     const existingCustomers = await stripe.customers.list({
       email: normalizedEmail,
       limit: 1
-    });
+    }, requestOptions);
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
@@ -106,7 +112,7 @@ exports.handler = async (event, context) => {
           vendorId,
           source: 'winnpro_app'
         }
-      });
+      }, requestOptions);
     }
 
     // Create Checkout Session
@@ -122,7 +128,8 @@ exports.handler = async (event, context) => {
               description: description,
               metadata: {
                 vendorId,
-                boothType
+                boothType,
+                showId: showId || ''
               }
             },
             unit_amount: amount
@@ -138,19 +145,21 @@ exports.handler = async (event, context) => {
         vendorEmail,
         vendorName: vendorName || '',
         boothType,
+        showId: showId || '',
         source: 'winnpro_checkout'
       },
       payment_intent_data: {
         metadata: {
           vendorId,
-          boothType
+          boothType,
+          showId: showId || ''
         }
       },
       // Allow promo codes
       allow_promotion_codes: true,
       // Collect billing address
       billing_address_collection: 'required'
-    });
+    }, requestOptions);
 
     return {
       statusCode: 200,

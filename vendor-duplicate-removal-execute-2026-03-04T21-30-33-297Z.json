@@ -1,0 +1,388 @@
+{
+  "generatedAt": "2026-03-04T21:30:33.298Z",
+  "mode": "execute",
+  "allVendorCount": 178,
+  "totalMatchedDocs": 21,
+  "targets": [
+    {
+      "name": "All American Matters",
+      "email": "derrick@allamericanmatress.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "CDwp4UtTAHEnrWbxiB2U",
+          "refPath": "vendors/CDwp4UtTAHEnrWbxiB2U",
+          "showId": "putnam-spring-2026",
+          "name": "All American Matters",
+          "email": "derrick@allamericanmatress.com",
+          "createdAt": {
+            "_seconds": 1771795056,
+            "_nanoseconds": 915000000
+          },
+          "updatedAt": null
+        },
+        {
+          "id": "cfvwQdGjOkYyZXYu2WQM",
+          "refPath": "vendors/cfvwQdGjOkYyZXYu2WQM",
+          "showId": "putnam-fall-2026",
+          "name": "All American Matters",
+          "email": "derrick@allamericanmatress.com",
+          "createdAt": {
+            "_seconds": 1772658593,
+            "_nanoseconds": 512000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658593,
+            "_nanoseconds": 512000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "American Home Design",
+      "email": "unknown@americanhomedesign.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "FXjBZBhr1TcIVZ643fy7",
+          "refPath": "vendors/FXjBZBhr1TcIVZ643fy7",
+          "showId": "putnam-spring-2026",
+          "name": "American Home Design",
+          "email": "unknown@americanhomedesign.com",
+          "createdAt": {
+            "_seconds": 1771794104,
+            "_nanoseconds": 755000000
+          },
+          "updatedAt": null
+        },
+        {
+          "id": "tZ6yhPWtvxXH1J7U6Lpv",
+          "refPath": "vendors/tZ6yhPWtvxXH1J7U6Lpv",
+          "showId": "putnam-fall-2026",
+          "name": "American Home Design",
+          "email": "unknown@americanhomedesign.com",
+          "createdAt": {
+            "_seconds": 1772658595,
+            "_nanoseconds": 346000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658595,
+            "_nanoseconds": 346000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bruck Contractors",
+      "email": "info@bruckcontractors.com",
+      "matchCount": 1,
+      "matches": [
+        {
+          "id": "Gpe9nMZ9GGyH2vqSdKuF",
+          "refPath": "vendors/Gpe9nMZ9GGyH2vqSdKuF",
+          "showId": "putnam-fall-2026",
+          "name": "Bruck Contractors",
+          "email": "info@bruckcontractors.com",
+          "createdAt": {
+            "_seconds": 1771792603,
+            "_nanoseconds": 430000000
+          },
+          "updatedAt": {
+            "_seconds": 1771805566,
+            "_nanoseconds": 433000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Budget Blinds",
+      "email": "itaylor@budgetblinds.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "aAaGXp6y6ceiG0lMMw6z",
+          "refPath": "vendors/aAaGXp6y6ceiG0lMMw6z",
+          "showId": "putnam-spring-2026",
+          "name": "Budget Blinds",
+          "email": "itaylor@budgetblinds.com",
+          "createdAt": {
+            "_seconds": 1772645758,
+            "_nanoseconds": 541000000
+          },
+          "updatedAt": {
+            "_seconds": 1772646527,
+            "_nanoseconds": 919000000
+          }
+        },
+        {
+          "id": "lxICQOgVV5GESZ4RYR7F",
+          "refPath": "vendors/lxICQOgVV5GESZ4RYR7F",
+          "showId": "putnam-fall-2026",
+          "name": "Budget Blinds",
+          "email": "itaylor@budgetblinds.com",
+          "createdAt": {
+            "_seconds": 1772658606,
+            "_nanoseconds": 171000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658606,
+            "_nanoseconds": 171000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cumberland Cleaning Company",
+      "email": "mail@cumberlandcleaning.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "FxmSpEztfBfa8ieGOAsd",
+          "refPath": "vendors/FxmSpEztfBfa8ieGOAsd",
+          "showId": "putnam-fall-2026",
+          "name": "Cumberland Cleaning Company",
+          "email": "mail@cumberlandcleaning.com",
+          "createdAt": {
+            "_seconds": 1772658599,
+            "_nanoseconds": 918000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658599,
+            "_nanoseconds": 918000000
+          }
+        },
+        {
+          "id": "OhzhHjmf6tcvG8og6Noc",
+          "refPath": "vendors/OhzhHjmf6tcvG8og6Noc",
+          "showId": "putnam-spring-2026",
+          "name": "Cumberland Cleaning Company",
+          "email": "mail@cumberlandcleaning.com",
+          "createdAt": {
+            "_seconds": 1772645770,
+            "_nanoseconds": 418000000
+          },
+          "updatedAt": {
+            "_seconds": 1772646669,
+            "_nanoseconds": 502000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cutco",
+      "email": "events@cutco.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "6qIS5NuPHacrpjbxEVze",
+          "refPath": "vendors/6qIS5NuPHacrpjbxEVze",
+          "showId": "putnam-spring-2026",
+          "name": "Cutco",
+          "email": "events@cutco.com",
+          "createdAt": {
+            "_seconds": 1772645774,
+            "_nanoseconds": 494000000
+          },
+          "updatedAt": {
+            "_seconds": 1772646685,
+            "_nanoseconds": 428000000
+          }
+        },
+        {
+          "id": "rV9FOWg3Ledp8dCfiuwV",
+          "refPath": "vendors/rV9FOWg3Ledp8dCfiuwV",
+          "showId": "putnam-fall-2026",
+          "name": "Cutco",
+          "email": "events@cutco.com",
+          "createdAt": {
+            "_seconds": 1772658591,
+            "_nanoseconds": 546000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658591,
+            "_nanoseconds": 546000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Innovative Home Services",
+      "email": "uknown@innovativehomeservices.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "GBNo2rcqvo8tfAEPdyOM",
+          "refPath": "vendors/GBNo2rcqvo8tfAEPdyOM",
+          "showId": "putnam-fall-2026",
+          "name": "Innovative Home Services",
+          "email": "uknown@innovativehomeservices.com",
+          "createdAt": {
+            "_seconds": 1772658597,
+            "_nanoseconds": 787000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658597,
+            "_nanoseconds": 787000000
+          }
+        },
+        {
+          "id": "LEhCOiN62wcJ7kT3dbRq",
+          "refPath": "vendors/LEhCOiN62wcJ7kT3dbRq",
+          "showId": "putnam-spring-2026",
+          "name": "Innovative Home Services",
+          "email": "uknown@innovativehomeservices.com",
+          "createdAt": {
+            "_seconds": 1771797923,
+            "_nanoseconds": 949000000
+          },
+          "updatedAt": null
+        }
+      ]
+    },
+    {
+      "name": "LeafHome Bath",
+      "email": "events@leafhomeenhancements.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "37UfUePjPZaaA2SpndxQ",
+          "refPath": "vendors/37UfUePjPZaaA2SpndxQ",
+          "showId": "putnam-spring-2026",
+          "name": "LeafHome Bath",
+          "email": "events@leafhomeenhancements.com",
+          "createdAt": {
+            "_seconds": 1772645798,
+            "_nanoseconds": 280000000
+          },
+          "updatedAt": {
+            "_seconds": 1772646707,
+            "_nanoseconds": 758000000
+          }
+        },
+        {
+          "id": "kPMiAdXpW5trIFev9Yks",
+          "refPath": "vendors/kPMiAdXpW5trIFev9Yks",
+          "showId": "putnam-fall-2026",
+          "name": "LeafHome Bath",
+          "email": "events@leafhomeenhancements.com",
+          "createdAt": {
+            "_seconds": 1772658589,
+            "_nanoseconds": 132000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658589,
+            "_nanoseconds": 132000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "LeafX of TN",
+      "email": "tjholland.th@gmail.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "3jAnVihbCGOSq5SF2hnJ",
+          "refPath": "vendors/3jAnVihbCGOSq5SF2hnJ",
+          "showId": "putnam-spring-2026",
+          "name": "LeafX of TN",
+          "email": "tjholland.th@gmail.com",
+          "createdAt": {
+            "_seconds": 1771798273,
+            "_nanoseconds": 429000000
+          },
+          "updatedAt": null
+        },
+        {
+          "id": "UAlT1su7E62FlLICqBzY",
+          "refPath": "vendors/UAlT1su7E62FlLICqBzY",
+          "showId": "putnam-fall-2026",
+          "name": "LeafX of TN",
+          "email": "tjholland.th@gmail.com",
+          "createdAt": {
+            "_seconds": 1772658589,
+            "_nanoseconds": 865000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658589,
+            "_nanoseconds": 865000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "Upper Cumberland Generators",
+      "email": "ucgenerators@gmail.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "QRMtjt56KYzEmJ0QUrb7",
+          "refPath": "vendors/QRMtjt56KYzEmJ0QUrb7",
+          "showId": "putnam-fall-2026",
+          "name": "Upper Cumberland Generators",
+          "email": "ucgenerators@gmail.com",
+          "createdAt": {
+            "_seconds": 1772658604,
+            "_nanoseconds": 493000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658604,
+            "_nanoseconds": 493000000
+          }
+        },
+        {
+          "id": "WLKXMv8kWUm7KWbDbtKt",
+          "refPath": "vendors/WLKXMv8kWUm7KWbDbtKt",
+          "showId": "putnam-spring-2026",
+          "name": "Upper Cumberland Generators",
+          "email": "ucgenerators@gmail.com",
+          "createdAt": {
+            "_seconds": 1772645848,
+            "_nanoseconds": 647000000
+          },
+          "updatedAt": {
+            "_seconds": 1772645848,
+            "_nanoseconds": 647000000
+          }
+        }
+      ]
+    },
+    {
+      "name": "USA Granite",
+      "email": "help@theusagranite.com",
+      "matchCount": 2,
+      "matches": [
+        {
+          "id": "DGFSRLwqDxHOt1wtRQUE",
+          "refPath": "vendors/DGFSRLwqDxHOt1wtRQUE",
+          "showId": "putnam-fall-2026",
+          "name": "USA Granite",
+          "email": "help@theusagranite.com",
+          "createdAt": {
+            "_seconds": 1772658614,
+            "_nanoseconds": 569000000
+          },
+          "updatedAt": {
+            "_seconds": 1772658614,
+            "_nanoseconds": 569000000
+          }
+        },
+        {
+          "id": "z21TnmeK6BJz4HnREIgn",
+          "refPath": "vendors/z21TnmeK6BJz4HnREIgn",
+          "showId": "putnam-spring-2026",
+          "name": "USA Granite",
+          "email": "help@theusagranite.com",
+          "createdAt": {
+            "_seconds": 1772645852,
+            "_nanoseconds": 162000000
+          },
+          "updatedAt": {
+            "_seconds": 1772645852,
+            "_nanoseconds": 162000000
+          }
+        }
+      ]
+    }
+  ]
+}

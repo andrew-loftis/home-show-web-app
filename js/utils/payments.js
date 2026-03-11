@@ -66,7 +66,8 @@ export async function createCheckoutSession(options) {
     vendorId,
     vendorEmail,
     vendorName,
-    boothType = 'standard'
+    boothType = 'standard',
+    showId = ''
   } = options;
 
   try {
@@ -77,7 +78,8 @@ export async function createCheckoutSession(options) {
         vendorId,
         vendorEmail,
         vendorName,
-        boothType
+        boothType,
+        showId
       })
     });
 
@@ -128,7 +130,8 @@ export async function createInvoice(options) {
     vendorName,
     amount, // in dollars
     description,
-    paymentType = 'booth_rental'
+    paymentType = 'booth_rental',
+    showId = ''
   } = options;
 
   try {
@@ -141,7 +144,8 @@ export async function createInvoice(options) {
         description,
         paymentType,
         vendorName,
-        vendorId
+        vendorId,
+        showId
       })
     });
 
@@ -260,14 +264,19 @@ export function renderPaymentBadge(status) {
  * @param {string} vendorEmail - The vendor's email address
  * @returns {Promise<{success: boolean, invoices?: Array, error?: string}>}
  */
-export async function getVendorInvoices(vendorEmail) {
+export async function getVendorInvoices(vendorEmail, vendorId, showId = '') {
+  const email = typeof vendorEmail === 'object' ? vendorEmail?.vendorEmail : vendorEmail;
+  const id = typeof vendorEmail === 'object' ? vendorEmail?.vendorId : vendorId;
+  const resolvedShowId = typeof vendorEmail === 'object' ? vendorEmail?.showId || showId : showId;
   try {
     const response = await fetch('/.netlify/functions/get-stripe-invoices', {
       method: 'POST',
       headers: await authHeaders(),
       body: JSON.stringify({
         action: 'getCustomerInvoices',
-        vendorEmail
+        vendorEmail: email,
+        vendorId: id,
+        showId: resolvedShowId || ''
       })
     });
 

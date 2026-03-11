@@ -5,9 +5,18 @@ service firebase.storage {
     function isSignedIn() {
       return request.auth != null;
     }
+    function hasAdminDoc(emailId) {
+      return firestore.exists(/databases/(default)/documents/adminEmails/$(emailId))
+             || firestore.exists(/databases/(default)/documents/admin-users/$(emailId))
+             || firestore.exists(/databases/(default)/documents/admin_users/$(emailId));
+    }
     function isAdmin() {
       return isSignedIn()
-             && firestore.exists(/databases/(default)/documents/adminEmails/$(request.auth.token.email));
+             && request.auth.token.email != null
+             && (
+               hasAdminDoc(request.auth.token.email)
+               || hasAdminDoc(request.auth.token.email.lower())
+             );
     }
     function isImage() {
       return request.resource != null

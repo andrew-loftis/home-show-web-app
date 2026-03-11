@@ -1,0 +1,41 @@
+{
+  "startedAt": "2026-03-04T17:43:12.743Z",
+  "filePath": "c:\\Users\\aloft\\Downloads\\Putnam County Spring Home Show 2026-Exhibitors (Cookeville,TN) (6).csv",
+  "totalParsed": 70,
+  "totalProcessed": 1,
+  "showId": "putnam-spring-2026",
+  "showName": "WinnPro Spring Home Show",
+  "dryRun": false,
+  "sendReset": true,
+  "resendExistingReset": true,
+  "sendContractReminders": true,
+  "autoApprove": true,
+  "created": 0,
+  "existing": 1,
+  "skippedDuplicateInput": 0,
+  "failed": 1,
+  "authUsersCreated": 0,
+  "existingSignedIn": 0,
+  "existingNotSignedIn": 1,
+  "resetEmailsSent": 0,
+  "resetEmailsSentNew": 0,
+  "resetEmailsSentExisting": 0,
+  "contractRemindersSent": 0,
+  "contractRemindersSentNew": 0,
+  "contractRemindersSentExisting": 0,
+  "details": [
+    {
+      "row": 1,
+      "name": "A Cut Above Roofing",
+      "email": "acutaboveroofing@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "yFN42br8uHQ51orwdr49"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    }
+  ],
+  "completedAt": "2026-03-04T17:43:15.861Z"
+}

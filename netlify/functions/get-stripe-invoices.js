@@ -7,8 +7,8 @@
  * - FIREBASE_SERVICE_ACCOUNT: JSON Firebase service account (for auth verification)
  */
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { verifyAdmin } = require('./utils/verify-admin');
+const { verifyAdmin, verifyAuth, getAdmin } = require('./utils/verify-admin');
+const { getStripeContext } = require('./utils/stripe-context');
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -26,20 +26,31 @@ exports.handler = async (event, context) => {
   }
 
   // Require admin authentication — this endpoint exposes financial data
-  const auth = await verifyAdmin(event);
-  if (auth.error) {
-    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
-  }
-
   try {
-    const { action, invoiceId, vendorEmail, limit: rawLimit = 100 } = JSON.parse(event.body || '{}');
+    const auth = await verifyAuth(event);
+    if (auth.error) {
+      return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
+    }
+
+    const { action, invoiceId, vendorEmail, vendorId, limit: rawLimit = 100, showId = '' } = JSON.parse(event.body || '{}');
+    let { stripe, requestOptions, showId: resolvedShowId } = await getStripeContext({
+      showId: showId || '',
+      vendorId: vendorId || '',
+      vendorShowId: '',
+      fallbackShowId: ''
+    });
+    const normalizedEmail = String(vendorEmail || '').trim().toLowerCase();
 
     // Cap limit to prevent abuse
     const limit = Math.min(Math.max(parseInt(rawLimit, 10) || 10, 1), 100);
 
     // Action: Get single invoice status
     if (action === 'getInvoice' && invoiceId) {
-      const invoice = await stripe.invoices.retrieve(invoiceId);
+      const adminCheck = await verifyAdmin(event);
+      if (adminCheck.error) {
+        return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
+      }
+      const invoice = await stripe.invoices.retrieve(invoiceId, requestOptions);
       return {
         statusCode: 200,
         headers,
@@ -65,14 +76,54 @@ exports.handler = async (event, context) => {
     }
 
     // Action: Get invoices for a specific customer email
-    if (action === 'getCustomerInvoices' && vendorEmail) {
-      // Normalize email
-      const normalizedEmail = String(vendorEmail).trim().toLowerCase();
+    if (action === 'getCustomerInvoices') {
+      let emailToUse = normalizedEmail;
+
+      if (vendorId) {
+        const adminSdk = getAdmin();
+        const db = adminSdk.firestore();
+        const vendorDoc = await db.collection('vendors').doc(String(vendorId)).get();
+        if (!vendorDoc.exists) {
+          return { statusCode: 404, headers, body: JSON.stringify({ error: 'Vendor not found' }) };
+        }
+        const vendor = vendorDoc.data() || {};
+        const resolvedShowIdFromVendor = String(vendor.showId || '').trim();
+        if (resolvedShowIdFromVendor && resolvedShowIdFromVendor !== resolvedShowId) {
+          // Keep returned metadata aligned with the vendor's current show assignment.
+          const route = await getStripeContext({
+            showId: resolvedShowIdFromVendor,
+            vendorId: vendorId || '',
+            vendorShowId: ''
+          });
+          stripe = route.stripe;
+          requestOptions = route.requestOptions;
+          resolvedShowId = route.showId || resolvedShowIdFromVendor;
+        }
+        const ownerUid = vendor.ownerUid || null;
+        const vendorContactEmail = String(vendor.contactEmail || '').trim().toLowerCase();
+        emailToUse = vendorContactEmail || emailToUse;
+
+        if (ownerUid !== auth.uid) {
+          const adminCheck = await verifyAdmin(event);
+          if (adminCheck.error) {
+            return { statusCode: 403, headers, body: JSON.stringify({ error: 'Not authorized for vendor invoices' }) };
+          }
+        }
+      } else if (emailToUse && emailToUse !== auth.email) {
+        const adminCheck = await verifyAdmin(event);
+        if (adminCheck.error) {
+          return { statusCode: 403, headers, body: JSON.stringify({ error: 'Not authorized for vendor invoices' }) };
+        }
+      }
+
+      if (!emailToUse) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Vendor email required' }) };
+      }
 
       const customers = await stripe.customers.list({
-        email: normalizedEmail,
+        email: emailToUse,
         limit: 1
-      });
+      }, requestOptions);
 
       if (customers.data.length === 0) {
         return {
@@ -86,7 +137,7 @@ exports.handler = async (event, context) => {
       const invoices = await stripe.invoices.list({
         customer: customer.id,
         limit: limit
-      });
+      }, requestOptions);
 
       return {
         statusCode: 200,
@@ -118,10 +169,14 @@ exports.handler = async (event, context) => {
 
     // Action: Get all recent invoices (for admin dashboard)
     if (action === 'listAll') {
+      const adminCheck = await verifyAdmin(event);
+      if (adminCheck.error) {
+        return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
+      }
       const invoices = await stripe.invoices.list({
         limit: limit,
         expand: ['data.customer']
-      });
+      }, requestOptions);
 
       return {
         statusCode: 200,
@@ -151,9 +206,13 @@ exports.handler = async (event, context) => {
 
     // Action: Get payment intents (for checkout payments)
     if (action === 'listPayments') {
+      const adminCheck = await verifyAdmin(event);
+      if (adminCheck.error) {
+        return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
+      }
       const paymentIntents = await stripe.paymentIntents.list({
         limit: limit
-      });
+      }, requestOptions);
 
       return {
         statusCode: 200,
@@ -178,9 +237,13 @@ exports.handler = async (event, context) => {
 
     // Action: Get balance/summary
     if (action === 'getBalance') {
-      const balance = await stripe.balance.retrieve();
+      const adminCheck = await verifyAdmin(event);
+      if (adminCheck.error) {
+        return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
+      }
+      const balance = await stripe.balance.retrieve({}, requestOptions);
 
-      const charges = await stripe.charges.list({ limit: 10 });
+      const charges = await stripe.charges.list({ limit: 10 }, requestOptions);
 
       const recentRevenue = charges.data
         .filter(c => c.status === 'succeeded')

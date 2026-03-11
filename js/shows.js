@@ -12,22 +12,23 @@
 const DEFAULT_SHOWS = {
   'putnam-spring-2026': {
     id: 'putnam-spring-2026',
-    name: 'Putnam County Spring Home Show',
+    name: '2026 Spring Home Show',
     shortName: 'Spring 2026',
-    venue: 'Putnam County Fairgrounds',
-    location: 'Cookeville, TN',
+    venue: 'New Putnam County Convention Center',
+    location: '2121 Event Center Drive, Cookeville, TN',
     dates: {
-      start: '2026-02-20',
+      start: '2026-02-21',
       end: '2026-02-22'
     },
-    displayDate: 'February 20-22, 2026',
+    displayDate: 'February 21-22, 2026',
+    hours: 'Sat 10am-6pm | Sun 10am-5pm',
     season: 'spring',
     year: 2026,
     active: true,
     registrationOpen: true,
     color: 'from-blue-600 to-slate-600',
     icon: 'calendar-outline',
-    description: 'Discover the latest in home improvement, remodeling, and outdoor living at the Putnam County Spring Home Show.',
+    description: 'Discover the latest in home improvement, remodeling, and outdoor living at the 2026 Spring Home Show.',
   },
   'putnam-fall-2026': {
     id: 'putnam-fall-2026',
@@ -67,6 +68,61 @@ const SHOW_STORAGE_KEY = 'winnpro_selected_show';
 const SHOWS_CACHE_KEY = 'winnpro_shows_cache';
 const SHOWS_CACHE_TIME_KEY = 'winnpro_shows_cache_time';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+const SEASON_ORDER = {
+  spring: 1,
+  summer: 2,
+  fall: 3,
+  autumn: 3,
+  winter: 4,
+};
+
+function seasonRank(show = {}) {
+  const season = String(show.season || '').toLowerCase();
+  return SEASON_ORDER[season] || 99;
+}
+
+function showStartMillis(show = {}) {
+  const value = show?.dates?.start;
+  const ms = Date.parse(String(value || ''));
+  return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+}
+
+function showEndMillis(show = {}) {
+  const value = show?.dates?.end;
+  const ms = Date.parse(String(value || ''));
+  return Number.isFinite(ms) ? ms : Number.POSITIVE_INFINITY;
+}
+
+function showYear(show = {}) {
+  const explicit = Number(show?.year);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const start = showStartMillis(show);
+  if (Number.isFinite(start)) {
+    return new Date(start).getFullYear();
+  }
+  return Number.MAX_SAFE_INTEGER;
+}
+
+export function compareShows(a = {}, b = {}) {
+  const yearDiff = showYear(a) - showYear(b);
+  if (yearDiff !== 0) return yearDiff;
+
+  const seasonDiff = seasonRank(a) - seasonRank(b);
+  if (seasonDiff !== 0) return seasonDiff;
+
+  const startDiff = showStartMillis(a) - showStartMillis(b);
+  if (startDiff !== 0) return startDiff;
+
+  const endDiff = showEndMillis(a) - showEndMillis(b);
+  if (endDiff !== 0) return endDiff;
+
+  return String(a.shortName || a.name || a.id || '').localeCompare(String(b.shortName || b.name || b.id || ''));
+}
+
+function sortShows(shows = []) {
+  return [...shows].sort(compareShows);
+}
 
 // ============================================
 // Firestore Integration
@@ -133,7 +189,6 @@ export async function initShows() {
       
       if (!snapshot.empty) {
         const firestoreShows = {};
-        let defaultFound = false;
         
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -147,16 +202,18 @@ export async function initShows() {
             }
           }
           firestoreShows[doc.id] = { id: doc.id, ...data };
-          
-          // Set default show to first active upcoming show
-          if (!defaultFound && data.active) {
-            const endDate = new Date(data.dates?.end || '2099-12-31');
-            if (endDate >= new Date()) {
-              DEFAULT_SHOW_ID = doc.id;
-              defaultFound = true;
-            }
-          }
         });
+
+        // Set default show to first active upcoming show in chronological order.
+        const now = Date.now();
+        const activeUpcoming = sortShows(Object.values(firestoreShows)).find((show) => {
+          if (!show?.active) return false;
+          const endMs = showEndMillis(show);
+          return Number.isFinite(endMs) ? endMs >= now : true;
+        });
+        if (activeUpcoming?.id) {
+          DEFAULT_SHOW_ID = activeUpcoming.id;
+        }
         
         SHOWS = firestoreShows;
         saveShowsToCache(firestoreShows);
@@ -372,7 +429,7 @@ export function getCurrentShowId() {
     console.warn('Could not read show from storage:', e);
   }
   // Return first active show or default
-  const activeShows = Object.values(SHOWS).filter(s => s.active);
+  const activeShows = getActiveShows();
   if (activeShows.length > 0) {
     return activeShows[0].id;
   }
@@ -402,7 +459,7 @@ export function setCurrentShow(showId) {
  * Get the current show object
  */
 export function getCurrentShow() {
-  return SHOWS[getCurrentShowId()] || Object.values(SHOWS)[0] || DEFAULT_SHOWS[DEFAULT_SHOW_ID];
+  return SHOWS[getCurrentShowId()] || getAllShows()[0] || DEFAULT_SHOWS[DEFAULT_SHOW_ID];
 }
 
 /**
@@ -416,21 +473,21 @@ export function getShowById(showId) {
  * Get all available shows
  */
 export function getAllShows() {
-  return Object.values(SHOWS);
+  return sortShows(Object.values(SHOWS));
 }
 
 /**
  * Get shows that are currently active
  */
 export function getActiveShows() {
-  return Object.values(SHOWS).filter(show => show.active);
+  return sortShows(Object.values(SHOWS).filter(show => show.active));
 }
 
 /**
  * Get shows with registration open
  */
 export function getRegistrationOpenShows() {
-  return Object.values(SHOWS).filter(show => show.active && show.registrationOpen);
+  return sortShows(Object.values(SHOWS).filter(show => show.active && show.registrationOpen));
 }
 
 /**
@@ -438,9 +495,9 @@ export function getRegistrationOpenShows() {
  */
 export function getUpcomingShows() {
   const now = new Date();
-  return Object.values(SHOWS)
-    .filter(show => new Date(show.dates?.end || '2099-12-31') >= now)
-    .sort((a, b) => new Date(a.dates?.start || 0) - new Date(b.dates?.start || 0));
+  return sortShows(
+    Object.values(SHOWS).filter(show => new Date(show.dates?.end || '2099-12-31') >= now)
+  );
 }
 
 /**

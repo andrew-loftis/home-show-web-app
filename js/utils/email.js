@@ -6,6 +6,17 @@
 // Use relative URL for Netlify functions (works in dev and production)
 const EMAIL_FUNCTION_URL = '/.netlify/functions/send-email';
 
+async function getAuthHeaders() {
+  try {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    const token = await getAuth().currentUser?.getIdToken?.();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
+}
+
 /**
  * Available email templates
  */
@@ -17,7 +28,12 @@ export const EmailTemplates = {
   PAYMENT_CONFIRMATION: 'paymentConfirmation',
   ADMIN_NOTIFICATION: 'adminNotification',
   PASSWORD_RESET: 'passwordReset',
-  VENDOR_IMPORTED: 'vendorImported'
+  VENDOR_CONTRACT_REMINDER: 'vendorContractReminder',
+  VENDOR_CONTRACT_SIGNED_VENDOR: 'vendorContractSignedVendor',
+  VENDOR_CONTRACT_SIGNED_ADMIN: 'vendorContractSignedAdmin',
+  APP_INVITE: 'appInvite',
+  VENDOR_IMPORTED: 'vendorImported',
+  VENDOR_INVITE: 'vendorImported'
 };
 
 /**
@@ -29,10 +45,12 @@ export const EmailTemplates = {
  */
 export async function sendEmail(to, template, data = {}) {
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch(EMAIL_FUNCTION_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...authHeaders
       },
       body: JSON.stringify({ to, template, data })
     });
@@ -76,6 +94,28 @@ export async function sendVendorRejectionEmail(vendorEmail, vendorData, reason =
  */
 export async function sendVendorDenialEmail(vendorEmail, vendorData) {
   return sendVendorRejectionEmail(vendorEmail, vendorData, vendorData.reason || '');
+}
+
+/**
+ * Send vendor invite email with password reset link
+ */
+export async function sendVendorInviteEmail(vendorEmail, inviteData) {
+  return sendEmail(vendorEmail, EmailTemplates.VENDOR_INVITE, {
+    businessName: inviteData.businessName || inviteData.vendorName,
+    resetLink: inviteData.resetLink
+  });
+}
+
+/**
+ * Send vendor contract reminder email
+ */
+export async function sendVendorContractReminderEmail(vendorEmail, reminderData) {
+  return sendEmail(vendorEmail, EmailTemplates.VENDOR_CONTRACT_REMINDER, {
+    businessName: reminderData.businessName || reminderData.vendorName,
+    showName: reminderData.showName || '',
+    contractUrl: reminderData.contractUrl || '/assets/contracts/Vendor-Contract-Source.docx',
+    vendorId: reminderData.vendorId || ''
+  });
 }
 
 /**

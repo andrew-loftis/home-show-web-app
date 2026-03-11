@@ -1,9 +1,10 @@
 import { getState, shareBusinessCard } from "../store.js";
 import { Toast } from "../utils/ui.js";
+import { findVendorByAnyId } from "../utils/vendorMerge.js";
 
 export default async function ShareCard(root, params) {
   const state = getState();
-  const vendor = state.vendors.find(v => v.id === params.vendorId);
+  const vendor = findVendorByAnyId(state.vendors || [], params.vendorId);
   const attendee = state.attendees[0];
   
   if (!vendor) {

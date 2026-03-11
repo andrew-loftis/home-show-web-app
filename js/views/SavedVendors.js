@@ -1,12 +1,14 @@
 import { getState } from "../store.js";
 import { EmptySavedVendors } from "../utils/skeleton.js";
 import { logoImg } from "../utils/lazyImages.js";
+import { vendorSourceIds } from "../utils/vendorMerge.js";
 
 export default function SavedVendors(root) {
   const state = getState();
   const attendee = state.attendees[0];
   const saved = (state.savedVendorsByAttendee[attendee?.id] || []);
-  const vendors = state.vendors.filter(v => saved.includes(v.id));
+  const savedSet = new Set(saved);
+  const vendors = state.vendors.filter(v => vendorSourceIds(v).some(id => savedSet.has(id)));
   
   root.innerHTML = `
     <div class="container-glass fade-in">

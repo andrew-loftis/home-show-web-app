@@ -46,13 +46,14 @@ export default function VendorGallery(root) {
 function renderVendorCard(vendor) {
   const profile = vendor.profile || {};
   const selectedSocials = profile.selectedSocials || [];
+  const avatarUrl = String(profile.profileImage || vendor.logoUrl || '').trim();
   
   return `
     <div class="glass-card overflow-hidden slide-up border border-white/15 shadow-glass">
       <!-- Vendor Header -->
       <div class="flex items-center gap-4 p-6 border-b border-white/20">
         <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-          ${vendor.logoUrl ? `<img src="${vendor.logoUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">` : `<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>`}
+          ${avatarUrl ? `<img src="${avatarUrl}" class="w-full h-full object-cover" onerror="this.style.display='none'">` : `<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>`}
         </div>
         <div class="flex-1">
           <h3 class="text-xl font-bold text-glass">${vendor.name}</h3>

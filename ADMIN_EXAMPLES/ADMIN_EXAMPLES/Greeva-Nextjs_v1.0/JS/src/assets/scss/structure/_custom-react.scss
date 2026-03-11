@@ -1,0 +1,18 @@
+.content-none {
+  &:after {
+    display: none !important;
+  }
+
+  &:before {
+    display: none !important;
+  }
+}
+
+.icons-center {
+  display: inline-flex;
+  align-items: center;
+}
+
+.menu-dot {
+  display: contents;
+}

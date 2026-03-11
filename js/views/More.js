@@ -1,30 +1,56 @@
-import { getState, setRole, vendorLogout, setTheme, getTheme } from "../store.js";
+import { getState, setRole, vendorLogout, setTheme, getTheme, refreshAdminAccess } from "../store.js";
 import { renderInstallButton, wireInstallButton } from "../utils/pwa.js";
 import { isNotificationSupported, getNotificationPermission, requestNotificationPermission, saveTokenToFirestore, getNotificationStatus } from "../utils/notifications.js";
 import { Toast } from "../utils/ui.js";
 import { handleAuthError } from "../utils/authErrors.js";
+import { getCurrentShowId } from "../shows.js";
+import { mergeDuplicateVendors } from "../utils/vendorMerge.js";
+import { getVendorContractUrl, isVendorContractSigned, formatVendorContractSignedAt, VENDOR_CONTRACT_SIGN_ROUTE } from "../utils/vendorContract.js";
+
+let _adminBootstrapCheckedOnce = false;
 
 export default async function More(root) {
-  const state = getState();
+  // Re-check admin status when opening Profile so admin+vendor accounts don't lose admin tools.
+  let state = getState();
+  if (state.user && !state.user.isAnonymous) {
+    try {
+      await refreshAdminAccess({ forceBootstrap: !_adminBootstrapCheckedOnce });
+      _adminBootstrapCheckedOnce = true;
+      state = getState();
+    } catch {}
+  }
   
   // Check vendor status for current user
   let vendorStatus = null;
   if (state.user && !state.user.isAnonymous) {
     try {
-      const { getDb } = await import("../firebase.js");
+      const { getDb, claimVendorAccountByEmail } = await import("../firebase.js");
       const db = getDb();
-      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
       
       const vendorsRef = collection(db, 'vendors');
-      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
-      const snapshot = await getDocs(q);
+      const qOwner = query(vendorsRef, where('ownerUid', '==', state.user.uid), limit(20));
+      let snapshot = await getDocs(qOwner);
+      if (snapshot.empty) {
+        await claimVendorAccountByEmail({ showId: getCurrentShowId(), silent: true });
+        snapshot = await getDocs(qOwner);
+      }
+      if (snapshot.empty && state.user.email) {
+        // Fallback for legacy imported docs that may still be linking.
+        snapshot = await getDocs(query(vendorsRef, where('contactEmail', '==', String(state.user.email).toLowerCase()), limit(20)));
+      }
       
       if (!snapshot.empty) {
-        const vendorData = snapshot.docs[0].data();
+        const owned = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const vendorData = mergeDuplicateVendors(owned, { fallbackShowId: getCurrentShowId() }).vendors[0] || owned[0];
         vendorStatus = {
           exists: true,
           approved: vendorData.approved,
-          name: vendorData.name
+          name: vendorData.name,
+          contractSigned: isVendorContractSigned(vendorData),
+          contractSignerName: vendorData.contractSignerName || '',
+          contractSignedAt: vendorData.contractSignedAt || '',
+          contractUrl: getVendorContractUrl(vendorData)
         };
       }
     } catch (error) {
@@ -34,6 +60,9 @@ export default async function More(root) {
 
   // Determine friendly role description
   const getRoleDescription = () => {
+    if (state.isAdmin && state.myVendor?.approved) {
+      return { label: 'Vendor + Admin', color: 'text-emerald-300', icon: 'shield-checkmark' };
+    }
     if (state.isAdmin) return { label: 'Admin', color: 'text-green-400', icon: 'shield-checkmark' };
     if (state.myVendor?.approved) return { label: 'Vendor', color: 'text-blue-400', icon: 'storefront' };
     if (state.myVendor) return { label: 'Vendor (Pending)', color: 'text-yellow-400', icon: 'time' };
@@ -55,17 +84,34 @@ export default async function More(root) {
           <div class="mt-1 text-xs text-glass-secondary truncate">${state.user.displayName || state.user.email}</div>
         ` : ``}
       </div>
+      <div class="glass-card mb-4">
+        <div class="text-xs text-glass-secondary mb-2">Quick Links</div>
+        <div class="grid ${state.isAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'} gap-2">
+          ${state.isAdmin ? `
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/admin'">
+              <ion-icon name="settings-outline" class="mr-1"></ion-icon>Admin
+            </button>
+          ` : ``}
+          ${getVendorButton(vendorStatus)}
+          <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/saved-vendors'">
+            <ion-icon name="bookmark-outline" class="mr-1"></ion-icon>Saved
+          </button>
+          <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/cards'">
+            <ion-icon name="card-outline" class="mr-1"></ion-icon>Cards
+          </button>
+        </div>
+      </div>
+      ${renderContractStatusCard(vendorStatus)}
       ${state.isAdmin ? `
         <div class="glass-card mb-4">
-          <h3 class="text-sm font-semibold text-glass mb-3">Admin Tools</h3>
+          <h3 class="text-sm font-semibold text-glass mb-3">Admin Access</h3>
           <div class="grid grid-cols-2 gap-2 mb-3">
-            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/admin'">
-              <ion-icon name="settings-outline" class="mr-1"></ion-icon>Dashboard
-            </button>
             <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/vendors'">
               <ion-icon name="storefront-outline" class="mr-1"></ion-icon>Vendors
             </button>
-            ${getVendorButton(vendorStatus)}
+            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/admin'">
+              <ion-icon name="shield-checkmark-outline" class="mr-1"></ion-icon>Dashboard
+            </button>
           </div>
           <div class="border-t border-white/10 pt-3">
             <div class="font-medium mb-2 text-xs text-glass-secondary">Add Admin</div>
@@ -73,23 +119,10 @@ export default async function More(root) {
               <input type="email" required placeholder="admin@email.com" class="flex-1 p-2.5 rounded text-sm" name="email">
               <button class="brand-bg px-3 py-2.5 rounded text-xs touch-target">Add</button>
             </form>
-            <div id="adminList" class="text-xs text-glass-secondary">Loading admins…</div>
+            <div id="adminList" class="text-xs text-glass-secondary">Loading admins...</div>
           </div>
         </div>
-      ` : `
-        <div class="glass-card mb-4">
-          <div class="text-xs text-glass-secondary mb-2">Quick Links</div>
-          <div class="grid grid-cols-3 gap-2">
-            ${getVendorButton(vendorStatus)}
-            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/saved-vendors'">
-              <ion-icon name="bookmark-outline" class="mr-1"></ion-icon>Saved
-            </button>
-            <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/cards'">
-              <ion-icon name="card-outline" class="mr-1"></ion-icon>Cards
-            </button>
-          </div>
-        </div>
-      `}
+      ` : ``}
       <div class="glass-card">
         <h3 class="text-sm font-semibold text-glass mb-3">Account</h3>
         ${state.user ? `
@@ -196,6 +229,53 @@ export default async function More(root) {
         </div>
       </button>`;
     }
+  }
+
+  function renderContractStatusCard(vendorStatus) {
+    if (!vendorStatus || !vendorStatus.exists) return '';
+    const contractUrl = vendorStatus.contractUrl || getVendorContractUrl();
+    if (vendorStatus.contractSigned) {
+      const signedDate = formatVendorContractSignedAt(vendorStatus.contractSignedAt);
+      return `
+        <div class="glass-card mb-4 border border-emerald-500/30 bg-emerald-500/10">
+          <div class="flex items-start gap-3">
+            <ion-icon name="checkmark-circle" class="text-2xl text-emerald-400"></ion-icon>
+            <div class="flex-1">
+              <div class="text-sm font-semibold text-emerald-300">Vendor Contract: Signed</div>
+              <div class="text-xs text-glass-secondary mt-1">
+                ${vendorStatus.contractSignerName ? `Signer: ${vendorStatus.contractSignerName}` : 'Signer on file'}
+                ${signedDate ? ` - Signed: ${signedDate}` : ''}
+              </div>
+              <a href="${contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center mt-2 text-xs text-emerald-300 hover:text-emerald-200">
+                <ion-icon name="document-text-outline" class="mr-1"></ion-icon>View Contract
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="glass-card mb-4 border-2 border-red-500/60 bg-red-500/10">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full bg-red-500/20 border border-red-500/50 flex items-center justify-center flex-shrink-0">
+            <ion-icon name="close" class="text-red-300 text-3xl"></ion-icon>
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-semibold text-red-300">Vendor Contract Missing</div>
+            <p class="text-xs text-red-200 mt-1">You must complete the vendor contract. This is required for all vendors.</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button class="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 rounded text-white text-xs" onclick="window.location.hash='${VENDOR_CONTRACT_SIGN_ROUTE}'">
+                <ion-icon name="create-outline" class="mr-1"></ion-icon>Sign In App
+              </button>
+              <a href="${contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center px-3 py-2 bg-white/10 hover:bg-white/20 rounded text-white text-xs">
+                <ion-icon name="document-text-outline" class="mr-1"></ion-icon>View Source
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // Theme
@@ -364,7 +444,10 @@ export default async function More(root) {
         const email = fd.get('email');
         const password = fd.get('password');
         try {
-          await signInWithEmailPassword(email, password);
+          const result = await signInWithEmailPassword(email, password);
+          if (result?.googleProviderLinked) {
+            Toast('Google sign-in linked to this email. You can use either method now.');
+          }
         } catch (err) {
           handleAuthError(err, 'Email');
         }
@@ -378,8 +461,11 @@ export default async function More(root) {
           return;
         }
         try {
-          await signUpWithEmailPassword(email, password);
+          const result = await signUpWithEmailPassword(email, password);
           Toast('Account created successfully!');
+          if (result?.googleProviderLinked) {
+            Toast('Google sign-in linked to this email. You can use either method now.');
+          }
         } catch (err) {
           handleAuthError(err, 'Sign up');
         }

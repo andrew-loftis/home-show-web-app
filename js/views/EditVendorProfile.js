@@ -3,6 +3,8 @@ import { Toast } from "../utils/ui.js";
 import { navigate } from "../router.js";
 import { compressProfileImage, compressBackgroundImage, compressGalleryImage } from "../utils/imageResize.js";
 import { uploadImage as firebaseUploadImage } from "../firebase.js";
+import { findVendorByAnyId, mergeDuplicateVendors } from "../utils/vendorMerge.js";
+import { getVendorContractUrl, isVendorContractSigned, formatVendorContractSignedAt, VENDOR_CONTRACT_SIGN_ROUTE } from "../utils/vendorContract.js";
 
 // Vendor categories (same as registration)
 const CATEGORIES = [
@@ -29,36 +31,70 @@ const CATEGORIES = [
 
 export default async function EditVendorProfile(root) {
   const state = getState();
+  const currentUid = state.user?.uid || null;
+  const isSignedInUser = !!(currentUid && !state.user?.isAnonymous);
   
-  // Try multiple ways to find the vendor
+  // Resolve vendor with strict ownership/admin checks to avoid cross-account edits.
   let vendor = null;
-  
-  // Method 1: Check vendorLoginId (legacy vendor login flow)
-  if (state.vendorLoginId && state.vendors) {
-    vendor = state.vendors.find(v => v.id === state.vendorLoginId);
+
+  const loadVendorById = async (vendorId) => {
+    if (!vendorId) return null;
+    const fromState = findVendorByAnyId((state.vendors || []), vendorId);
+    if (fromState) return { id: fromState.id, ...fromState };
+
+    try {
+      const { getDb } = await import("../firebase.js");
+      const db = getDb();
+      const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const snap = await getDoc(doc(db, 'vendors', vendorId));
+      if (snap.exists()) return { id: snap.id, ...snap.data() };
+    } catch (error) {
+      console.error('Error loading vendor by id:', error);
+    }
+    return null;
+  };
+
+  const canAccessVendor = (candidate) => {
+    if (!candidate) return false;
+    if (state.isAdmin) return true;
+    return !!(isSignedInUser && candidate.ownerUid === currentUid);
+  };
+
+  // Admin can explicitly edit a selected vendor.
+  if (state.isAdmin && state.vendorLoginId) {
+    vendor = await loadVendorById(state.vendorLoginId);
   }
-  
-  // Method 2: Check myVendor (set from VendorDashboard flow)
-  if (!vendor && state.myVendor) {
-    vendor = state.myVendor;
-  }
-  
-  // Method 3: Query Firestore by ownerUid (most reliable)
-  if (!vendor && state.user && !state.user.isAnonymous) {
+
+  // Primary path: current signed-in user owns a vendor.
+  if (!vendor && isSignedInUser) {
     try {
       const { getDb } = await import("../firebase.js");
       const db = getDb();
       const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-      
-      const vendorsRef = collection(db, 'vendors');
-      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
+      const q = query(collection(db, 'vendors'), where('ownerUid', '==', currentUid));
       const snapshot = await getDocs(q);
-      
       if (!snapshot.empty) {
-        vendor = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+        const owned = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        vendor = mergeDuplicateVendors(owned).vendors[0] || owned[0];
       }
     } catch (error) {
-      console.error('Error loading vendor:', error);
+      console.error('Error loading owned vendor:', error);
+    }
+  }
+
+  // Fallback to myVendor reference (fetch full document by id).
+  if (!vendor && state.myVendor?.id) {
+    const mine = await loadVendorById(state.myVendor.id);
+    if (canAccessVendor(mine)) vendor = mine;
+  }
+
+  // Legacy vendor login fallback (guarded for ownership unless admin).
+  if (!vendor && state.vendorLoginId) {
+    const selected = await loadVendorById(state.vendorLoginId);
+    if (canAccessVendor(selected)) {
+      vendor = selected;
+    } else if (selected && !state.isAdmin) {
+      console.warn('[EditVendorProfile] Ignored vendorLoginId for non-owner account:', state.vendorLoginId);
     }
   }
   
@@ -90,10 +126,64 @@ export default async function EditVendorProfile(root) {
     website: vendor.website || '',
     socialMedia: { ...(vendor.socialMedia || {}) }
   };
+  let contractData = {
+    signed: isVendorContractSigned(vendor),
+    signerName: vendor.contractSignerName || '',
+    contractUrl: getVendorContractUrl(vendor),
+    signedAt: vendor.contractSignedAt || null,
+    version: vendor.contractVersion || '2026-03-04-v1'
+  };
   let dirty = false;
 
   // Track active uploads so we don't save while uploads are in progress
   let activeUploads = 0;
+
+  const getSaveLabel = () => (activeUploads > 0 ? 'Uploading...' : (dirty ? 'Save Changes' : 'Saved'));
+
+  const markDirty = () => {
+    dirty = true;
+    updateSaveUi();
+  };
+
+  function updateSaveUi() {
+    const canSave = dirty && activeUploads === 0;
+    const saveBtn = root.querySelector("#saveBtn");
+    const saveBtnFloatWrap = root.querySelector("#saveBtnFloatWrap");
+    const saveBtnFloat = root.querySelector("#saveBtnFloat");
+    const unsavedBanner = root.querySelector("#unsavedBanner");
+
+    if (saveBtn) {
+      if (canSave) {
+        saveBtn.removeAttribute('disabled');
+      } else {
+        saveBtn.setAttribute('disabled', 'disabled');
+      }
+      saveBtn.classList.toggle('opacity-50', !canSave);
+      saveBtn.textContent = getSaveLabel();
+      saveBtn.onclick = canSave ? saveProfile : null;
+    }
+
+    if (unsavedBanner) {
+      unsavedBanner.classList.toggle('hidden', !dirty);
+    }
+
+    if (saveBtnFloatWrap) {
+      saveBtnFloatWrap.classList.toggle('hidden', !canSave);
+    }
+
+    if (saveBtnFloat) {
+      if (activeUploads > 0) {
+        saveBtnFloat.setAttribute('disabled', 'disabled');
+      } else {
+        saveBtnFloat.removeAttribute('disabled');
+      }
+      saveBtnFloat.innerHTML = `
+        <ion-icon name="${activeUploads > 0 ? 'cloud-upload-outline' : 'save-outline'}"></ion-icon>
+        <span>${activeUploads > 0 ? 'Uploading...' : 'Save'}</span>
+      `;
+      saveBtnFloat.onclick = canSave ? saveProfile : null;
+    }
+  }
 
   /**
    * Compress and upload an image to Firebase Storage.
@@ -140,11 +230,18 @@ export default async function EditVendorProfile(root) {
       const state = getState();
 
       // Check permissions - user must be owner or admin
-      const isOwner = state.user && vendor.ownerUid === state.user.uid;
+      const uid = state.user?.uid || null;
+      const isOwner = !!(uid && vendor.ownerUid === uid);
       const canWrite = isOwner || state.isAdmin;
       
       if (!canWrite) {
-        Toast("You don't have permission to edit this vendor");
+        if (!uid) {
+          Toast('Please sign in with your vendor/admin account to edit this profile');
+        } else if (vendor.ownerUid && vendor.ownerUid !== uid) {
+          Toast('This vendor is linked to a different account. Use the owner account or admin access.');
+        } else {
+          Toast("You don't have permission to edit this vendor");
+        }
         return;
       }
       
@@ -157,7 +254,7 @@ export default async function EditVendorProfile(root) {
         Toast("Category is required");
         return;
       }
-      
+
       const { getDb } = await import("../firebase.js");
       const db = getDb();
       const { doc, updateDoc, serverTimestamp, deleteField } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
@@ -223,13 +320,16 @@ export default async function EditVendorProfile(root) {
           <h2 class="text-xl font-bold text-glass">Edit Business Profile</h2>
           <div class="flex gap-2">
             <button id="saveBtn" class="brand-bg px-4 py-2 rounded text-sm ${dirty && !activeUploads ? '' : 'opacity-50'}" ${dirty && !activeUploads ? '' : 'disabled'}>
-              ${activeUploads ? 'Uploading...' : (dirty ? 'Save Changes' : 'Saved')}
+              ${getSaveLabel()}
             </button>
             <button id="previewBtn" class="glass-button px-4 py-2 rounded text-sm">Preview</button>
           </div>
         </div>
         
-        ${dirty ? '<div class="mb-4 px-3 py-2 bg-yellow-500/20 border border-yellow-400/30 text-yellow-200 rounded text-sm flex items-center gap-2"><ion-icon name="alert-circle-outline"></ion-icon> You have unsaved changes</div>' : ''}
+        <div id="unsavedBanner" class="mb-4 px-3 py-2 bg-yellow-500/20 border border-yellow-400/30 text-yellow-200 rounded text-sm flex items-center gap-2 ${dirty ? '' : 'hidden'}">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          You have unsaved changes
+        </div>
         
         <!-- Live Preview -->
         <div class="glass-panel p-4 mb-6">
@@ -300,6 +400,47 @@ export default async function EditVendorProfile(root) {
               </div>
             </div>
             <div class="mt-3 text-xs text-glass-secondary">* Required fields</div>
+          </div>
+
+          <div class="glass-card p-4 border-2 ${contractData.signed ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-red-500/60 bg-red-500/10'}">
+            <div class="flex items-start gap-3 mb-4">
+              <div class="w-10 h-10 rounded-full ${contractData.signed ? 'bg-emerald-500/20 border border-emerald-500/40' : 'bg-red-500/20 border border-red-500/50'} flex items-center justify-center flex-shrink-0">
+                <ion-icon name="${contractData.signed ? 'checkmark' : 'close'}" class="${contractData.signed ? 'text-emerald-300' : 'text-red-300'} text-3xl"></ion-icon>
+              </div>
+              <div class="flex-1">
+                <h3 class="font-semibold ${contractData.signed ? 'text-emerald-300' : 'text-red-300'}">
+                  ${contractData.signed ? 'Contract Signed' : 'Contract Missing'}
+                </h3>
+                <p class="text-sm ${contractData.signed ? 'text-emerald-200/80' : 'text-red-200'} mt-1">
+                  ${contractData.signed
+                    ? 'Your contract signature is on file.'
+                    : 'A signed vendor contract is required for participation.'}
+                </p>
+                ${contractData.signed ? `
+                  <p class="text-xs text-glass-secondary mt-1">
+                    ${contractData.signerName ? `Signer: ${contractData.signerName}` : 'Signer on file'}
+                    ${formatVendorContractSignedAt(contractData.signedAt) ? ` - Signed: ${formatVendorContractSignedAt(contractData.signedAt)}` : ''}
+                  </p>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              ${contractData.signed ? '' : `
+              <button class="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm" onclick="window.location.hash='${VENDOR_CONTRACT_SIGN_ROUTE}'">
+                <ion-icon name="create-outline" class="mr-1"></ion-icon>Sign In App
+              </button>
+              `}
+              <a href="${contractData.contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm">
+                <ion-icon name="document-text-outline" class="mr-1"></ion-icon>View Source Contract
+              </a>
+              <span class="text-xs text-glass-secondary">Contract version: ${contractData.version}</span>
+            </div>
+            <p class="text-xs text-glass-secondary mt-2">
+              ${contractData.signed
+                ? 'Contract is locked as signed. Contact an admin for corrections.'
+                : 'Use the in-app signer to complete contract compliance.'}
+            </p>
           </div>
           
           <!-- Background Image -->
@@ -409,7 +550,7 @@ export default async function EditVendorProfile(root) {
         </div>
         
         <!-- Floating Save Button for Mobile -->
-        <div class="fixed bottom-20 right-4 md:hidden ${dirty && !activeUploads ? '' : 'hidden'}">
+        <div id="saveBtnFloatWrap" class="fixed bottom-20 right-4 md:hidden ${dirty && !activeUploads ? '' : 'hidden'}">
           <button id="saveBtnFloat" class="brand-bg px-6 py-3 rounded-full shadow-lg flex items-center gap-2" ${activeUploads ? 'disabled' : ''}>
             <ion-icon name="${activeUploads ? 'cloud-upload-outline' : 'save-outline'}"></ion-icon>
             ${activeUploads ? 'Uploading...' : 'Save'}
@@ -418,17 +559,7 @@ export default async function EditVendorProfile(root) {
       </div>
     `;
 
-    const saveBtn = root.querySelector("#saveBtn");
-    const saveBtnFloat = root.querySelector("#saveBtnFloat");
     const previewBtn = root.querySelector("#previewBtn");
-    
-    if (saveBtn && dirty) {
-      saveBtn.onclick = saveProfile;
-    }
-    
-    if (saveBtnFloat && dirty) {
-      saveBtnFloat.onclick = saveProfile;
-    }
     
     if (previewBtn) {
       previewBtn.onclick = () => {
@@ -449,7 +580,7 @@ export default async function EditVendorProfile(root) {
     if (companyName) {
       companyName.oninput = () => {
         coreData.name = companyName.value;
-        dirty = true;
+        markDirty();
         // Update preview in real-time
         const previewName = root.querySelector('.drop-shadow-lg');
         if (previewName) previewName.textContent = companyName.value || 'Business Name';
@@ -459,49 +590,49 @@ export default async function EditVendorProfile(root) {
     if (categorySelect) {
       categorySelect.onchange = () => {
         coreData.category = categorySelect.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (contactEmail) {
       contactEmail.oninput = () => {
         coreData.contactEmail = contactEmail.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (contactPhone) {
       contactPhone.oninput = () => {
         coreData.contactPhone = contactPhone.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (website) {
       website.oninput = () => {
         coreData.website = website.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (socialFacebook) {
       socialFacebook.oninput = () => {
         coreData.socialMedia.facebook = socialFacebook.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (socialInstagram) {
       socialInstagram.oninput = () => {
         coreData.socialMedia.instagram = socialInstagram.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (socialTwitter) {
       socialTwitter.oninput = () => {
         coreData.socialMedia.twitter = socialTwitter.value;
-        dirty = true;
+        markDirty();
       };
     }
 
@@ -542,6 +673,7 @@ export default async function EditVendorProfile(root) {
         const progressEl = root.querySelector('#backgroundProgress');
         const btnText = root.querySelector('#uploadBackgroundText');
         activeUploads++;
+        updateSaveUi();
         try {
           if (progressEl) { progressEl.classList.remove('hidden'); progressEl.textContent = 'Uploading 0%'; }
           if (btnText) btnText.textContent = 'Uploading...';
@@ -566,6 +698,7 @@ export default async function EditVendorProfile(root) {
           render();
         } finally {
           activeUploads--;
+          updateSaveUi();
         }
       };
     }
@@ -585,6 +718,7 @@ export default async function EditVendorProfile(root) {
         const progressEl = root.querySelector('#profileProgress');
         const btnText = root.querySelector('#uploadProfileText');
         activeUploads++;
+        updateSaveUi();
         try {
           if (progressEl) { progressEl.classList.remove('hidden'); progressEl.textContent = 'Uploading 0%'; }
           if (btnText) btnText.textContent = 'Uploading...';
@@ -609,6 +743,7 @@ export default async function EditVendorProfile(root) {
           render();
         } finally {
           activeUploads--;
+          updateSaveUi();
         }
       };
     }
@@ -620,21 +755,21 @@ export default async function EditVendorProfile(root) {
     if (profileBio) {
       profileBio.oninput = () => {
         profile.bio = profileBio.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (businessDesc) {
       businessDesc.oninput = () => {
         profile.description = businessDesc.value;
-        dirty = true;
+        markDirty();
       };
     }
     
     if (specialOfferInput) {
       specialOfferInput.oninput = () => {
         profile.specialOffer = specialOfferInput.value;
-        dirty = true;
+        markDirty();
       };
     }
     
@@ -675,6 +810,7 @@ export default async function EditVendorProfile(root) {
         const progressEl = root.querySelector('#galleryProgress');
         const btnText = root.querySelector('#uploadGalleryText');
         activeUploads++;
+        updateSaveUi();
         let successCount = 0;
         let failCount = 0;
 
@@ -732,6 +868,7 @@ export default async function EditVendorProfile(root) {
           render();
         } finally {
           activeUploads--;
+          updateSaveUi();
         }
       };
     }
@@ -748,6 +885,17 @@ export default async function EditVendorProfile(root) {
         }
       };
     });
+
+    // Fallback dirty tracking for any form field edits across browsers/input methods.
+    root.querySelectorAll('input, textarea, select').forEach((el) => {
+      if (el.type === 'file') return;
+      if (el.dataset.dirtyTracked === '1') return;
+      el.dataset.dirtyTracked = '1';
+      el.addEventListener('input', markDirty);
+      el.addEventListener('change', markDirty);
+    });
+
+    updateSaveUi();
   }
   
   render();

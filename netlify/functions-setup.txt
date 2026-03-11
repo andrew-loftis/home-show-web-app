@@ -12,6 +12,10 @@
 - STRIPE_SECRET_KEY: Your Stripe secret key
 - STRIPE_WEBHOOK_SECRET: Webhook signing secret
 
+Important:
+- The app is configured to use only these two global Stripe env vars.
+- Show-level, account-level, and Firestore-based Stripe overrides are ignored.
+
 ### For Firebase Admin Functions (Vendor Import)
 - FIREBASE_PROJECT_ID: Your Firebase project ID
 - FIREBASE_CLIENT_EMAIL: Service account client email

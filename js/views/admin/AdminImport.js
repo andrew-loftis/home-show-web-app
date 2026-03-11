@@ -5,6 +5,23 @@
 
 import { getAdminDb, getFirestoreModule, setButtonLoading } from '../../utils/admin.js';
 import { ConfirmDialog, AlertDialog, Toast } from '../../utils/ui.js';
+import { getCurrentShowId, getCurrentShow } from '../../shows.js';
+import { getAllCategories } from '../../brand.js';
+
+async function getIdToken() {
+  try {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    return await getAuth().currentUser?.getIdToken();
+  } catch { return null; }
+}
+
+async function authHeaders() {
+  const token = await getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+}
 
 // Track import progress
 let importProgress = {
@@ -15,10 +32,41 @@ let importProgress = {
   errors: []
 };
 
+const LEGACY_IMPORT_CATEGORIES = [
+  'Home Improvement',
+  'Kitchen & Bath',
+  'Outdoor Living',
+  'Flooring',
+  'Windows & Doors',
+  'Roofing & Siding',
+  'HVAC & Energy',
+  'Security & Smart Home',
+  'Interior Design',
+  'Landscaping',
+  'Cleaning Services',
+  'Financial Services',
+  'General',
+  'Other',
+];
+
+const IMPORT_CATEGORIES = buildImportCategoryOptions();
+const IMPORT_CATEGORY_LOOKUP = new Map(
+  IMPORT_CATEGORIES.map((category) => [normalizeCategoryKey(category), category])
+);
+const IMPORT_CATEGORY_ALIASES = new Map([
+  ['food truck position', 'Food Truck'],
+  ['food truck vendor', 'Food Truck'],
+  ['food trucks', 'Food Truck'],
+]);
+
 /**
  * Render the import tab HTML template
  */
 export function renderImportTab() {
+  const categoryOptions = IMPORT_CATEGORIES
+    .map((category) => `<option value="${escHtml(category)}">${escHtml(category)}</option>`)
+    .join('');
+
   return `
     <div class="space-y-6">
       <div class="flex items-center justify-between flex-wrap gap-3">
@@ -91,19 +139,7 @@ export function renderImportTab() {
                 <label class="block text-sm text-glass-secondary mb-1">Category *</label>
                 <select name="category" required class="w-full bg-glass-surface border border-glass-border rounded px-3 py-2 text-glass">
                   <option value="">Select...</option>
-                  <option value="Home Improvement">Home Improvement</option>
-                  <option value="Kitchen & Bath">Kitchen & Bath</option>
-                  <option value="Outdoor Living">Outdoor Living</option>
-                  <option value="Flooring">Flooring</option>
-                  <option value="Windows & Doors">Windows & Doors</option>
-                  <option value="Roofing & Siding">Roofing & Siding</option>
-                  <option value="HVAC & Energy">HVAC & Energy</option>
-                  <option value="Security & Smart Home">Security & Smart Home</option>
-                  <option value="Interior Design">Interior Design</option>
-                  <option value="Landscaping">Landscaping</option>
-                  <option value="Cleaning Services">Cleaning Services</option>
-                  <option value="Financial Services">Financial Services</option>
-                  <option value="Other">Other</option>
+                  ${categoryOptions}
                 </select>
               </div>
               <div>
@@ -268,7 +304,7 @@ export async function setupImportListeners(root) {
       const vendorData = {
         name: formData.get('name'),
         email: formData.get('email'),
-        category: formData.get('category'),
+        category: normalizeImportCategory(formData.get('category')),
         phone: formData.get('phone'),
         booth: formData.get('booth'),
         website: formData.get('website'),
@@ -281,8 +317,14 @@ export async function setupImportListeners(root) {
       setButtonLoading(submitBtn, true, 'Importing...');
 
       try {
-        await importSingleVendor(vendorData);
-        Toast('Vendor imported successfully!');
+        const result = await importSingleVendor(vendorData);
+        if (result.inviteSent) {
+          Toast('Vendor imported and invite email sent.');
+        } else if (result.passwordResetSent) {
+          Toast('Vendor imported. Invite email failed, but password reset email was sent.');
+        } else {
+          Toast('Vendor imported, but no email was sent. Use "Resend" in Vendor Management.');
+        }
         manualForm.reset();
         // Reload recent imports
         loadRecentImports(root);
@@ -309,8 +351,9 @@ export async function setupImportListeners(root) {
  */
 async function importSingleVendor(data) {
   const { name, email, category, phone, booth, website, scan2scanUrl, sendResetEmail, autoApprove } = data;
+  const normalizedCategory = normalizeImportCategory(category);
 
-  if (!name || !email || !category) {
+  if (!name || !email || !normalizedCategory) {
     throw new Error('Name, email, and category are required');
   }
 
@@ -338,62 +381,210 @@ async function importSingleVendor(data) {
     // We'll use the admin function to create the user
     const response = await fetch('/.netlify/functions/create-vendor-account', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      headers: await authHeaders(),
+      body: JSON.stringify({
         email: email.toLowerCase(),
         displayName: name,
         sendPasswordReset: sendResetEmail
       })
     });
     
+    const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errData = await response.json();
+      if (response.status === 401 || response.status === 403) {
+        throw new Error(payload.error || 'Not authorized to create vendor accounts');
+      }
       // If user already exists in Auth, we can still proceed
-      if (errData.code !== 'auth/email-already-exists') {
-        console.warn('Auth account creation issue:', errData);
+      if (payload.code !== 'auth/email-already-exists') {
+        console.warn('Auth account creation issue:', payload);
       }
     } else {
-      userRecord = await response.json();
+      userRecord = payload;
     }
   } catch (authError) {
     console.warn('Could not create auth account (may already exist):', authError);
     // Continue anyway - vendor can use password reset
   }
 
+  const showId = getCurrentShowId();
+  const show = getCurrentShow();
+  const boothList = normalizeBoothList(booth);
+  const primaryBooth = boothList[0] || '';
+  const normalizedEmail = email.toLowerCase().trim();
+  const showName = getImportShowName(show, showId);
+  const hasResetLinkInInvite = typeof userRecord?.resetLink === 'string' && userRecord.resetLink.trim().length > 0;
+
   // Create vendor document
   const vendorDoc = {
     name: name.trim(),
-    contactEmail: email.toLowerCase().trim(),
-    category: category,
+    companyName: name.trim(),
+    contactEmail: normalizedEmail,
+    category: normalizedCategory,
     phone: phone?.trim() || '',
-    booths: booth ? [booth.trim()] : [],
-    boothNumber: booth?.trim() || '',
+    booth: boothList.join(', '),
+    booths: boothList,
+    boothNumber: primaryBooth,
+    boothCount: boothList.length,
     website: website?.trim() || '',
     scan2scanUrl: scan2scanUrl?.trim() || '',
     approved: autoApprove,
     imported: true,
     importedAt: fsm.serverTimestamp(),
     importSource: 'scan2scan',
+    showId,
+    showName: show?.shortName || '',
     ownerUid: userRecord?.uid || null,
     createdAt: fsm.serverTimestamp()
   };
 
-  await fsm.addDoc(fsm.collection(db, 'vendors'), vendorDoc);
+  const vendorRef = await fsm.addDoc(fsm.collection(db, 'vendors'), vendorDoc);
+  let inviteSent = false;
+  let passwordResetSent = false;
+  let inviteErrorMessage = '';
 
-  // If we couldn't create auth account but need to send reset, try anyway
-  if (sendResetEmail && !userRecord) {
+  try {
+    const inviteResult = await sendVendorImportedEmail({
+      to: normalizedEmail,
+      businessName: name.trim(),
+      showName,
+      boothList,
+      resetLink: userRecord?.resetLink || '',
+      vendorId: vendorRef.id,
+    });
+    inviteSent = !!inviteResult?.success;
+  } catch (emailError) {
+    console.warn('[AdminImport] Vendor import email send failed:', emailError);
+    inviteErrorMessage = emailError?.message || 'invite_email_failed_or_not_sent';
+  }
+
+  // Fallback: if invite email failed and password reset was requested, try sending reset email directly.
+  if (!inviteSent && sendResetEmail) {
     try {
-      await fetch('/.netlify/functions/send-password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.toLowerCase() })
-      });
-    } catch (e) {
-      console.warn('Could not send password reset:', e);
+      passwordResetSent = await sendPasswordResetEmail(normalizedEmail);
+    } catch (resetErr) {
+      console.warn('[AdminImport] Password reset fallback send failed:', resetErr);
+      if (!inviteErrorMessage) {
+        inviteErrorMessage = resetErr?.message || 'password_reset_fallback_failed';
+      }
     }
   }
 
-  return vendorDoc;
+  // If auth account setup was uncertain, still attempt password reset delivery.
+  if (sendResetEmail && !userRecord && !passwordResetSent) {
+    try {
+      passwordResetSent = await sendPasswordResetEmail(normalizedEmail);
+    } catch (e) {
+      console.warn('Could not send password reset:', e);
+      if (!inviteErrorMessage) {
+        inviteErrorMessage = e?.message || 'password_reset_fallback_failed';
+      }
+    }
+  }
+
+  try {
+    await fsm.updateDoc(vendorRef, {
+      inviteStatus: inviteSent ? 'sent' : (passwordResetSent ? 'reset_sent_only' : 'failed'),
+      inviteSentAt: inviteSent ? fsm.serverTimestamp() : null,
+      inviteError: inviteSent ? null : (inviteErrorMessage || 'invite_email_failed_or_not_sent'),
+      passwordResetStatus: !sendResetEmail
+        ? 'skipped'
+        : (hasResetLinkInInvite ? 'included_in_invite' : (passwordResetSent ? 'sent' : 'failed')),
+      passwordResetSentAt: passwordResetSent ? fsm.serverTimestamp() : null,
+    });
+  } catch (statusErr) {
+    console.warn('[AdminImport] Could not update invite status on imported vendor:', statusErr);
+  }
+
+  return {
+    ...vendorDoc,
+    vendorId: vendorRef.id,
+    inviteSent,
+    passwordResetSent,
+    inviteError: inviteErrorMessage || null,
+  };
+}
+
+async function sendVendorImportedEmail({ to, businessName, showName, boothList, resetLink, vendorId }) {
+  const boothNumber = boothList[0] || '';
+  const boothNumbers = boothList.join(', ');
+  const maxAttempts = 3;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({
+          to,
+          template: 'vendorImported',
+          data: {
+            businessName,
+            showName,
+            boothNumber,
+            boothNumbers,
+            resetLink: resetLink || '',
+            vendorId: vendorId || '',
+          }
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok) {
+        return payload;
+      }
+
+      const retryable = response.status >= 500 || response.status === 429;
+      const error = new Error(payload.error || `Vendor invite email failed (${response.status})`);
+      error.status = response.status;
+      if (!retryable || attempt === maxAttempts) {
+        throw error;
+      }
+      lastError = error;
+    } catch (err) {
+      lastError = err;
+      if (attempt === maxAttempts) break;
+    }
+
+    await waitMs(attempt * 400);
+  }
+
+  throw lastError || new Error('Vendor invite email failed');
+}
+
+async function sendPasswordResetEmail(email) {
+  const response = await fetch('/.netlify/functions/send-password-reset', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({ email })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || `Password reset email failed (${response.status})`);
+  }
+  return !!payload.success;
+}
+
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeBoothList(input) {
+  if (Array.isArray(input)) {
+    return Array.from(new Set(input.map(v => String(v || '').trim()).filter(Boolean)));
+  }
+  if (typeof input === 'string') {
+    return Array.from(new Set(input.split(',').map(v => v.trim()).filter(Boolean)));
+  }
+  return [];
+}
+
+function getImportShowName(show, showId) {
+  if (show?.name) return show.name;
+  if (show?.shortName) return `${show.shortName} Home Show`;
+  const id = String(showId || '').toLowerCase();
+  if (id.includes('spring')) return 'WinnPro Spring Home Show';
+  if (id.includes('fall')) return 'WinnPro Fall Home Show';
+  return 'WinnPro Home Show';
 }
 
 /**
@@ -441,10 +632,12 @@ async function importFromCsv(root, file) {
       importProgress.processed++;
 
       try {
-        await importSingleVendor({
+        const result = await importSingleVendor({
           name: row.name || row.business_name || row.company,
           email: row.email || row.contact_email,
-          category: row.category || 'Other',
+          category: normalizeImportCategory(
+            row.category || row.vendor_category || row.vendor_type || row.service_category || 'Other'
+          ),
           phone: row.phone || row.contact_phone,
           booth: row.booth || row.booth_number,
           website: row.website || row.url,
@@ -453,6 +646,11 @@ async function importFromCsv(root, file) {
           autoApprove
         });
         importProgress.success++;
+        if (!result?.inviteSent) {
+          importProgress.errors.push(
+            `Row ${i + 1} (${row.email || 'no email'}): Imported, but invite email did not send automatically. Use "Resend" from Vendor Management.`
+          );
+        }
       } catch (err) {
         importProgress.failed++;
         importProgress.errors.push(`Row ${i + 1} (${row.email || 'no email'}): ${err.message}`);
@@ -621,4 +819,44 @@ async function loadRecentImports(root) {
     console.error('Error loading recent imports:', error);
     container.innerHTML = '<p class="text-red-400 text-sm">Error loading imports</p>';
   }
+}
+
+function buildImportCategoryOptions() {
+  const categories = new Set([
+    ...getAllCategories(),
+    ...LEGACY_IMPORT_CATEGORIES,
+  ]);
+
+  const sorted = Array.from(categories)
+    .filter((c) => c && c !== 'General' && c !== 'Other')
+    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+  if (categories.has('General')) sorted.push('General');
+  if (categories.has('Other')) sorted.push('Other');
+  return sorted;
+}
+
+function normalizeCategoryKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function normalizeImportCategory(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Other';
+  const normalizedKey = normalizeCategoryKey(raw);
+  return IMPORT_CATEGORY_LOOKUP.get(normalizedKey) || IMPORT_CATEGORY_ALIASES.get(normalizedKey) || raw;
+}
+
+function escHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

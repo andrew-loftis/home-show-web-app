@@ -1,5 +1,5 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { verifyAdmin } = require('./utils/verify-admin');
+const { getStripeContext } = require('./utils/stripe-context');
 
 exports.handler = async (event) => {
   const headers = {
@@ -23,7 +23,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { invoiceId } = JSON.parse(event.body || '{}');
+    const payload = JSON.parse(event.body || '{}');
+    const { invoiceId, vendorId = '', showId = '' } = payload || {};
 
     if (!invoiceId) {
       return {
@@ -33,12 +34,17 @@ exports.handler = async (event) => {
       };
     }
 
+    const { stripe, requestOptions } = await getStripeContext({
+      showId: showId || '',
+      vendorId: vendorId || ''
+    });
+
     // Retrieve first so we can return a helpful status
-    const invoice = await stripe.invoices.retrieve(invoiceId);
+    const invoice = await stripe.invoices.retrieve(invoiceId, requestOptions);
 
     // Stripe only supports hard-deleting invoices while they are in draft.
     if (invoice.status === 'draft') {
-      const deleted = await stripe.invoices.del(invoiceId);
+      const deleted = await stripe.invoices.del(invoiceId, requestOptions);
       return {
         statusCode: 200,
         headers,
@@ -70,7 +76,7 @@ exports.handler = async (event) => {
     }
 
     // Stripe supports voiding open/unpaid invoices
-    const voided = await stripe.invoices.voidInvoice(invoiceId);
+      const voided = await stripe.invoices.voidInvoice(invoiceId, requestOptions);
 
     return {
       statusCode: 200,

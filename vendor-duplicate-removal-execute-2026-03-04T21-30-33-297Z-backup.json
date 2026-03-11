@@ -1,0 +1,1130 @@
+{
+  "generatedAt": "2026-03-04T21:30:33.300Z",
+  "matchedCount": 21,
+  "vendors": [
+    {
+      "targetName": "All American Matters",
+      "targetEmail": "derrick@allamericanmatress.com",
+      "id": "CDwp4UtTAHEnrWbxiB2U",
+      "refPath": "vendors/CDwp4UtTAHEnrWbxiB2U",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "All American Matters",
+        "category": "Other",
+        "contactEmail": "derrick@allamericanmatress.com",
+        "phone": "",
+        "website": "",
+        "booth": "",
+        "booths": [],
+        "boothCount": 0,
+        "ownerUid": null,
+        "invitedEmail": "derrick@allamericanmatress.com",
+        "approved": true,
+        "showId": "putnam-spring-2026",
+        "showName": "Spring 2026",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "createdBy": "admin",
+        "createdAt": {
+          "_seconds": 1771795056,
+          "_nanoseconds": 915000000
+        },
+        "firebaseUid": "AOrqHk4lOeOcX0ClKZTIcWdczgv2",
+        "inviteSentAt": "2026-02-22T21:17:38.608Z",
+        "passwordResetStatus": "included_in_invite",
+        "inviteStatus": "sent",
+        "passwordResetSentAt": "2026-02-22T21:17:38.608Z",
+        "inviteError": null
+      }
+    },
+    {
+      "targetName": "All American Matters",
+      "targetEmail": "derrick@allamericanmatress.com",
+      "id": "cfvwQdGjOkYyZXYu2WQM",
+      "refPath": "vendors/cfvwQdGjOkYyZXYu2WQM",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "All American Matters",
+        "companyName": "All American Matters",
+        "contactEmail": "derrick@allamericanmatress.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "AOrqHk4lOeOcX0ClKZTIcWdczgv2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "derrick@allamericanmatress.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "CDwp4UtTAHEnrWbxiB2U"
+        ],
+        "sourceTypes": [
+          "spring"
+        ],
+        "createdAt": {
+          "_seconds": 1772658593,
+          "_nanoseconds": 512000000
+        },
+        "importedAt": {
+          "_seconds": 1772658593,
+          "_nanoseconds": 512000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658593,
+          "_nanoseconds": 512000000
+        }
+      }
+    },
+    {
+      "targetName": "American Home Design",
+      "targetEmail": "unknown@americanhomedesign.com",
+      "id": "FXjBZBhr1TcIVZ643fy7",
+      "refPath": "vendors/FXjBZBhr1TcIVZ643fy7",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "American Home Design",
+        "category": "Other",
+        "contactEmail": "unknown@americanhomedesign.com",
+        "phone": "6186028204",
+        "website": "",
+        "booth": "",
+        "booths": [],
+        "boothCount": 0,
+        "ownerUid": null,
+        "invitedEmail": "unknown@americanhomedesign.com",
+        "approved": true,
+        "showId": "putnam-spring-2026",
+        "showName": "Spring 2026",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "createdBy": "admin",
+        "createdAt": {
+          "_seconds": 1771794104,
+          "_nanoseconds": 755000000
+        },
+        "firebaseUid": "PFpMUdxDcaMIHCmpdeutyBf1ogC2",
+        "inviteSentAt": "2026-02-22T21:01:48.468Z",
+        "passwordResetStatus": "included_in_invite",
+        "inviteStatus": "sent",
+        "passwordResetSentAt": "2026-02-22T21:01:48.468Z",
+        "inviteError": null
+      }
+    },
+    {
+      "targetName": "American Home Design",
+      "targetEmail": "unknown@americanhomedesign.com",
+      "id": "tZ6yhPWtvxXH1J7U6Lpv",
+      "refPath": "vendors/tZ6yhPWtvxXH1J7U6Lpv",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "American Home Design",
+        "companyName": "American Home Design",
+        "contactEmail": "unknown@americanhomedesign.com",
+        "category": "Other",
+        "phone": "6186028204",
+        "contactPhone": "6186028204",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "PFpMUdxDcaMIHCmpdeutyBf1ogC2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "unknown@americanhomedesign.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "FXjBZBhr1TcIVZ643fy7"
+        ],
+        "sourceTypes": [
+          "spring"
+        ],
+        "createdAt": {
+          "_seconds": 1772658595,
+          "_nanoseconds": 346000000
+        },
+        "importedAt": {
+          "_seconds": 1772658595,
+          "_nanoseconds": 346000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658595,
+          "_nanoseconds": 346000000
+        }
+      }
+    },
+    {
+      "targetName": "Bruck Contractors",
+      "targetEmail": "info@bruckcontractors.com",
+      "id": "Gpe9nMZ9GGyH2vqSdKuF",
+      "refPath": "vendors/Gpe9nMZ9GGyH2vqSdKuF",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Bruck Contractors",
+        "phone": "",
+        "booth": "",
+        "booths": [],
+        "boothCount": 0,
+        "invitedEmail": "zeke@bruckcontractors.com",
+        "approved": true,
+        "showId": "putnam-fall-2026",
+        "showName": "Fall 2026",
+        "createdBy": "admin",
+        "createdAt": {
+          "_seconds": 1771792603,
+          "_nanoseconds": 430000000
+        },
+        "firebaseUid": "RlPhavbt3MNrRXciRFJYK4575Q52",
+        "inviteSentAt": "2026-02-22T20:36:45.526Z",
+        "passwordResetStatus": "included_in_invite",
+        "passwordResetSentAt": "2026-02-22T20:36:45.526Z",
+        "inviteError": null,
+        "ownerLinkedAt": {
+          "_seconds": 1771804954,
+          "_nanoseconds": 826000000
+        },
+        "inviteStatus": "claimed",
+        "ownerUid": "RlPhavbt3MNrRXciRFJYK4575Q52",
+        "inviteClaimedAt": {
+          "_seconds": 1771804954,
+          "_nanoseconds": 826000000
+        },
+        "website": "https://bruckcontractors.com",
+        "contactEmail": "info@bruckcontractors.com",
+        "category": "Roofing & Siding",
+        "contactPhone": "6153788828",
+        "socialMedia": {
+          "facebook": "https://www.facebook.com/profile.php?id=100093960501699",
+          "instagram": "https://www.instagram.com/bruckcontractors/"
+        },
+        "profile": {
+          "specialOffer": "",
+          "bio": "The Metal Roofing Experts.",
+          "description": "Bruck Contractors - Middle Tennessee's trusted team for high-end metal roofing, specializing in Standing Seam and Metal Shingles installed by our in-house crew. We also build pole barns, shops, and complete turnkey builds. TN GC#82768",
+          "backgroundImage": "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805432193_DSC00335.JPG?alt=media&token=9ec82ea0-b8f1-4c13-bfa4-3df560493c11",
+          "profileImage": "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805300240_Logo_FULL.png?alt=media&token=70bc50fe-dc74-4617-bc37-dd1cc0273ffe",
+          "gallery": [
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805552452_DJI_0700.png?alt=media&token=3a84ddc9-688c-4290-a1ef-573b0ebdeaca",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805554462_DJI_0817.JPG?alt=media&token=09a6ccf4-80cf-421b-9653-1fb84351d94d",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805556525_DJI_0832.JPG?alt=media&token=3167b692-0438-4443-92f6-12feeb1ee685",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805558261_Roof_only_4.jpg?alt=media&token=d860ff1c-7a78-4670-84e0-691e1b9d1f4a",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805560172_Standing_seam.png?alt=media&token=dbb2a2f1-7a2d-4930-8d21-7b887b70efdf",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805562394_Walls_only_8.jpg?alt=media&token=dff11fe6-c100-48bc-b7fa-2eb30b771b87",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805563804_Walls-only-2-1.jpg?alt=media&token=c22f5788-4bb3-409d-b6df-30cc98a9ca4a",
+            "https://firebasestorage.googleapis.com/v0/b/putnam-county-home-show-130cb.firebasestorage.app/o/vendors%2FGpe9nMZ9GGyH2vqSdKuF%2FRlPhavbt3MNrRXciRFJYK4575Q52%2F1771805559353_DJI_0735.JPG?alt=media&token=15a05981-75c7-4e71-8cbf-094f19bf1d86"
+          ]
+        },
+        "updatedAt": {
+          "_seconds": 1771805566,
+          "_nanoseconds": 433000000
+        }
+      }
+    },
+    {
+      "targetName": "Budget Blinds",
+      "targetEmail": "itaylor@budgetblinds.com",
+      "id": "aAaGXp6y6ceiG0lMMw6z",
+      "refPath": "vendors/aAaGXp6y6ceiG0lMMw6z",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "Budget Blinds",
+        "companyName": "Budget Blinds",
+        "contactEmail": "itaylor@budgetblinds.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "SzS4QGD7FMUhqbfIj2jbQOJK4NV2",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "itaylor@budgetblinds.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "createdAt": {
+          "_seconds": 1772645758,
+          "_nanoseconds": 541000000
+        },
+        "importedAt": {
+          "_seconds": 1772645758,
+          "_nanoseconds": 541000000
+        },
+        "passwordResetStatus": "sent",
+        "inviteSentAt": {
+          "_seconds": 1772646519,
+          "_nanoseconds": 812000000
+        },
+        "inviteStatus": "sent",
+        "passwordResetSentAt": {
+          "_seconds": 1772646519,
+          "_nanoseconds": 812000000
+        },
+        "inviteError": null,
+        "contractReminderSentAt": {
+          "_seconds": 1772646527,
+          "_nanoseconds": 919000000
+        },
+        "contractReminderBy": "bulk_import_script",
+        "contractReminderCount": 1,
+        "updatedAt": {
+          "_seconds": 1772646527,
+          "_nanoseconds": 919000000
+        }
+      }
+    },
+    {
+      "targetName": "Budget Blinds",
+      "targetEmail": "itaylor@budgetblinds.com",
+      "id": "lxICQOgVV5GESZ4RYR7F",
+      "refPath": "vendors/lxICQOgVV5GESZ4RYR7F",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Budget Blinds",
+        "companyName": "Budget Blinds",
+        "contactEmail": "itaylor@budgetblinds.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "SzS4QGD7FMUhqbfIj2jbQOJK4NV2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "itaylor@budgetblinds.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "aAaGXp6y6ceiG0lMMw6z"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658606,
+          "_nanoseconds": 171000000
+        },
+        "importedAt": {
+          "_seconds": 1772658606,
+          "_nanoseconds": 171000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658606,
+          "_nanoseconds": 171000000
+        }
+      }
+    },
+    {
+      "targetName": "Cumberland Cleaning Company",
+      "targetEmail": "mail@cumberlandcleaning.com",
+      "id": "FxmSpEztfBfa8ieGOAsd",
+      "refPath": "vendors/FxmSpEztfBfa8ieGOAsd",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Cumberland Cleaning Company",
+        "companyName": "Cumberland Cleaning Company",
+        "contactEmail": "mail@cumberlandcleaning.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "ovUEmUYvYXVOO0bogXqrhUXFFhP2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "mail@cumberlandcleaning.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "OhzhHjmf6tcvG8og6Noc"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658599,
+          "_nanoseconds": 918000000
+        },
+        "importedAt": {
+          "_seconds": 1772658599,
+          "_nanoseconds": 918000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658599,
+          "_nanoseconds": 918000000
+        }
+      }
+    },
+    {
+      "targetName": "Cumberland Cleaning Company",
+      "targetEmail": "mail@cumberlandcleaning.com",
+      "id": "OhzhHjmf6tcvG8og6Noc",
+      "refPath": "vendors/OhzhHjmf6tcvG8og6Noc",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "Cumberland Cleaning Company",
+        "companyName": "Cumberland Cleaning Company",
+        "contactEmail": "mail@cumberlandcleaning.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "ovUEmUYvYXVOO0bogXqrhUXFFhP2",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "mail@cumberlandcleaning.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "createdAt": {
+          "_seconds": 1772645770,
+          "_nanoseconds": 418000000
+        },
+        "importedAt": {
+          "_seconds": 1772645770,
+          "_nanoseconds": 418000000
+        },
+        "contractReminderSentAt": {
+          "_seconds": 1772646669,
+          "_nanoseconds": 502000000
+        },
+        "contractReminderBy": "bulk_import_script",
+        "contractReminderCount": 1,
+        "updatedAt": {
+          "_seconds": 1772646669,
+          "_nanoseconds": 502000000
+        }
+      }
+    },
+    {
+      "targetName": "Cutco",
+      "targetEmail": "events@cutco.com",
+      "id": "6qIS5NuPHacrpjbxEVze",
+      "refPath": "vendors/6qIS5NuPHacrpjbxEVze",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "Cutco",
+        "companyName": "Cutco",
+        "contactEmail": "events@cutco.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "HqQCr54WV2MZ5EKgtxY0bTw1apm2",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "events@cutco.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "createdAt": {
+          "_seconds": 1772645774,
+          "_nanoseconds": 494000000
+        },
+        "importedAt": {
+          "_seconds": 1772645774,
+          "_nanoseconds": 494000000
+        },
+        "passwordResetStatus": "sent",
+        "inviteSentAt": {
+          "_seconds": 1772646685,
+          "_nanoseconds": 100000000
+        },
+        "inviteStatus": "sent",
+        "passwordResetSentAt": {
+          "_seconds": 1772646685,
+          "_nanoseconds": 100000000
+        },
+        "inviteError": null,
+        "contractReminderSentAt": {
+          "_seconds": 1772646685,
+          "_nanoseconds": 428000000
+        },
+        "contractReminderBy": "bulk_import_script",
+        "contractReminderCount": 1,
+        "updatedAt": {
+          "_seconds": 1772646685,
+          "_nanoseconds": 428000000
+        }
+      }
+    },
+    {
+      "targetName": "Cutco",
+      "targetEmail": "events@cutco.com",
+      "id": "rV9FOWg3Ledp8dCfiuwV",
+      "refPath": "vendors/rV9FOWg3Ledp8dCfiuwV",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Cutco",
+        "companyName": "Cutco",
+        "contactEmail": "events@cutco.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "HqQCr54WV2MZ5EKgtxY0bTw1apm2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "events@cutco.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "6qIS5NuPHacrpjbxEVze"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658591,
+          "_nanoseconds": 546000000
+        },
+        "importedAt": {
+          "_seconds": 1772658591,
+          "_nanoseconds": 546000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658591,
+          "_nanoseconds": 546000000
+        }
+      }
+    },
+    {
+      "targetName": "Innovative Home Services",
+      "targetEmail": "uknown@innovativehomeservices.com",
+      "id": "GBNo2rcqvo8tfAEPdyOM",
+      "refPath": "vendors/GBNo2rcqvo8tfAEPdyOM",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Innovative Home Services",
+        "companyName": "Innovative Home Services",
+        "contactEmail": "uknown@innovativehomeservices.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "b0qk9DpAS1bVWP6FPZ5mdF2elgE3",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "uknown@innovativehomeservices.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "LEhCOiN62wcJ7kT3dbRq"
+        ],
+        "sourceTypes": [
+          "spring"
+        ],
+        "createdAt": {
+          "_seconds": 1772658597,
+          "_nanoseconds": 787000000
+        },
+        "importedAt": {
+          "_seconds": 1772658597,
+          "_nanoseconds": 787000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658597,
+          "_nanoseconds": 787000000
+        }
+      }
+    },
+    {
+      "targetName": "Innovative Home Services",
+      "targetEmail": "uknown@innovativehomeservices.com",
+      "id": "LEhCOiN62wcJ7kT3dbRq",
+      "refPath": "vendors/LEhCOiN62wcJ7kT3dbRq",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "Innovative Home Services",
+        "category": "Other",
+        "contactEmail": "uknown@innovativehomeservices.com",
+        "phone": "",
+        "website": "",
+        "booth": "",
+        "booths": [],
+        "boothCount": 0,
+        "ownerUid": null,
+        "invitedEmail": "uknown@innovativehomeservices.com",
+        "approved": true,
+        "showId": "putnam-spring-2026",
+        "showName": "Spring 2026",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "createdBy": "admin",
+        "createdAt": {
+          "_seconds": 1771797923,
+          "_nanoseconds": 949000000
+        },
+        "firebaseUid": "b0qk9DpAS1bVWP6FPZ5mdF2elgE3",
+        "inviteSentAt": "2026-02-22T22:05:25.960Z",
+        "passwordResetStatus": "included_in_invite",
+        "inviteStatus": "sent",
+        "passwordResetSentAt": "2026-02-22T22:05:25.960Z",
+        "inviteError": null
+      }
+    },
+    {
+      "targetName": "LeafHome Bath",
+      "targetEmail": "events@leafhomeenhancements.com",
+      "id": "37UfUePjPZaaA2SpndxQ",
+      "refPath": "vendors/37UfUePjPZaaA2SpndxQ",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "LeafHome Bath",
+        "companyName": "LeafHome Bath",
+        "contactEmail": "events@leafhomeenhancements.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "q6dsX5YH0JgGesz17TqF0ZoDd792",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "events@leafhomeenhancements.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "createdAt": {
+          "_seconds": 1772645798,
+          "_nanoseconds": 280000000
+        },
+        "importedAt": {
+          "_seconds": 1772645798,
+          "_nanoseconds": 280000000
+        },
+        "passwordResetStatus": "sent",
+        "inviteSentAt": {
+          "_seconds": 1772646707,
+          "_nanoseconds": 459000000
+        },
+        "inviteStatus": "sent",
+        "passwordResetSentAt": {
+          "_seconds": 1772646707,
+          "_nanoseconds": 459000000
+        },
+        "inviteError": null,
+        "contractReminderSentAt": {
+          "_seconds": 1772646707,
+          "_nanoseconds": 758000000
+        },
+        "contractReminderBy": "bulk_import_script",
+        "contractReminderCount": 1,
+        "updatedAt": {
+          "_seconds": 1772646707,
+          "_nanoseconds": 758000000
+        }
+      }
+    },
+    {
+      "targetName": "LeafHome Bath",
+      "targetEmail": "events@leafhomeenhancements.com",
+      "id": "kPMiAdXpW5trIFev9Yks",
+      "refPath": "vendors/kPMiAdXpW5trIFev9Yks",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "LeafHome Bath",
+        "companyName": "LeafHome Bath",
+        "contactEmail": "events@leafhomeenhancements.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "q6dsX5YH0JgGesz17TqF0ZoDd792",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "events@leafhomeenhancements.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "37UfUePjPZaaA2SpndxQ"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 132000000
+        },
+        "importedAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 132000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 132000000
+        }
+      }
+    },
+    {
+      "targetName": "LeafX of TN",
+      "targetEmail": "tjholland.th@gmail.com",
+      "id": "3jAnVihbCGOSq5SF2hnJ",
+      "refPath": "vendors/3jAnVihbCGOSq5SF2hnJ",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "LeafX of TN",
+        "category": "Gutters",
+        "contactEmail": "tjholland.th@gmail.com",
+        "phone": "",
+        "website": "",
+        "booth": "",
+        "booths": [],
+        "boothCount": 0,
+        "ownerUid": null,
+        "invitedEmail": "tjholland.th@gmail.com",
+        "approved": true,
+        "showId": "putnam-spring-2026",
+        "showName": "Spring 2026",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "createdBy": "admin",
+        "createdAt": {
+          "_seconds": 1771798273,
+          "_nanoseconds": 429000000
+        },
+        "firebaseUid": "sBixYJ68bnWPESs03LRjo8PwDm12",
+        "inviteSentAt": "2026-02-22T22:11:15.106Z",
+        "passwordResetStatus": "included_in_invite",
+        "inviteStatus": "sent",
+        "passwordResetSentAt": "2026-02-22T22:11:15.106Z",
+        "inviteError": null
+      }
+    },
+    {
+      "targetName": "LeafX of TN",
+      "targetEmail": "tjholland.th@gmail.com",
+      "id": "UAlT1su7E62FlLICqBzY",
+      "refPath": "vendors/UAlT1su7E62FlLICqBzY",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "LeafX of TN",
+        "companyName": "LeafX of TN",
+        "contactEmail": "tjholland.th@gmail.com",
+        "category": "Gutters",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "sBixYJ68bnWPESs03LRjo8PwDm12",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "bio": "",
+          "description": "",
+          "specialOffer": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "tjholland.th@gmail.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "3jAnVihbCGOSq5SF2hnJ"
+        ],
+        "sourceTypes": [
+          "spring"
+        ],
+        "createdAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 865000000
+        },
+        "importedAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 865000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658589,
+          "_nanoseconds": 865000000
+        }
+      }
+    },
+    {
+      "targetName": "Upper Cumberland Generators",
+      "targetEmail": "ucgenerators@gmail.com",
+      "id": "QRMtjt56KYzEmJ0QUrb7",
+      "refPath": "vendors/QRMtjt56KYzEmJ0QUrb7",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "Upper Cumberland Generators",
+        "companyName": "Upper Cumberland Generators",
+        "contactEmail": "ucgenerators@gmail.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "C5MMkRMcZwUykMf04XRVm4yMrPZ2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "ucgenerators@gmail.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "WLKXMv8kWUm7KWbDbtKt"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658604,
+          "_nanoseconds": 493000000
+        },
+        "importedAt": {
+          "_seconds": 1772658604,
+          "_nanoseconds": 493000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658604,
+          "_nanoseconds": 493000000
+        }
+      }
+    },
+    {
+      "targetName": "Upper Cumberland Generators",
+      "targetEmail": "ucgenerators@gmail.com",
+      "id": "WLKXMv8kWUm7KWbDbtKt",
+      "refPath": "vendors/WLKXMv8kWUm7KWbDbtKt",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "Upper Cumberland Generators",
+        "companyName": "Upper Cumberland Generators",
+        "contactEmail": "ucgenerators@gmail.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "C5MMkRMcZwUykMf04XRVm4yMrPZ2",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "ucgenerators@gmail.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "contractReminderCount": 0,
+        "createdAt": {
+          "_seconds": 1772645848,
+          "_nanoseconds": 647000000
+        },
+        "importedAt": {
+          "_seconds": 1772645848,
+          "_nanoseconds": 647000000
+        },
+        "updatedAt": {
+          "_seconds": 1772645848,
+          "_nanoseconds": 647000000
+        }
+      }
+    },
+    {
+      "targetName": "USA Granite",
+      "targetEmail": "help@theusagranite.com",
+      "id": "DGFSRLwqDxHOt1wtRQUE",
+      "refPath": "vendors/DGFSRLwqDxHOt1wtRQUE",
+      "showId": "putnam-fall-2026",
+      "data": {
+        "name": "USA Granite",
+        "companyName": "USA Granite",
+        "contactEmail": "help@theusagranite.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "website": "",
+        "approved": true,
+        "status": "approved",
+        "ownerUid": "dR5rcTq3hObQGtM82heFd8zoWXi2",
+        "showId": "putnam-fall-2026",
+        "showName": "Putnam County Fall Home Show",
+        "imported": true,
+        "importSource": "fall_roster_sync",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "help@theusagranite.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Vendor-Contract-Source.docx",
+        "contractReminderCount": 0,
+        "sourceSpringShowId": "putnam-spring-2026",
+        "sourceSpringVendorIds": [
+          "z21TnmeK6BJz4HnREIgn"
+        ],
+        "sourceTypes": [
+          "spring",
+          "csv"
+        ],
+        "createdAt": {
+          "_seconds": 1772658614,
+          "_nanoseconds": 569000000
+        },
+        "importedAt": {
+          "_seconds": 1772658614,
+          "_nanoseconds": 569000000
+        },
+        "updatedAt": {
+          "_seconds": 1772658614,
+          "_nanoseconds": 569000000
+        }
+      }
+    },
+    {
+      "targetName": "USA Granite",
+      "targetEmail": "help@theusagranite.com",
+      "id": "z21TnmeK6BJz4HnREIgn",
+      "refPath": "vendors/z21TnmeK6BJz4HnREIgn",
+      "showId": "putnam-spring-2026",
+      "data": {
+        "name": "USA Granite",
+        "companyName": "USA Granite",
+        "contactEmail": "help@theusagranite.com",
+        "category": "Other",
+        "phone": "",
+        "contactPhone": "",
+        "booth": "",
+        "booths": [],
+        "boothNumber": "",
+        "boothCount": 0,
+        "website": "",
+        "approved": true,
+        "imported": true,
+        "importSource": "bulk-script",
+        "showId": "putnam-spring-2026",
+        "showName": "WinnPro Spring Home Show",
+        "ownerUid": "dR5rcTq3hObQGtM82heFd8zoWXi2",
+        "status": "approved",
+        "profile": {
+          "description": "",
+          "bio": "",
+          "address": ""
+        },
+        "contractRequired": true,
+        "contractSigned": false,
+        "contractSignerName": "",
+        "contractSignerEmail": "help@theusagranite.com",
+        "contractVersion": "2026-03-04-v1",
+        "contractUrl": "/assets/contracts/Contracrt.docx",
+        "contractReminderCount": 0,
+        "createdAt": {
+          "_seconds": 1772645852,
+          "_nanoseconds": 162000000
+        },
+        "importedAt": {
+          "_seconds": 1772645852,
+          "_nanoseconds": 162000000
+        },
+        "updatedAt": {
+          "_seconds": 1772645852,
+          "_nanoseconds": 162000000
+        }
+      }
+    }
+  ]
+}

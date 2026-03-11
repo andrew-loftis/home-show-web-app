@@ -1,9 +1,10 @@
 import { getState, saveBusinessCard } from "../store.js";
 import { Modal, Toast } from "../utils/ui.js";
+import { findVendorByAnyId } from "../utils/vendorMerge.js";
 
 export default async function VendorLandingPage(root, params) {
   const state = getState();
-  let vendor = state.vendors.find(v => v.id === params.vendorId);
+  let vendor = findVendorByAnyId(state.vendors || [], params.vendorId);
   
   // If not found in local state, try Firestore
   if (!vendor) {

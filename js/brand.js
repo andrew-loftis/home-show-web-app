@@ -139,6 +139,7 @@ export const CATEGORY_STYLES = {
   'Insurance': { icon: 'umbrella-outline', color: 'from-blue-600 to-indigo-500' },
   'Financial': { icon: 'wallet-outline', color: 'from-emerald-600 to-teal-500' },
   'Real Estate': { icon: 'business-outline', color: 'from-violet-500 to-purple-500' },
+  'Food Truck': { icon: 'restaurant-outline', color: 'from-orange-500 to-red-500' },
   'General': { icon: 'storefront-outline', color: 'from-gray-500 to-slate-600' },
 };
 
@@ -199,6 +200,7 @@ export const CATEGORY_COLORS = {
   'Interior Design': { hex: '#ec4899', name: 'Fuchsia', icon: 'color-palette-outline' },
   'Furniture': { hex: '#d97706', name: 'Amber Orange', icon: 'bed-outline' },
   'Garage': { hex: '#57534e', name: 'Warm Stone', icon: 'car-outline' },
+  'Food Truck': { hex: '#f97316', name: 'Food Orange', icon: 'restaurant-outline' },
   
   // Financial & Real Estate
   'Real Estate': { hex: '#a855f7', name: 'Purple', icon: 'business-outline' },

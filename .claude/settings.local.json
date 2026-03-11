@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s \"c:\\\\Users\\\\aloft\\\\Documents\\\\Ownly.Studio\\\\Personal\\\\ownly-studio\\\\Created_Apps\\\\Home_Show\")",
+      "Bash(wc:*)",
+      "Bash(node -c:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nV-3.0: Security hardening, floor plan configurator, and UX polish\n\n- Admin floor plan configurator with drag-drop booth placement, two-point\n  calibration, vendor assignment, and visibility controls\n- Shared SVG floor plan renderer used by both admin and public viewer\n- InteractiveMap refactored: loads dynamic config from Firestore with\n  date-gated guest access and payment-gated vendor access, falls back\n  to legacy 8x15 grid when no config exists\n- Security: auth-gated all Netlify functions, removed customAmount from\n  checkout, added Stripe webhook signature verification, dynamic admin\n  emails in Firestore rules\n- Store.js: Firestore listener lifecycle management, 60s duplicate lead\n  suppression, query limits, proper error logging\n- VendorRegistration: atomic booth reservation via Firestore transaction,\n  form validation, draft recovery via localStorage\n- EditVendorProfile: migrated from base64 to Firebase Storage with\n  client-side image compression\n- Admin dashboard: enhanced leads tab with search, type filter, inline\n  notes editing; added floor plan tab\n- UX: touch targets bumped to 44px, debounced card preview, mobile\n  scroll hints, admin card access buttons\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(npx firebase deploy:*)",
+      "Bash(firebase login:*)",
+      "Bash(firebase login:list:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(netlify status:*)",
+      "Bash(netlify deploy:*)",
+      "Bash(git commit:*)",
+      "Bash(node -e \"try{require\\(''fs''\\).readFileSync\\(''c:\\\\Users\\\\aloft\\\\Documents\\\\Ownly.Studio\\\\Personal\\\\ownly-studio\\\\Created_Apps\\\\Home_Show\\\\js\\\\views\\\\MyCard.js'',''utf8''\\);console.log\\(''File reads OK''\\)}catch\\(e\\){console.error\\(e.message\\)}\")",
+      "Bash(node -e:*)"
+    ]
+  }
+}

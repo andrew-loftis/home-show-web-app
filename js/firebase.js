@@ -3,10 +3,11 @@
 // we will initialize it with window.FIREBASE_CONFIG if present.
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithCredential, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, linkWithCredential, signOut, connectAuthEmulator, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, updateDoc, serverTimestamp, orderBy, limit as qLimit, connectFirestoreEmulator, arrayUnion, arrayRemove, getCountFromServer, setLogLevel } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 import { deleteUser as fbDeleteUser } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytesResumable, uploadBytes, getDownloadURL, connectStorageEmulator } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-storage.js";
+import { mergeDuplicateVendors, findVendorByAnyId } from "./utils/vendorMerge.js";
 
 // Lazy import show utilities to avoid circular dependency
 // shows.js imports firebase modules dynamically, so we can't import it at the top level
@@ -32,6 +33,108 @@ function getCurrentShowIdSync() {
 const DEFAULT_SHOW_ID_FALLBACK = 'putnam-spring-2026';
 
 let initialized = false;
+const AUTH_RETURN_HASH_KEY = 'winnpro_auth_return_hash';
+const PENDING_GOOGLE_LINK_KEY = 'winnpro_pending_google_link';
+
+function readPendingGoogleLink() {
+  try {
+    const raw = localStorage.getItem(PENDING_GOOGLE_LINK_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const email = String(parsed.email || '').trim().toLowerCase();
+    const idToken = String(parsed.idToken || '').trim();
+    const accessToken = String(parsed.accessToken || '').trim();
+    if (!email || (!idToken && !accessToken)) return null;
+    return {
+      providerId: 'google.com',
+      email,
+      idToken,
+      accessToken,
+      savedAt: Number(parsed.savedAt || 0)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingGoogleLink(payload = {}) {
+  try {
+    const email = String(payload.email || '').trim().toLowerCase();
+    const idToken = String(payload.idToken || '').trim();
+    const accessToken = String(payload.accessToken || '').trim();
+    if (!email || (!idToken && !accessToken)) return false;
+    localStorage.setItem(PENDING_GOOGLE_LINK_KEY, JSON.stringify({
+      providerId: 'google.com',
+      email,
+      idToken,
+      accessToken,
+      savedAt: Date.now()
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearPendingGoogleLink() {
+  try {
+    localStorage.removeItem(PENDING_GOOGLE_LINK_KEY);
+  } catch {}
+}
+
+function stashPendingGoogleLinkFromError(error) {
+  if (String(error?.code || '') !== 'auth/account-exists-with-different-credential') return false;
+  try {
+    const email = String(error?.customData?.email || '').trim().toLowerCase();
+    const credential = GoogleAuthProvider.credentialFromError(error);
+    const idToken = String(credential?.idToken || '').trim();
+    const accessToken = String(credential?.accessToken || '').trim();
+    const saved = persistPendingGoogleLink({ email, idToken, accessToken });
+    if (saved) {
+      error.pendingGoogleEmail = email;
+      error.requiresEmailLinkSignIn = true;
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+function buildGoogleCredentialFromPending(pending = null) {
+  if (!pending || pending.providerId !== 'google.com') return null;
+  const idToken = String(pending.idToken || '').trim() || null;
+  const accessToken = String(pending.accessToken || '').trim() || null;
+  if (!idToken && !accessToken) return null;
+  return GoogleAuthProvider.credential(idToken, accessToken);
+}
+
+async function linkPendingGoogleProviderIfNeeded(user, emailHint = '') {
+  const pending = readPendingGoogleLink();
+  if (!pending) return { linked: false, reason: 'none' };
+
+  const normalizedUserEmail = String(emailHint || user?.email || '').trim().toLowerCase();
+  if (!normalizedUserEmail) return { linked: false, reason: 'missing_user_email' };
+  if (pending.email !== normalizedUserEmail) return { linked: false, reason: 'email_mismatch' };
+
+  const credential = buildGoogleCredentialFromPending(pending);
+  if (!credential) {
+    clearPendingGoogleLink();
+    return { linked: false, reason: 'invalid_pending_credential' };
+  }
+
+  try {
+    await linkWithCredential(user, credential);
+    clearPendingGoogleLink();
+    return { linked: true, reason: 'linked' };
+  } catch (error) {
+    const code = String(error?.code || '');
+    if (code === 'auth/provider-already-linked' || code === 'auth/credential-already-in-use') {
+      clearPendingGoogleLink();
+      return { linked: true, reason: 'already_linked' };
+    }
+    return { linked: false, reason: code || 'link_failed', error };
+  }
+}
 
 export function initFirebase() {
   try {
@@ -68,6 +171,48 @@ function connectEmulatorsIfEnabled() {
   try { connectStorageEmulator(getStorage(), 'localhost', 9199); } catch {}
 }
 
+const _adminBootstrapLastAttempt = new Map();
+const ADMIN_BOOTSTRAP_COOLDOWN_MS = 15000;
+const _claimVendorLastAttempt = new Map();
+const CLAIM_VENDOR_COOLDOWN_MS = 20000;
+async function ensureAdminBootstrap(email, options = {}) {
+  const rawEmail = String(options.rawEmail || email || '').trim();
+  const normalizedEmail = rawEmail.toLowerCase();
+  if (!normalizedEmail) return { ok: false, reason: 'missing_email' };
+
+  const now = Date.now();
+  const lastAttempt = _adminBootstrapLastAttempt.get(normalizedEmail) || 0;
+  const force = options && options.force === true;
+  if (!force && now - lastAttempt < ADMIN_BOOTSTRAP_COOLDOWN_MS) {
+    return { ok: false, reason: 'cooldown' };
+  }
+  _adminBootstrapLastAttempt.set(normalizedEmail, now);
+
+  try {
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    if (!currentUser) return { ok: false, reason: 'no_user' };
+    const token = await currentUser.getIdToken();
+    if (!token) return { ok: false, reason: 'no_token' };
+
+    const res = await fetch('/.netlify/functions/ensure-admin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        emailRaw: rawEmail || normalizedEmail
+      })
+    });
+
+    return { ok: res.ok, status: res.status };
+  } catch (error) {
+    return { ok: false, reason: 'network_error', error };
+  }
+}
+
 export function observeAuth(callback) {
   try {
     const auth = getAuth();
@@ -77,10 +222,106 @@ export function observeAuth(callback) {
   }
 }
 
+/**
+ * Claim/link vendor profile(s) for the current user by email.
+ * Used for imported vendors that were created before ownerUid was linked.
+ */
+export async function claimVendorAccountByEmail(options = {}) {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user || user.isAnonymous) {
+      return { success: false, reason: 'not_signed_in' };
+    }
+
+    const showId = options.showId || getCurrentShowIdSync();
+    const cacheKey = `${user.uid}:${showId}`;
+    const force = options && options.force === true;
+    const now = Date.now();
+    const lastAttempt = _claimVendorLastAttempt.get(cacheKey) || 0;
+    if (!force && now - lastAttempt < CLAIM_VENDOR_COOLDOWN_MS) {
+      return { success: false, reason: 'cooldown', skipped: true };
+    }
+    _claimVendorLastAttempt.set(cacheKey, now);
+
+    const token = await user.getIdToken();
+    const response = await fetch('/.netlify/functions/claim-vendor-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ showId })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      _claimVendorLastAttempt.delete(cacheKey);
+      return { success: false, error: payload.error || `Claim failed (${response.status})` };
+    }
+    return payload;
+  } catch (error) {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+      const showId = options.showId || getCurrentShowIdSync();
+      if (user?.uid) {
+        _claimVendorLastAttempt.delete(`${user.uid}:${showId}`);
+      }
+    } catch {}
+    return { success: false, error: error?.message || 'Claim failed' };
+  }
+}
+
+function rememberAuthReturnRoute() {
+  try {
+    const route = (window.location.hash || '#/more').replace(/^#/, '') || '/more';
+    localStorage.setItem(AUTH_RETURN_HASH_KEY, route.startsWith('/') ? route : '/more');
+  } catch {}
+}
+
+function shouldUseRedirectFallback(error) {
+  const code = String(error?.code || '');
+  return code === 'auth/popup-blocked'
+    || code === 'auth/operation-not-supported-in-this-environment'
+    || code === 'auth/web-storage-unsupported'
+    || code === 'auth/unauthorized-domain';
+}
+
+export async function processAuthRedirectResult() {
+  try {
+    const auth = getAuth();
+    return await getRedirectResult(auth);
+  } catch (error) {
+    stashPendingGoogleLinkFromError(error);
+    console.warn('[Auth] Redirect sign-in result failed:', error);
+    return null;
+  }
+}
+
 export async function signInWithGoogle() {
   const auth = getAuth();
   const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
+  provider.setCustomParameters({ prompt: 'select_account' });
+
+  // iOS browsers handle redirect auth more reliably than popups.
+  if (isIOSDevice()) {
+    rememberAuthReturnRoute();
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
+
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error) {
+    stashPendingGoogleLinkFromError(error);
+    if (shouldUseRedirectFallback(error)) {
+      rememberAuthReturnRoute();
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+    throw error;
+  }
 }
 
 // Sign in with Apple (works on iOS and web)
@@ -89,7 +330,23 @@ export async function signInWithApple() {
   const provider = new OAuthProvider('apple.com');
   provider.addScope('email');
   provider.addScope('name');
-  return signInWithPopup(auth, provider);
+
+  if (isIOSDevice()) {
+    rememberAuthReturnRoute();
+    await signInWithRedirect(auth, provider);
+    return null;
+  }
+
+  try {
+    return await signInWithPopup(auth, provider);
+  } catch (error) {
+    if (shouldUseRedirectFallback(error)) {
+      rememberAuthReturnRoute();
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+    throw error;
+  }
 }
 
 // Check if running on iOS
@@ -256,12 +513,24 @@ export async function signInAnonymouslyUser() {
 
 export async function signInWithEmailPassword(email, password) {
   const auth = getAuth();
-  return signInWithEmailAndPassword(auth, email, password);
+  const result = await signInWithEmailAndPassword(auth, email, password);
+  const linkResult = await linkPendingGoogleProviderIfNeeded(result?.user, email);
+  try {
+    result.googleProviderLinked = linkResult.linked === true;
+    result.googleProviderLinkReason = String(linkResult.reason || '');
+  } catch {}
+  return result;
 }
 
 export async function signUpWithEmailPassword(email, password) {
   const auth = getAuth();
-  return createUserWithEmailAndPassword(auth, email, password);
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  const linkResult = await linkPendingGoogleProviderIfNeeded(result?.user, email);
+  try {
+    result.googleProviderLinked = linkResult.linked === true;
+    result.googleProviderLinkReason = String(linkResult.reason || '');
+  } catch {}
+  return result;
 }
 
 // Convenience getters
@@ -282,14 +551,24 @@ export function getStorageInstance() {
  * @param {File|Blob} file
  * @param {string} pathPrefix e.g. 'attendees', 'vendors'
  * @param {(progress:number)=>void} onProgress optional progress callback 0..100
+ * @param {{requireAuthenticatedUser?: boolean, allowAnonymousFallback?: boolean}} options
  * @returns {Promise<string>} downloadURL
  */
-export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
+export async function uploadImage(file, pathPrefix = 'uploads', onProgress, options = {}) {
   if (!file) throw new Error('No file');
   const auth = getAuth();
-  // Ensure we have an authenticated user (anonymous is fine) before uploading
+  const requireAuthenticatedUser = options?.requireAuthenticatedUser === true;
+  const allowAnonymousFallback = options?.allowAnonymousFallback !== false;
+
+  // Give Firebase auth a moment to hydrate an existing signed-in user before fallback.
   try {
     if (!auth.currentUser) {
+      const start = Date.now();
+      while (!auth.currentUser && Date.now() - start < 2500) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+    }
+    if (!auth.currentUser && !requireAuthenticatedUser && allowAnonymousFallback) {
       await signInAnonymouslyUser();
       // wait briefly for auth state to settle
       const start = Date.now();
@@ -307,15 +586,25 @@ export async function uploadImage(file, pathPrefix = 'uploads', onProgress) {
     } catch {}
     throw new Error('Auth required for upload');
   }
+  if (requireAuthenticatedUser && auth.currentUser.isAnonymous) {
+    throw new Error('Please sign in with your account before uploading.');
+  }
   const uid = auth?.currentUser?.uid || 'anon';
   const safeName = String(file.name || 'image').replace(/[^a-zA-Z0-9._-]/g, '_');
   // Determine path layout for attendee uploads based on global flag
   // 'attendees-root' => attendees/{uid}/...
   // default           => users/{uid}/attendees/...
   const layout = (typeof window !== 'undefined' && window.STORAGE_ATTENDEE_LAYOUT) || 'users-attendees';
-  const basePrefix = (pathPrefix === 'attendees')
-    ? (layout === 'attendees-root' ? `attendees/${uid}` : `users/${uid}/attendees`)
-    : pathPrefix;
+  const normalizedPrefix = String(pathPrefix || 'uploads').replace(/^\/+|\/+$/g, '');
+  let basePrefix;
+  if (normalizedPrefix === 'attendees') {
+    basePrefix = layout === 'attendees-root' ? `attendees/${uid}` : `users/${uid}/attendees`;
+  } else if (normalizedPrefix.startsWith('vendors/')) {
+    const parts = normalizedPrefix.split('/').filter(Boolean);
+    basePrefix = parts.length === 2 ? `${normalizedPrefix}/${uid}` : normalizedPrefix;
+  } else {
+    basePrefix = normalizedPrefix || 'uploads';
+  }
   const path = `${basePrefix}/${Date.now()}_${safeName}`;
   const st = getStorage();
   const ref = storageRef(st, path);
@@ -431,7 +720,7 @@ export async function fetchApprovedVendors(options = {}) {
         results.push({ id: docSnap.id, ...data });
       }
     });
-    return results;
+    return mergeDuplicateVendors(results, { fallbackShowId: showId || DEFAULT_SHOW_ID_FALLBACK }).vendors;
   } catch (e) {
     console.warn('Failed to fetch vendors', e);
     return [];
@@ -459,7 +748,31 @@ export async function getVendorById(vendorId) {
     const db = getFirestore();
     const ref = doc(db, 'vendors', vendorId);
     const snap = await getDoc(ref);
-    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+    if (!snap.exists()) return null;
+
+    const direct = { id: snap.id, ...snap.data() };
+    const emailRaw = String(direct.contactEmail || direct.email || '').trim();
+    const email = emailRaw.toLowerCase();
+    const emailVariants = Array.from(new Set([emailRaw, email].filter(Boolean)));
+    const showId = String(direct.showId || DEFAULT_SHOW_ID_FALLBACK).trim() || DEFAULT_SHOW_ID_FALLBACK;
+
+    if (!emailVariants.length) return direct;
+
+    const group = [];
+    for (const variant of emailVariants) {
+      const byEmail = await getDocs(query(collection(db, 'vendors'), where('contactEmail', '==', variant), qLimit(100)));
+      byEmail.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const docShowId = String(data.showId || DEFAULT_SHOW_ID_FALLBACK).trim() || DEFAULT_SHOW_ID_FALLBACK;
+        if (docShowId === showId) group.push({ id: docSnap.id, ...data });
+      });
+    }
+
+    const uniqueGroup = Array.from(new Map(group.map(v => [v.id, v])).values());
+    if (!uniqueGroup.length) return direct;
+
+    const merged = mergeDuplicateVendors(uniqueGroup, { fallbackShowId: showId }).vendors;
+    return findVendorByAnyId(merged, vendorId) || merged[0] || direct;
   } catch (e) {
     console.warn('Failed to get vendor', e);
     return null;
@@ -576,19 +889,59 @@ export async function createLead(attendeeId, vendorId, createdByUid, data = {}, 
 export async function getLeadsForVendor(vendorId, max = 50, options = {}) {
   try {
     const db = getFirestore();
-    const showId = options.showId || getCurrentShowIdSync();
-    const qy = query(collection(db, 'leads'), where('vendorId', '==', vendorId), orderBy('createdAt', 'desc'), qLimit(max));
-    const snap = await getDocs(qy);
-    const out = [];
-    snap.forEach(d => {
-      const data = d.data();
-      // Filter by show - legacy data without showId belongs to default show
+    const showId = options.showId === undefined ? getCurrentShowIdSync() : options.showId;
+    const includeLegacyVendorField = options.includeLegacyVendorField !== false;
+
+    const matchesShow = (data) => {
       const docShowId = data.showId || DEFAULT_SHOW_ID_FALLBACK;
-      if (!showId || docShowId === showId) {
-        out.push({ id: d.id, ...data });
+      return !showId || docShowId === showId;
+    };
+
+    const readByVendorField = async (fieldName, preferOrdered = true) => {
+      if (!fieldName) return [];
+      const clauses = [where(fieldName, '==', vendorId)];
+      let snap = null;
+      if (preferOrdered) {
+        try {
+          snap = await getDocs(query(collection(db, 'leads'), ...clauses, orderBy('createdAt', 'desc'), qLimit(max)));
+        } catch (orderedErr) {
+          console.warn(`Lead query fallback (${fieldName}) without orderBy due to query error:`, orderedErr?.message || orderedErr);
+        }
       }
+      if (!snap) {
+        snap = await getDocs(query(collection(db, 'leads'), ...clauses, qLimit(max)));
+      }
+      const rows = [];
+      snap.forEach(d => {
+        const data = d.data() || {};
+        if (matchesShow(data)) rows.push({ id: d.id, ...data });
+      });
+      return rows;
+    };
+
+    const combined = [];
+    const byVendorId = await readByVendorField('vendorId', true);
+    combined.push(...byVendorId);
+
+    if (includeLegacyVendorField) {
+      const legacyRows = await readByVendorField('vendor_id', false);
+      combined.push(...legacyRows);
+    }
+
+    const deduped = Array.from(
+      combined.reduce((acc, row) => {
+        if (row && row.id) acc.set(row.id, row);
+        return acc;
+      }, new Map()).values()
+    );
+
+    deduped.sort((a, b) => {
+      const aTs = a.timestamp || (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : Date.parse(a.createdAt || 0) || 0);
+      const bTs = b.timestamp || (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : Date.parse(b.createdAt || 0) || 0);
+      return bTs - aTs;
     });
-    return out;
+
+    return deduped.slice(0, max);
   } catch (e) {
     console.warn('Failed to fetch leads for vendor', e);
     return [];
@@ -644,31 +997,129 @@ export async function getCollectionCount(path) {
 }
 
 // --- Admin management (by email) ---
-export async function isAdminEmail(email) {
-  if (!email) return false;
-  
-  // First check config.js admin emails
+const CANONICAL_ADMIN_COLLECTION_ID = 'adminEmails';
+const LEGACY_ADMIN_COLLECTION_IDS = ['admin-users', 'admin_users'];
+const ADMIN_COLLECTION_IDS = [CANONICAL_ADMIN_COLLECTION_ID, ...LEGACY_ADMIN_COLLECTION_IDS];
+
+function normalizeEmailVariants(email) {
+  const raw = String(email || '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return [];
+  return raw === lower ? [lower] : [lower, raw];
+}
+
+async function hasAdminDocByEmail(db, email, collections = ADMIN_COLLECTION_IDS) {
+  const variants = normalizeEmailVariants(email);
+  if (!variants.length) return false;
+
+  for (const coll of collections) {
+    for (const value of variants) {
+      try {
+        const snap = await getDoc(doc(db, coll, value));
+        if (snap.exists()) return true;
+      } catch {}
+    }
+  }
+  return false;
+}
+
+async function hasExactAdminDocByEmail(db, email, collections = ADMIN_COLLECTION_IDS) {
+  const value = String(email || '').trim();
+  if (!value) return false;
+
+  for (const coll of collections) {
+    try {
+      const snap = await getDoc(doc(db, coll, value));
+      if (snap.exists()) return true;
+    } catch {}
+  }
+  return false;
+}
+
+async function isConfiguredAdminEmail(email) {
+  const lowerEmail = String(email || '').trim().toLowerCase();
+  if (!lowerEmail) return false;
+
+  const configured = new Set();
+
+  // Runtime override (optional)
+  if (typeof window !== 'undefined' && Array.isArray(window.ADMIN_EMAILS)) {
+    window.ADMIN_EMAILS.forEach((value) => {
+      const normalized = String(value || '').trim().toLowerCase();
+      if (normalized) configured.add(normalized);
+    });
+  }
+
+  // Build-time/default config
   try {
     const { ADMIN_EMAILS } = await import('./config.js');
-    if (ADMIN_EMAILS && Array.isArray(ADMIN_EMAILS)) {
-      const lowerEmail = email.toLowerCase();
-      const hasConfigAdmin = ADMIN_EMAILS.some(adminEmail => 
-        adminEmail && adminEmail.toLowerCase() === lowerEmail
-      );
-      if (hasConfigAdmin) {
-        return true;
-      }
+    if (Array.isArray(ADMIN_EMAILS)) {
+      ADMIN_EMAILS.forEach((value) => {
+        const normalized = String(value || '').trim().toLowerCase();
+        if (normalized) configured.add(normalized);
+      });
     }
   } catch {}
-  
-  // Then check Firestore admin emails
+
+  return configured.has(lowerEmail);
+}
+
+export async function isAdminEmail(email, options = {}) {
+  if (!email) return false;
+
+  const rawEmail = String(email).trim();
+  const lowerEmail = rawEmail.toLowerCase();
+  const forceBootstrap = !!options.forceBootstrap;
+  const strictRegistry = !!options.strictRegistry;
+  const localConfiguredAdmin = await isConfiguredAdminEmail(lowerEmail);
+
   try {
     const db = getFirestore();
-    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
-    const snap = await getDoc(ref);
-    return snap.exists();
-  } catch {
+    const hasRegistryAdmin = (targetEmail, collections = ADMIN_COLLECTION_IDS) => (
+      strictRegistry
+        ? hasExactAdminDocByEmail(db, targetEmail, collections)
+        : hasAdminDocByEmail(db, targetEmail, collections)
+    );
+
+    // Canonical collection controls current Firestore/Storage rules access.
+    if (await hasRegistryAdmin(rawEmail, [CANONICAL_ADMIN_COLLECTION_ID])) {
+      return true;
+    }
+
+    // If user is recognized as admin in config or legacy collections, force bootstrap migration
+    // so canonical adminEmails/{email} gets created for rules-based access.
+    const legacyAdmin = await hasRegistryAdmin(rawEmail, LEGACY_ADMIN_COLLECTION_IDS);
+
+    let bootstrapResult = null;
+    try {
+      bootstrapResult = await ensureAdminBootstrap(lowerEmail, { force: forceBootstrap, rawEmail });
+    } catch {}
+
+    // Re-check canonical after bootstrap.
+    if (await hasRegistryAdmin(rawEmail, [CANONICAL_ADMIN_COLLECTION_ID])) {
+      return true;
+    }
+
+    // Legacy collections remain valid sources of admin access.
+    if (legacyAdmin || await hasRegistryAdmin(rawEmail, LEGACY_ADMIN_COLLECTION_IDS)) {
+      return true;
+    }
+
+    // Explicit local config (window.ADMIN_EMAILS / js/config.js) stays authoritative for UI access.
+    if (localConfiguredAdmin && !strictRegistry) {
+      return true;
+    }
+
+    // Backend allowlist accepted this email, but canonical doc may still be propagating.
+    if (bootstrapResult && bootstrapResult.ok) {
+      return strictRegistry
+        ? await hasExactAdminDocByEmail(db, rawEmail, ADMIN_COLLECTION_IDS)
+        : true;
+    }
+
     return false;
+  } catch {
+    return strictRegistry ? false : localConfiguredAdmin;
   }
 }
 
@@ -676,8 +1127,12 @@ export async function addAdminEmail(email, addedBy = null) {
   if (!email) return false;
   try {
     const db = getFirestore();
-    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
-    await setDoc(ref, { addedAt: serverTimestamp(), addedBy: addedBy || null }, { merge: true });
+    const normalizedEmail = String(email).toLowerCase().trim();
+    await Promise.all(
+      ADMIN_COLLECTION_IDS.map((coll) => (
+        setDoc(doc(db, coll, normalizedEmail), { addedAt: serverTimestamp(), addedBy: addedBy || null }, { merge: true })
+      ))
+    );
     return true;
   } catch {
     return false;
@@ -689,8 +1144,10 @@ export async function removeAdminEmail(email) {
   try {
     const db = getFirestore();
     const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
-    const ref = doc(db, 'adminEmails', String(email).toLowerCase());
-    await deleteDoc(ref);
+    const normalizedEmail = String(email).toLowerCase().trim();
+    await Promise.all(
+      ADMIN_COLLECTION_IDS.map((coll) => deleteDoc(doc(db, coll, normalizedEmail)).catch(() => {}))
+    );
     return true;
   } catch {
     return false;
@@ -700,10 +1157,18 @@ export async function removeAdminEmail(email) {
 export async function listAdminEmails() {
   try {
     const db = getFirestore();
-    const snap = await getDocs(collection(db, 'adminEmails'));
-    const out = [];
-    snap.forEach(d => out.push({ id: d.id, ...d.data() }));
-    return out;
+    const unique = new Map();
+    for (const coll of ADMIN_COLLECTION_IDS) {
+      try {
+        const snap = await getDocs(collection(db, coll));
+        snap.forEach(d => {
+          const key = String(d.id || '').toLowerCase();
+          if (!key) return;
+          if (!unique.has(key)) unique.set(key, { id: key, ...d.data() });
+        });
+      } catch {}
+    }
+    return Array.from(unique.values()).sort((a, b) => String(a.id).localeCompare(String(b.id)));
   } catch {
     return [];
   }

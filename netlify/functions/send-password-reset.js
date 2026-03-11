@@ -1,30 +1,24 @@
 /**
  * Send Password Reset Netlify Function
- * Triggers Firebase password reset email for a user
+ * Triggers Firebase password reset email for a user (admin-only).
  */
 
-const admin = require('firebase-admin');
+const { verifyAdmin, getAdmin } = require('./utils/verify-admin');
 
-// Initialize Firebase Admin if not already done
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      })
-    });
-  } catch (error) {
-    console.error('Firebase Admin init error:', error);
-  }
+function resolveAppUrls() {
+  const raw = String(process.env.APP_URL || process.env.SITE_URL || process.env.URL || 'https://winnpro-shows.app').trim();
+  const baseUrl = raw.replace(/\/+$/, '').split('#')[0];
+  return {
+    baseUrl,
+    continueUrl: `${baseUrl}/#/more`
+  };
 }
 
 exports.handler = async (event) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
@@ -42,7 +36,14 @@ exports.handler = async (event) => {
     };
   }
 
+  // Require admin authentication
+  const auth = await verifyAdmin(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
+  }
+
   try {
+    const admin = getAdmin();
     const { email } = JSON.parse(event.body);
 
     if (!email) {
@@ -70,32 +71,46 @@ exports.handler = async (event) => {
     }
 
     // Generate password reset link
+    const { baseUrl, continueUrl } = resolveAppUrls();
     const resetLink = await admin.auth().generatePasswordResetLink(normalizedEmail, {
-      url: process.env.URL || 'https://your-app.netlify.app',
+      url: continueUrl,
       handleCodeInApp: false
     });
 
     // Send email via your email function or just return the link
     // The reset link can be sent via your existing email infrastructure
-    const emailResponse = await fetch(`${process.env.URL || ''}/.netlify/functions/send-email`, {
+    const forwardAuth = event.headers['authorization'] || event.headers['Authorization'] || '';
+    const forwardInternal = event.headers['x-internal-function-key'] || event.headers['X-Internal-Function-Key'] || '';
+    const emailResponse = await fetch(`${baseUrl}/.netlify/functions/send-email`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(forwardAuth ? { Authorization: forwardAuth } : {}),
+        ...(forwardInternal ? { 'X-Internal-Function-Key': forwardInternal } : {})
+      },
       body: JSON.stringify({
         to: normalizedEmail,
         template: 'passwordReset',
         data: {
           resetLink,
-          appName: 'WinnPro Shows'
+          appName: 'WinnPro Shows',
+          appUrl: baseUrl
         }
       })
     });
+
+    const emailPayload = await emailResponse.json().catch(() => ({}));
+    if (!emailResponse.ok) {
+      throw new Error(emailPayload.error || `Password reset email dispatch failed (${emailResponse.status})`);
+    }
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        message: 'Password reset email sent'
+        message: 'Password reset email sent',
+        messageId: emailPayload.messageId || null
       })
     };
 

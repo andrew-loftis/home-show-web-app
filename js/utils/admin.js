@@ -2,15 +2,56 @@
  * Admin Dashboard Utilities
  * Centralized helpers for the admin dashboard
  */
+import { getState, refreshAdminAccess } from '../store.js';
 
 // Firebase module cache - import once, use everywhere
 let _db = null;
 let _fsm = null;
+let _lastAdminSyncAt = 0;
+
+async function ensureAdminReady() {
+  const state = getState();
+  const now = Date.now();
+  if (!state.user || state.user.isAnonymous) {
+    throw new Error('Admin authentication required');
+  }
+
+  // Avoid hammering bootstrap endpoint while still keeping permissions fresh.
+  if (now - _lastAdminSyncAt > 5000) {
+    // Force admin bootstrap periodically so Firestore/Storage rules stay in sync.
+    await refreshAdminAccess({ forceBootstrap: true, allowDowngrade: false, silent: true });
+    _lastAdminSyncAt = Date.now();
+  }
+
+  const latest = getState();
+  if (!latest.isAdmin) {
+    throw new Error('Admin access is not synced yet');
+  }
+
+  // Require registry-backed admin access (not just local config fallback)
+  // so dashboard data calls match Firestore rules.
+  try {
+    const email = String(
+      latest.user?.email
+      || (Array.isArray(latest.user?.providerEmails) ? latest.user.providerEmails[0] : '')
+      || ''
+    ).trim();
+    const { isAdminEmail } = await import('../firebase.js');
+    const registryAdmin = await isAdminEmail(email, { forceBootstrap: true, strictRegistry: true });
+    if (!registryAdmin) {
+      throw new Error('Admin registry not synced in Firebase. Ensure your email is in adminEmails/admin-users and reload.');
+    }
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error('Admin registry validation failed');
+  }
+}
 
 /**
  * Get cached Firestore database instance
  */
 export async function getAdminDb() {
+  await ensureAdminReady();
   if (!_db) {
     const { getDb } = await import("../firebase.js");
     _db = getDb();

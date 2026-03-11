@@ -323,7 +323,8 @@ export default function AdminDashboard(root) {
         await loadAnalytics();
         break;
       case 'vendors':
-        await loadVendors(root, showFilter, showVendorProfileModal, showStripePaymentModal);
+        // Vendors tab is global: show all vendor applications and approved vendors.
+        await loadVendors(root, { showId: null }, showVendorProfileModal, showStripePaymentModal);
         break;
       case 'import':
         await setupImportListeners(root);
@@ -332,7 +333,8 @@ export default function AdminDashboard(root) {
         await loadLeads();
         break;
       case 'users':
-        await loadUsers(root, showUserProfileModal, showFilter);
+        // Users tab is global: show all guest/attendee records.
+        await loadUsers(root, showUserProfileModal, { showId: null });
         break;
       case 'booths':
         await loadBooths(root, showFilter);
@@ -443,7 +445,8 @@ export default function AdminDashboard(root) {
     } catch (error) {
       console.error('[AdminDashboard] Failed to load overview:', error);
       if (statsContainer) {
-        statsContainer.innerHTML = '<div class="text-red-400 text-center p-4">Failed to load stats</div>';
+        const detail = String(error?.message || '').trim();
+        statsContainer.innerHTML = `<div class="text-red-400 text-center p-4">Failed to load stats${detail ? `: ${detail}` : ''}</div>`;
       }
     }
   }
@@ -816,12 +819,12 @@ export default function AdminDashboard(root) {
               const isCardShare = method === 'card_share' || method === 'card share';
               const methodLabel = isCardShare ? 'Card Share' : 'Manual';
               const methodBadgeClass = isCardShare
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'bg-yellow-500/20 text-yellow-400';
+                ? 'bg-blue-500/25 text-blue-300 border border-blue-400/30'
+                : 'bg-yellow-500/20 text-yellow-300 border border-yellow-400/30';
               const notesEscaped = (lead.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
               return `
-                <div class="bg-glass-surface/50 rounded p-3" data-lead-id="${lead.id}">
+                <div class="bg-white/5 border border-white/10 rounded p-3" data-lead-id="${lead.id}">
                   <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2 flex-wrap">
@@ -844,7 +847,7 @@ export default function AdminDashboard(root) {
                   <div class="mt-2 lead-notes-container" data-lead-id="${lead.id}">
                     <div class="lead-notes-display cursor-pointer group flex items-start gap-2" data-lead-id="${lead.id}" title="Click to edit notes">
                       <ion-icon name="document-text-outline" class="text-glass-secondary mt-0.5" style="font-size:14px"></ion-icon>
-                      <span class="text-xs ${lead.notes ? 'text-glass-secondary' : 'text-glass-secondary/50 italic'} group-hover:text-glass transition-colors">
+                      <span class="text-xs ${lead.notes ? 'text-glass-secondary' : 'text-glass-secondary/80 italic'} group-hover:text-glass transition-colors">
                         ${lead.notes ? notesEscaped : 'Add notes...'}
                       </span>
                       <ion-icon name="pencil-outline" class="text-glass-secondary/50 group-hover:text-brand transition-colors ml-auto" style="font-size:12px"></ion-icon>
@@ -1081,11 +1084,47 @@ export default function AdminDashboard(root) {
             <div class="text-glass font-medium truncate">${r.id}</div>
             ${r.addedAt ? `<div class="text-xs text-glass-secondary">Added: ${new Date(r.addedAt.seconds * 1000).toLocaleString()}</div>` : ''}
           </div>
-          <button class="px-3 py-1 bg-red-600 rounded text-white text-sm remove-admin-btn" data-email="${r.id}">
-            <ion-icon name="trash-outline" class="mr-1"></ion-icon>Remove
-          </button>
+          <div class="flex items-center gap-2">
+            <button class="px-3 py-1 bg-indigo-600 rounded text-white text-sm send-admin-invite-btn" data-email="${r.id}">
+              <ion-icon name="mail-open-outline" class="mr-1"></ion-icon>Send Invite
+            </button>
+            <button class="px-3 py-1 bg-red-600 rounded text-white text-sm remove-admin-btn" data-email="${r.id}">
+              <ion-icon name="trash-outline" class="mr-1"></ion-icon>Remove
+            </button>
+          </div>
         </div>
       `).join('');
+
+      listEl.querySelectorAll('.send-admin-invite-btn').forEach(btn => {
+        if (btn._listenerAdded) return;
+        btn._listenerAdded = true;
+        btn.addEventListener('click', async () => {
+          const email = btn.getAttribute('data-email');
+          const confirmed = await ConfirmDialog(
+            'Send Admin Invite',
+            `Send password reset/sign-in invite to ${email}?`,
+            { confirmText: 'Send Invite' }
+          );
+          if (!confirmed) return;
+
+          setButtonLoading(btn, true, 'Sending...');
+          try {
+            const result = await sendAdminInviteEmail(email);
+            if (result.inviteSent) {
+              Toast(`Admin invite sent: ${email}`);
+            } else if (result.resetFallbackSent) {
+              Toast(`Invite email failed. Password reset sent: ${email}`);
+            } else {
+              throw new Error(result.error || 'Failed to send admin invite');
+            }
+          } catch (err) {
+            console.error('[AdminDashboard] Send admin invite failed:', err);
+            await AlertDialog('Invite Failed', err.message || 'Failed to send admin invite', { type: 'error' });
+          } finally {
+            setButtonLoading(btn, false);
+          }
+        });
+      });
 
       // Attach remove listeners
       listEl.querySelectorAll('.remove-admin-btn').forEach(btn => {
@@ -1122,6 +1161,101 @@ export default function AdminDashboard(root) {
   // ========================================
   // Modals (shared across modules)
   // ========================================
+  async function getAdminAuthHeaders() {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    const idToken = await getAuth().currentUser?.getIdToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+    };
+  }
+
+  async function sendAdminPasswordResetEmail(email) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Missing vendor email');
+    }
+
+    const response = await fetch('/.netlify/functions/send-password-reset', {
+      method: 'POST',
+      headers: await getAdminAuthHeaders(),
+      body: JSON.stringify({ email: normalizedEmail })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || `Password reset email failed (${response.status})`);
+    }
+    return payload;
+  }
+
+  async function sendAdminInviteEmail(email) {
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Missing admin email');
+    }
+
+    const attendeeName = normalizedEmail.split('@')[0] || 'Admin User';
+    let resetLink = '';
+    let inviteSent = false;
+    let resetFallbackSent = false;
+    let inviteError = null;
+
+    const createAccountResponse = await fetch('/.netlify/functions/create-vendor-account', {
+      method: 'POST',
+      headers: await getAdminAuthHeaders(),
+      body: JSON.stringify({
+        email: normalizedEmail,
+        displayName: attendeeName,
+        sendPasswordReset: true
+      })
+    });
+    const createAccountPayload = await createAccountResponse.json().catch(() => ({}));
+    if (!createAccountResponse.ok && createAccountResponse.status !== 200) {
+      throw new Error(createAccountPayload.error || `Failed to prepare auth account (${createAccountResponse.status})`);
+    }
+    resetLink = String(createAccountPayload.resetLink || '').trim();
+
+    try {
+      const inviteResponse = await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
+        headers: await getAdminAuthHeaders(),
+        body: JSON.stringify({
+          to: normalizedEmail,
+          template: 'appInvite',
+          data: {
+            attendeeName,
+            role: 'admin',
+            resetLink,
+            appName: 'WinnPro Shows'
+          }
+        })
+      });
+      const invitePayload = await inviteResponse.json().catch(() => ({}));
+      if (!inviteResponse.ok) {
+        throw new Error(invitePayload.error || `Invite email failed (${inviteResponse.status})`);
+      }
+      inviteSent = !!invitePayload?.success;
+    } catch (error) {
+      inviteError = error?.message || 'invite_email_failed';
+    }
+
+    if (!inviteSent) {
+      try {
+        await sendAdminPasswordResetEmail(normalizedEmail);
+        resetFallbackSent = true;
+      } catch (error) {
+        inviteError = error?.message || inviteError || 'password_reset_fallback_failed';
+      }
+    }
+
+    return {
+      inviteSent,
+      resetFallbackSent,
+      resetLink,
+      error: inviteSent || resetFallbackSent ? null : inviteError
+    };
+  }
+
   function showVendorProfileModal(vendorId, vendor, isEditMode) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black/50 flex items-center justify-center z-50 vendor-profile-modal';
@@ -1226,19 +1360,37 @@ export default function AdminDashboard(root) {
           </div>
           
           ${isEditMode ? `
-            <div class="flex justify-end gap-4 mt-6 pt-6 border-t border-glass-border">
-              <button type="button" class="modal-close-btn px-4 py-2 border border-glass-border rounded text-glass-secondary hover:text-glass">
-                Cancel
-              </button>
-              <button type="submit" class="px-4 py-2 bg-brand rounded text-white hover:bg-brand/80">
-                Save Changes
-              </button>
+            <div class="flex items-center justify-between gap-4 mt-6 pt-6 border-t border-glass-border">
+              <div>
+                ${vendor.contactEmail ? `
+                  <button type="button" class="vendor-reset-btn px-4 py-2 bg-blue-700 rounded text-white hover:bg-blue-800" data-email="${vendor.contactEmail}">
+                    <ion-icon name="key-outline" class="mr-1"></ion-icon>Send Password Reset
+                  </button>
+                ` : ''}
+              </div>
+              <div class="flex gap-4">
+                <button type="button" class="modal-close-btn px-4 py-2 border border-glass-border rounded text-glass-secondary hover:text-glass">
+                  Cancel
+                </button>
+                <button type="submit" class="px-4 py-2 bg-brand rounded text-white hover:bg-brand/80">
+                  Save Changes
+                </button>
+              </div>
             </div>
           ` : `
-            <div class="flex justify-end mt-6 pt-6 border-t border-glass-border">
-              <button type="button" class="modal-close-btn px-4 py-2 bg-brand rounded text-white">
-                Close
-              </button>
+            <div class="flex items-center justify-between mt-6 pt-6 border-t border-glass-border gap-4">
+              <div>
+                ${vendor.contactEmail ? `
+                  <button type="button" class="vendor-reset-btn px-4 py-2 bg-blue-700 rounded text-white hover:bg-blue-800" data-email="${vendor.contactEmail}">
+                    <ion-icon name="key-outline" class="mr-1"></ion-icon>Send Password Reset
+                  </button>
+                ` : ''}
+              </div>
+              <div class="flex justify-end">
+                <button type="button" class="modal-close-btn px-4 py-2 bg-brand rounded text-white">
+                  Close
+                </button>
+              </div>
             </div>
           `}
         </form>
@@ -1263,6 +1415,35 @@ export default function AdminDashboard(root) {
     modal.querySelectorAll('.modal-close-btn').forEach(btn => {
       btn.addEventListener('click', closeModal);
     });
+
+    const resetBtn = modal.querySelector('.vendor-reset-btn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', async () => {
+        const email = resetBtn.getAttribute('data-email') || '';
+        if (!email) {
+          Toast('Vendor email is missing');
+          return;
+        }
+        setButtonLoading(resetBtn, true, 'Sending...');
+        try {
+          await sendAdminPasswordResetEmail(email);
+          const db = await getAdminDb();
+          const fsm = await getFirestoreModule();
+          await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), {
+            inviteStatus: 'sent',
+            passwordResetStatus: 'sent',
+            passwordResetSentAt: new Date().toISOString(),
+            inviteError: null
+          }).catch(() => null);
+          Toast(`Password reset sent to ${email}`);
+        } catch (error) {
+          console.error('[AdminDashboard] Failed to send vendor password reset:', error);
+          await AlertDialog('Reset Failed', error.message || 'Could not send password reset email', { type: 'error' });
+        } finally {
+          setButtonLoading(resetBtn, false);
+        }
+      });
+    }
     
     if (isEditMode) {
       const form = modal.querySelector('.vendor-profile-form');
@@ -1395,6 +1576,7 @@ export default function AdminDashboard(root) {
     const defaultAmount = vendorData?.totalPrice || 0;
     const boothCount = vendorData?.booths?.length || vendorData?.boothCount || 0;
     const boothList = vendorData?.booths?.join(', ') || 'TBD';
+    const paymentShowId = vendorData?.showId || adminShowId || '';
     
     let defaultDescription = '';
     if (vendorData) {
@@ -1527,19 +1709,22 @@ export default function AdminDashboard(root) {
           throw new Error('Please fill in all required fields.');
         }
         
-        const paymentData = {
-          customerEmail: vendorEmailVal,
-          amount: Math.round(amount * 100),
-          description: description,
-          paymentType: paymentType,
-          vendorName: vendorNameVal,
-          vendorId: vendorIdVal,
-          showId: adminShowId || ''
-        };
+          const paymentData = {
+            customerEmail: vendorEmailVal,
+            amount: Math.round(amount * 100),
+            description: description,
+            paymentType: paymentType,
+            vendorName: vendorNameVal,
+            vendorId: vendorIdVal,
+            showId: paymentShowId
+          };
 
         // Get auth token for authenticated request
         const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
         const idToken = await getAuth().currentUser?.getIdToken();
+        if (!idToken) {
+          throw new Error('You must be signed in to send an invoice.');
+        }
         const response = await fetch('/.netlify/functions/create-invoice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}) },
@@ -1571,15 +1756,15 @@ export default function AdminDashboard(root) {
                 await sendPushNotification({
                   template: 'invoiceSent',
                   userId: ownerUid,
-                  data: {
-                    amount: amount.toFixed(2),
-                    invoiceUrl: result.invoiceUrl || '',
-                    vendorId: vendorIdVal,
-                    showId: adminShowId || ''
-                  }
-                });
-              }
-            } catch (pushErr) {
+                    data: {
+                      amount: amount.toFixed(2),
+                      invoiceUrl: result.invoiceUrl || '',
+                      vendorId: vendorIdVal,
+                      showId: paymentShowId
+                    }
+                  });
+                }
+              } catch (pushErr) {
               console.warn('[AdminDashboard] Push notification failed (non-blocking):', pushErr);
             }
           } catch (firestoreError) {
@@ -1589,7 +1774,7 @@ export default function AdminDashboard(root) {
           closeModal();
           await AlertDialog('Invoice Sent', `Invoice sent successfully!\n\nInvoice ID: ${result.invoiceId}\nAmount: $${amount.toFixed(2)}\nSent to: ${vendorEmailVal}`, { type: 'success' });
           
-          await loadVendors(root, { showId: adminShowId }, showVendorProfileModal, showStripePaymentModal);
+            await loadVendors(root, { showId: paymentShowId || null }, showVendorProfileModal, showStripePaymentModal);
         } else {
           throw new Error(result.error || 'Failed to create invoice');
         }

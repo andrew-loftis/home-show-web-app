@@ -8,6 +8,7 @@
     "dev": "npx tailwindcss -i ./css/tailwind-input.css -o ./css/tailwind.css --watch",
     "build": "npm run build:css",
     "deploy:prod": "netlify deploy --prod --dir .",
+    "import:vendors": "node ./scripts/bulk-import-vendors.mjs",
     "deploy:watch": "node ./scripts/watch-netlify-deploy.mjs",
     "cap:init": "npx cap init 'WinnPro Shows' app.winnpro.mobile --web-dir .",
     "cap:add:android": "npx cap add android",

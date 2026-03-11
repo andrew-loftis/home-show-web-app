@@ -11,6 +11,7 @@ import {
   deleteShow, 
   refreshShows,
   getShowColorClasses,
+  compareShows,
   DEFAULT_SHOW_ID
 } from '../../shows.js';
 
@@ -123,11 +124,8 @@ export async function loadShows(root) {
       return;
     }
     
-    // Sort by year desc, then by start date
-    const sortedShows = [...shows].sort((a, b) => {
-      if (b.year !== a.year) return b.year - a.year;
-      return new Date(b.dates?.start || 0) - new Date(a.dates?.start || 0);
-    });
+    // Keep app-wide chronological order (Spring before Fall).
+    const sortedShows = [...shows].sort(compareShows);
     
     listEl.innerHTML = sortedShows.map(show => renderShowCard(show)).join('');
     

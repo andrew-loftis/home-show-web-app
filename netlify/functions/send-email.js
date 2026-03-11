@@ -10,6 +10,126 @@
  */
 
 const SENDGRID_API_URL = 'https://api.sendgrid.com/v3/mail/send';
+const { verifyAdmin, verifyAuth } = require('./utils/verify-admin');
+
+const ADMIN_ONLY_TEMPLATES = new Set([
+  'vendorApproved',
+  'vendorRejected',
+  'paymentConfirmation',
+  'adminPaymentNotification',
+  'adminNotification',
+  'passwordReset',
+  'vendorContractReminder',
+  'vendorContractSignedVendor',
+  'vendorContractSignedAdmin',
+  'vendorImported',
+  'appInvite'
+]);
+
+const SIGNED_IN_TEMPLATES = new Set([
+  'newLead',
+  'attendeeWelcome'
+]);
+
+function getHeader(event, key) {
+  if (!event || !event.headers) return '';
+  const lower = String(key || '').toLowerCase();
+  if (!lower) return '';
+  const headers = event.headers;
+  const direct = headers[lower];
+  if (typeof direct === 'string') return direct;
+  const alt = Object.keys(headers).find((k) => String(k).toLowerCase() === lower);
+  if (alt) return String(headers[alt] || '');
+  return '';
+}
+
+function hasValidInternalKey(event) {
+  const keys = [
+    process.env.INTERNAL_FUNCTIONS_KEY,
+    process.env.STRIPE_WEBHOOK_SECRET
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+  if (!keys.length) return false;
+  const received = String(getHeader(event, 'x-internal-function-key') || '').trim();
+  return !!received && keys.includes(received);
+}
+
+async function authorizeTemplateRequest(event, template) {
+  if (hasValidInternalKey(event)) {
+    return { ok: true, scope: 'internal' };
+  }
+
+  if (ADMIN_ONLY_TEMPLATES.has(template)) {
+    const adminAuth = await verifyAdmin(event);
+    if (adminAuth.error) {
+      return { ok: false, status: adminAuth.status, error: adminAuth.error };
+    }
+    return { ok: true, scope: 'admin', ...adminAuth };
+  }
+
+  if (SIGNED_IN_TEMPLATES.has(template)) {
+    const signedInAuth = await verifyAuth(event);
+    if (signedInAuth.error) {
+      return { ok: false, status: signedInAuth.status, error: signedInAuth.error };
+    }
+    return { ok: true, scope: 'signed_in', ...signedInAuth };
+  }
+
+  // Unknown templates are validated separately. Default to admin for safety.
+  const adminAuth = await verifyAdmin(event);
+  if (adminAuth.error) {
+    return { ok: false, status: adminAuth.status, error: adminAuth.error };
+  }
+  return { ok: true, scope: 'admin', ...adminAuth };
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeRecipients(to) {
+  const values = Array.isArray(to) ? to : [to];
+  const unique = new Set();
+  const recipients = [];
+
+  values.forEach((item) => {
+    const email = String(item || '').trim().toLowerCase();
+    if (!isValidEmail(email) || unique.has(email)) return;
+    unique.add(email);
+    recipients.push(email);
+  });
+
+  return recipients;
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function safeHttpUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {}
+  return '';
+}
+
+function joinAppUrl(appUrl, path) {
+  const base = String(appUrl || '').replace(/\/+$/, '');
+  const suffix = String(path || '');
+  if (!suffix) return base;
+  return `${base}${suffix.startsWith('/') ? '' : '/'}${suffix}`;
+}
 
 // Email templates
 const templates = {
@@ -59,7 +179,7 @@ const templates = {
             </ul>
             
             <center>
-              <a href="${data.appUrl}/vendor-dashboard" class="button">Go to Your Dashboard →</a>
+              <a href="${data.appUrl}/#/vendor-dashboard" class="button">Go to Your Dashboard →</a>
             </center>
             
             <p>If you have any questions, feel free to reach out to our support team.</p>
@@ -87,7 +207,7 @@ Next steps:
 - Set up lead capture for the event
 - Share your vendor page with your customers
 
-Go to your dashboard: ${data.appUrl}/vendor-dashboard
+Go to your dashboard: ${data.appUrl}/#/vendor-dashboard
 
 See you at the show!
 
@@ -222,7 +342,7 @@ ${data.appUrl}
             </div>
             
             <center>
-              <a href="${data.appUrl}/vendor-leads" class="button">View All Leads →</a>
+              <a href="${data.appUrl}/#/vendor-leads" class="button">View All Leads →</a>
             </center>
             
             <p style="color: #888; font-size: 14px;">💡 Pro tip: Follow up within 24 hours for the best conversion rates!</p>
@@ -246,7 +366,7 @@ Phone: ${data.attendeePhone || 'Not provided'}
 ${data.notes ? `Notes: ${data.notes}` : ''}
 Captured: ${new Date().toLocaleString()}
 
-View all leads: ${data.appUrl}/vendor-leads
+View all leads: ${data.appUrl}/#/vendor-leads
 
 Pro tip: Follow up within 24 hours for the best conversion rates!
 
@@ -317,7 +437,7 @@ ${data.appUrl}
             </ul>
             
             <center>
-              <a href="${data.appUrl}/lead-pass" class="button">View My Lead Pass →</a>
+              <a href="${data.appUrl}/#/lead-pass" class="button">View My Lead Pass →</a>
             </center>
             
             <p>Enjoy the show!</p>
@@ -347,7 +467,7 @@ How to use your Lead Pass:
 - Use the interactive map to find booths
 - Check the schedule for special events
 
-View your Lead Pass: ${data.appUrl}/lead-pass
+View your Lead Pass: ${data.appUrl}/#/lead-pass
 
 Enjoy the show!
 
@@ -355,6 +475,91 @@ ${data.appName}
 ${data.appUrl}
     `
   }),
+
+  appInvite: (data) => {
+    const attendeeNameRaw = String(data.attendeeName || data.name || 'there').trim();
+    const roleRaw = String(data.role || 'attendee').trim().toLowerCase();
+    const roleLabel = roleRaw === 'admin' ? 'admin' : (roleRaw === 'vendor' ? 'vendor' : 'attendee');
+    const resetLink = safeHttpUrl(data.resetLink);
+    const hasResetLink = resetLink.length > 0;
+    const signInUrl = joinAppUrl(data.appUrl, '/#/more');
+    const homeUrl = joinAppUrl(data.appUrl, '/#/home');
+
+    const attendeeName = escapeHtml(attendeeNameRaw);
+    const safeSignInUrl = escapeHtml(signInUrl);
+    const safeHomeUrl = escapeHtml(homeUrl);
+    const safeResetLink = escapeHtml(resetLink);
+
+    return {
+      subject: `You're invited to join ${data.appName}`,
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; background: #f3f4f6; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .wrap { max-width: 640px; margin: 0 auto; padding: 24px 12px; }
+          .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+          .header { background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: #ffffff; padding: 28px 24px; }
+          .header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+          .header p { margin: 10px 0 0 0; opacity: 0.92; font-size: 14px; }
+          .content { padding: 24px; }
+          .content h2 { margin: 0 0 12px 0; font-size: 20px; }
+          .content p { margin: 0 0 14px 0; line-height: 1.6; color: #374151; }
+          .button { display: inline-block; background: #2563eb; color: #ffffff !important; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 600; margin: 8px 8px 8px 0; }
+          .button.alt { background: #0f172a; }
+          .footer { padding: 18px 24px 24px 24px; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; }
+          .footer a { color: #2563eb; text-decoration: none; }
+          .badge { display: inline-block; font-size: 12px; background: #e5e7eb; color: #1f2937; border-radius: 999px; padding: 4px 10px; margin-bottom: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+          <div class="card">
+            <div class="header">
+              <h1>${escapeHtml(data.appName)}</h1>
+              <p>Your account invitation is ready</p>
+            </div>
+            <div class="content">
+              <span class="badge">${escapeHtml(roleLabel)}</span>
+              <h2>Hello ${attendeeName},</h2>
+              <p>An administrator invited you to join <strong>${escapeHtml(data.appName)}</strong> as an ${escapeHtml(roleLabel)}.</p>
+              <a href="${safeSignInUrl}" class="button alt">Open App</a>
+              <a href="${safeHomeUrl}" class="button">Go to Home</a>
+
+              ${hasResetLink ? `
+                <p>Set your password to activate your account:</p>
+                <a href="${safeResetLink}" class="button">Set Password</a>
+              ` : `
+                <p>If you already have an account, sign in with your existing login. If not, use the password reset option on the sign-in screen.</p>
+              `}
+            </div>
+            <div class="footer">
+              <div>${escapeHtml(data.appName)} - <a href="${escapeHtml(data.appUrl)}">${escapeHtml(data.appUrl)}</a></div>
+              <div style="margin-top: 8px;">You are receiving this because an administrator created an account for you.</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+      `,
+      text: `
+Hello ${attendeeNameRaw},
+
+You were invited to join ${data.appName} as a ${roleLabel}.
+
+Open app: ${signInUrl}
+Home: ${homeUrl}
+
+${hasResetLink ? `Set password: ${resetLink}` : 'Use password reset on the sign-in page if needed.'}
+
+${data.appName}
+${data.appUrl}
+      `
+    };
+  },
 
   paymentConfirmation: (data) => ({
     subject: `Payment Confirmed - ${data.appName} Vendor Registration`,
@@ -418,7 +623,7 @@ ${data.appUrl}
             <p>Your registration is now pending admin approval. We'll notify you once approved.</p>
             
             <center>
-              <a href="${data.appUrl}/vendor-dashboard" class="button">Go to Dashboard →</a>
+              <a href="${data.appUrl}/#/vendor-dashboard" class="button">Go to Dashboard →</a>
             </center>
           </div>
           <div class="footer">
@@ -444,7 +649,7 @@ Total Paid: $${data.amount || '0.00'}
 
 Your registration is now pending admin approval. We'll notify you once approved.
 
-Go to Dashboard: ${data.appUrl}/vendor-dashboard
+Go to Dashboard: ${data.appUrl}/#/vendor-dashboard
 
 Please save this email for your records.
 
@@ -589,7 +794,7 @@ This is an automated admin notification from ${data.appName}
             ` : ''}
             
             <center>
-              <a href="${data.appUrl}/admin" class="button">View in Admin Dashboard →</a>
+              <a href="${data.appUrl}/#/admin" class="button">View in Admin Dashboard →</a>
             </center>
           </div>
           <div class="footer">
@@ -606,7 +811,7 @@ ${data.message}
 
 ${data.details || ''}
 
-View in Admin Dashboard: ${data.appUrl}/admin
+View in Admin Dashboard: ${data.appUrl}/#/admin
 
 This is an automated admin notification from ${data.appName}
     `
@@ -653,8 +858,7 @@ This is an automated admin notification from ${data.appName}
               This link will expire in 1 hour. If you didn't request this reset, you can safely ignore this email.
             </div>
             
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; font-size: 12px; color: #666;">${data.resetLink}</p>
+            <p>If you have trouble opening the button, reply to this email and we will help you reset your password.</p>
           </div>
           <div class="footer">
             <p>${data.appName} • <a href="${data.appUrl}">${data.appUrl}</a></p>
@@ -678,97 +882,398 @@ ${data.appUrl}
     `
   }),
 
-  vendorImported: (data) => ({
-    subject: `Welcome to ${data.appName} - Your Account is Ready!`,
-    html: `
+  vendorContractReminder: (data) => {
+    const businessNameRaw = String(data.businessName || 'Vendor').trim() || 'Vendor';
+    const showNameRaw = String(data.showName || data.appName || 'WinnPro Shows').trim();
+    const providedContract = String(data.contractUrl || '/assets/contracts/Vendor-Contract-Source.docx').trim();
+    const contractUrl = safeHttpUrl(providedContract) || safeHttpUrl(joinAppUrl(data.appUrl, providedContract)) || joinAppUrl(data.appUrl, '/assets/contracts/Vendor-Contract-Source.docx');
+    const signContractUrl = joinAppUrl(data.appUrl, '/#/vendor-contract');
+    const dashboardUrl = joinAppUrl(data.appUrl, '/#/vendor-dashboard');
+    const safeBusinessName = escapeHtml(businessNameRaw);
+    const safeShowName = escapeHtml(showNameRaw);
+    const safeContractUrl = escapeHtml(contractUrl);
+    const safeSignContractUrl = escapeHtml(signContractUrl);
+    const safeDashboardUrl = escapeHtml(dashboardUrl);
+
+    return {
+      subject: `Action Required: Sign Vendor Contract for ${showNameRaw}`,
+      html: `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f7; }
-          .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
-          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
-          .content { padding: 40px 30px; }
-          .content h2 { color: #333; margin-top: 0; }
-          .content p { color: #555; line-height: 1.6; }
-          .button { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-          .info-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 15px 20px; margin: 20px 0; }
-          .footer { background: #f4f4f7; padding: 30px; text-align: center; color: #888; font-size: 14px; }
-          .footer a { color: #667eea; }
+          body { margin: 0; padding: 0; background: #f3f4f6; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .wrap { max-width: 640px; margin: 0 auto; padding: 24px 12px; }
+          .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+          .header { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); color: #ffffff; padding: 28px 24px; }
+          .header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+          .header p { margin: 10px 0 0 0; opacity: 0.92; font-size: 14px; }
+          .content { padding: 24px; }
+          .content h2 { margin: 0 0 12px 0; font-size: 20px; }
+          .content p { margin: 0 0 14px 0; line-height: 1.6; color: #374151; }
+          .warning { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+          .button { display: inline-block; background: #dc2626; color: #ffffff !important; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 600; margin: 8px 8px 8px 0; }
+          .button.alt { background: #0f172a; }
+          .footer { padding: 18px 24px 24px 24px; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; }
+          .footer a { color: #2563eb; text-decoration: none; }
         </style>
       </head>
       <body>
-        <div class="container">
+        <div class="wrap">
+          <div class="card">
+            <div class="header">
+              <h1>Vendor Contract Required</h1>
+              <p>Please complete your contract to stay compliant for ${safeShowName}</p>
+            </div>
+            <div class="content">
+              <h2>Hello ${safeBusinessName},</h2>
+              <p>Our records show your vendor contract is still missing. This contract is required for all participating vendors.</p>
+
+              <div class="warning">
+                Complete this as soon as possible to avoid delays in your vendor onboarding and show readiness.
+              </div>
+
+              <a href="${safeSignContractUrl}" class="button">Sign In App</a>
+              <a href="${safeContractUrl}" class="button alt">View Source Contract</a>
+
+              <p>You can also review your account in the vendor dashboard:</p>
+              <a href="${safeDashboardUrl}" class="button alt">Open Vendor Dashboard</a>
+
+              <p>If you already completed this, no action is needed.</p>
+            </div>
+            <div class="footer">
+              <div>${escapeHtml(data.appName)} - <a href="${escapeHtml(data.appUrl)}">${escapeHtml(data.appUrl)}</a></div>
+              <div style="margin-top: 8px;">This is an automated reminder from show administration.</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+      `,
+      text: `
+Action Required: Vendor Contract Needed
+
+Hello ${businessNameRaw},
+
+Our records show your vendor contract is still missing for ${showNameRaw}.
+This contract is required for all participating vendors.
+
+Open contract:
+${contractUrl}
+
+Sign in app:
+${signContractUrl}
+
+Vendor dashboard:
+${dashboardUrl}
+
+If you already completed the contract, please update your profile so your status is marked signed.
+
+${data.appName}
+${data.appUrl}
+      `
+    };
+  },
+
+  vendorContractSignedVendor: (data) => {
+    const businessNameRaw = String(data.businessName || 'Vendor').trim() || 'Vendor';
+    const showNameRaw = String(data.showName || data.appName || 'WinnPro Shows').trim();
+    const signerNameRaw = String(data.signerName || businessNameRaw).trim();
+    const signedAtRaw = String(data.signedAt || '').trim();
+    const contractUrlRaw = String(data.contractUrl || '/assets/contracts/Vendor-Contract-Source.docx').trim();
+    const dashboardUrlRaw = String(data.dashboardUrl || '/#/vendor-dashboard').trim();
+
+    const contractUrl = safeHttpUrl(contractUrlRaw) || safeHttpUrl(joinAppUrl(data.appUrl, contractUrlRaw)) || joinAppUrl(data.appUrl, '/assets/contracts/Vendor-Contract-Source.docx');
+    const dashboardUrl = safeHttpUrl(dashboardUrlRaw) || safeHttpUrl(joinAppUrl(data.appUrl, dashboardUrlRaw)) || joinAppUrl(data.appUrl, '/#/vendor-dashboard');
+
+    const safeBusinessName = escapeHtml(businessNameRaw);
+    const safeShowName = escapeHtml(showNameRaw);
+    const safeSignerName = escapeHtml(signerNameRaw);
+    const safeSignedAt = escapeHtml(signedAtRaw || new Date().toISOString());
+    const safeContractUrl = escapeHtml(contractUrl);
+    const safeDashboardUrl = escapeHtml(dashboardUrl);
+
+    return {
+      subject: `Contract Confirmation - ${showNameRaw}`,
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; background: #f3f4f6; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .wrap { max-width: 640px; margin: 0 auto; padding: 24px 12px; }
+          .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+          .header { background: linear-gradient(135deg, #065f46 0%, #047857 100%); color: #ffffff; padding: 28px 24px; }
+          .header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+          .header p { margin: 10px 0 0 0; opacity: 0.92; font-size: 14px; }
+          .content { padding: 24px; }
+          .content p { margin: 0 0 14px 0; line-height: 1.6; color: #374151; }
+          .details { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+          .details p { margin: 0 0 8px 0; color: #1f2937; }
+          .details p:last-child { margin-bottom: 0; }
+          .button { display: inline-block; background: #047857; color: #ffffff !important; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 600; margin: 8px 8px 8px 0; }
+          .button.alt { background: #0f172a; }
+          .footer { padding: 18px 24px 24px 24px; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; }
+          .footer a { color: #2563eb; text-decoration: none; }
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+          <div class="card">
+            <div class="header">
+              <h1>Contract Signed</h1>
+              <p>Your vendor contract has been recorded for ${safeShowName}</p>
+            </div>
+            <div class="content">
+              <p>Hello ${safeBusinessName},</p>
+              <p>We received your digital contract signature. Your contract record is now on file.</p>
+
+              <div class="details">
+                <p><strong>Show:</strong> ${safeShowName}</p>
+                <p><strong>Signer:</strong> ${safeSignerName}</p>
+                <p><strong>Signed At:</strong> ${safeSignedAt}</p>
+              </div>
+
+              <a href="${safeContractUrl}" class="button">View Contract</a>
+              <a href="${safeDashboardUrl}" class="button alt">Open Vendor Dashboard</a>
+            </div>
+            <div class="footer">
+              <div>${escapeHtml(data.appName)} - <a href="${escapeHtml(data.appUrl)}">${escapeHtml(data.appUrl)}</a></div>
+              <div style="margin-top: 8px;">This is an automated confirmation from show administration.</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+      `,
+      text: `
+Contract Confirmation
+
+Hello ${businessNameRaw},
+
+We received your digital vendor contract signature for ${showNameRaw}.
+
+Signer: ${signerNameRaw}
+Signed At: ${signedAtRaw || new Date().toISOString()}
+
+View contract:
+${contractUrl}
+
+Vendor dashboard:
+${dashboardUrl}
+
+${data.appName}
+${data.appUrl}
+      `
+    };
+  },
+
+  vendorContractSignedAdmin: (data) => {
+    const businessNameRaw = String(data.businessName || 'Vendor').trim() || 'Vendor';
+    const showNameRaw = String(data.showName || data.appName || 'WinnPro Shows').trim();
+    const signerNameRaw = String(data.signerName || businessNameRaw).trim();
+    const signerEmailRaw = String(data.signerEmail || '').trim();
+    const signedAtRaw = String(data.signedAt || '').trim();
+    const contractUrlRaw = String(data.contractUrl || '/assets/contracts/Vendor-Contract-Source.docx').trim();
+    const adminUrlRaw = String(data.vendorDashboardUrl || '/#/admin').trim();
+    const vendorIdRaw = String(data.vendorId || '').trim();
+
+    const contractUrl = safeHttpUrl(contractUrlRaw) || safeHttpUrl(joinAppUrl(data.appUrl, contractUrlRaw)) || joinAppUrl(data.appUrl, '/assets/contracts/Vendor-Contract-Source.docx');
+    const adminUrl = safeHttpUrl(adminUrlRaw) || safeHttpUrl(joinAppUrl(data.appUrl, adminUrlRaw)) || joinAppUrl(data.appUrl, '/#/admin');
+
+    const safeBusinessName = escapeHtml(businessNameRaw);
+    const safeShowName = escapeHtml(showNameRaw);
+    const safeSignerName = escapeHtml(signerNameRaw);
+    const safeSignerEmail = escapeHtml(signerEmailRaw || 'not provided');
+    const safeSignedAt = escapeHtml(signedAtRaw || new Date().toISOString());
+    const safeContractUrl = escapeHtml(contractUrl);
+    const safeAdminUrl = escapeHtml(adminUrl);
+    const safeVendorId = escapeHtml(vendorIdRaw || 'n/a');
+
+    return {
+      subject: `[Admin] Vendor Contract Signed - ${businessNameRaw}`,
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; background: #f3f4f6; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .wrap { max-width: 640px; margin: 0 auto; padding: 24px 12px; }
+          .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+          .header { background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%); color: #ffffff; padding: 28px 24px; }
+          .header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+          .content { padding: 24px; }
+          .content p { margin: 0 0 14px 0; line-height: 1.6; color: #374151; }
+          .details { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+          .details p { margin: 0 0 8px 0; color: #1f2937; }
+          .details p:last-child { margin-bottom: 0; }
+          .button { display: inline-block; background: #1d4ed8; color: #ffffff !important; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 600; margin: 8px 8px 8px 0; }
+          .button.alt { background: #0f172a; }
+          .footer { padding: 18px 24px 24px 24px; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; }
+          .footer a { color: #2563eb; text-decoration: none; }
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+          <div class="card">
+            <div class="header">
+              <h1>Vendor Contract Signed</h1>
+            </div>
+            <div class="content">
+              <p>A vendor contract has just been signed in-app.</p>
+              <div class="details">
+                <p><strong>Business:</strong> ${safeBusinessName}</p>
+                <p><strong>Show:</strong> ${safeShowName}</p>
+                <p><strong>Signer:</strong> ${safeSignerName}</p>
+                <p><strong>Signer Email:</strong> ${safeSignerEmail}</p>
+                <p><strong>Signed At:</strong> ${safeSignedAt}</p>
+                <p><strong>Vendor ID:</strong> ${safeVendorId}</p>
+              </div>
+              <a href="${safeContractUrl}" class="button">View Contract</a>
+              <a href="${safeAdminUrl}" class="button alt">Open Admin Dashboard</a>
+            </div>
+            <div class="footer">
+              <div>${escapeHtml(data.appName)} - <a href="${escapeHtml(data.appUrl)}">${escapeHtml(data.appUrl)}</a></div>
+              <div style="margin-top: 8px;">This is an automated admin confirmation email.</div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+      `,
+      text: `
+Vendor Contract Signed
+
+Business: ${businessNameRaw}
+Show: ${showNameRaw}
+Signer: ${signerNameRaw}
+Signer Email: ${signerEmailRaw || 'not provided'}
+Signed At: ${signedAtRaw || new Date().toISOString()}
+Vendor ID: ${vendorIdRaw || 'n/a'}
+
+Contract:
+${contractUrl}
+
+Admin Dashboard:
+${adminUrl}
+
+${data.appName}
+${data.appUrl}
+      `
+    };
+  },
+
+  vendorImported: (data) => {
+    const showNameRaw = String(data.showName || data.appName || 'WinnPro Home Show').trim();
+    const businessNameRaw = String(data.businessName || 'Vendor').trim();
+    const boothNumbersRaw = String(data.boothNumbers || data.boothNumber || 'TBD').trim() || 'TBD';
+    const vendorProfilePath = data.vendorId ? `/#/vendor/${data.vendorId}` : '/#/vendor-dashboard';
+    const vendorProfileUrl = joinAppUrl(data.appUrl, vendorProfilePath);
+    const vendorDashboardUrl = joinAppUrl(data.appUrl, '/#/vendor-dashboard');
+    const resetLink = safeHttpUrl(data.resetLink);
+    const hasResetLink = resetLink.length > 0;
+
+    const showName = escapeHtml(showNameRaw);
+    const businessName = escapeHtml(businessNameRaw);
+    const boothNumbers = escapeHtml(boothNumbersRaw);
+    const safeVendorProfileUrl = escapeHtml(vendorProfileUrl);
+    const safeVendorDashboardUrl = escapeHtml(vendorDashboardUrl);
+    const safeResetLink = escapeHtml(resetLink);
+
+    return {
+      subject: `Vendor Confirmation: ${showNameRaw} - Booth ${boothNumbersRaw}`,
+      html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body { margin: 0; padding: 0; background: #f3f4f6; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+          .wrap { max-width: 640px; margin: 0 auto; padding: 24px 12px; }
+          .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden; }
+          .header { background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%); color: #ffffff; padding: 28px 24px; }
+          .header h1 { margin: 0; font-size: 24px; line-height: 1.2; }
+          .header p { margin: 10px 0 0 0; opacity: 0.92; font-size: 14px; }
+          .content { padding: 24px; }
+          .content h2 { margin: 0 0 12px 0; font-size: 20px; }
+          .content p { margin: 0 0 14px 0; line-height: 1.6; color: #374151; }
+          .details { background: #eff6ff; border: 1px solid #dbeafe; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+          .details p { margin: 0 0 8px 0; color: #1f2937; }
+          .details p:last-child { margin-bottom: 0; }
+          .k { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-right: 8px; }
+          .v { font-weight: 600; color: #111827; font-size: 14px; }
+          .button { display: inline-block; background: #2563eb; color: #ffffff !important; text-decoration: none; padding: 12px 18px; border-radius: 10px; font-weight: 600; margin: 8px 8px 8px 0; }
+          .button.alt { background: #0f172a; }
+          .footer { padding: 18px 24px 24px 24px; color: #6b7280; font-size: 12px; border-top: 1px solid #f3f4f6; }
+          .footer a { color: #2563eb; text-decoration: none; }
+        </style>
+      </head>
+      <body>
+        <div class="wrap">
+        <div class="card">
           <div class="header">
-            <h1>Welcome to ${data.appName}!</h1>
+            <h1>${escapeHtml(data.appName)}</h1>
+            <p>Vendor account assigned and ready</p>
           </div>
           <div class="content">
-            <h2>Hello ${data.businessName}! 👋</h2>
-            <p>Great news! Your vendor account has been set up on our new ${data.appName} platform. We've migrated your information from Scan2Scan to make the transition seamless.</p>
-            
-            <div class="info-box">
-              <strong>What's New:</strong><br>
-              • Beautiful vendor profile page<br>
-              • Digital lead capture system<br>
-              • Interactive booth map<br>
-              • Real-time analytics
+            <h2>Hello ${businessName},</h2>
+            <p>You have been assigned as an approved vendor for <strong>${showName}</strong>.</p>
+
+            <div class="details">
+              <p><span class="k">Show</span><span class="v">${showName}</span></p>
+              <p><span class="k">Booth</span><span class="v">${boothNumbers}</span></p>
             </div>
-            
-            <p>To access your account, you'll need to set a password:</p>
-            
-            <center>
-              <a href="${data.resetLink}" class="button">Set Your Password →</a>
-            </center>
-            
-            <p>Once you've set your password, you can:</p>
-            <ul>
-              <li>Update your business profile</li>
-              <li>Add photos and gallery images</li>
-              <li>View and manage leads</li>
-              <li>Check your booth location</li>
-            </ul>
-            
-            <p>Questions? Just reply to this email - we're here to help!</p>
+
+            <p>Your vendor profile is now available in the app.</p>
+            <a href="${safeVendorProfileUrl}" class="button">Open Vendor Profile</a>
+            <a href="${safeVendorDashboardUrl}" class="button alt">Open Vendor Dashboard</a>
+
+            ${hasResetLink ? `
+            <p>To access and manage your account, set your password first:</p>
+            <a href="${safeResetLink}" class="button">Set Password</a>
+            ` : `
+            <p>If you have not set your password yet, use the password reset option on the sign-in page.</p>
+            `}
+
+            <p>Need help? Reply to this email and our team will assist.</p>
           </div>
           <div class="footer">
-            <p>${data.appName} • <a href="${data.appUrl}">${data.appUrl}</a></p>
-            <p>You're receiving this because you were registered as a vendor.</p>
+            <div>${escapeHtml(data.appName)} - <a href="${escapeHtml(data.appUrl)}">${escapeHtml(data.appUrl)}</a></div>
+            <div style="margin-top: 8px;">You are receiving this email because your vendor account was imported by an event administrator.</div>
+          </div>
           </div>
         </div>
       </body>
       </html>
     `,
-    text: `
-Welcome to ${data.appName}!
+      text: `
+Hello ${businessNameRaw},
 
-Hello ${data.businessName}!
+You have been assigned as an approved vendor for ${showNameRaw}.
 
-Your vendor account has been set up on our new ${data.appName} platform. We've migrated your information from Scan2Scan to make the transition seamless.
+Assignment Details:
+- Show: ${showNameRaw}
+- Booth: ${boothNumbersRaw}
 
-What's New:
-• Beautiful vendor profile page
-• Digital lead capture system
-• Interactive booth map
-• Real-time analytics
+Vendor profile: ${vendorProfileUrl}
+Vendor dashboard: ${vendorDashboardUrl}
 
-To access your account, set your password here:
-${data.resetLink}
+${hasResetLink ? `Set your password to access your account: ${resetLink}` : 'If needed, use password reset on the sign-in page.'}
 
-Once you've set your password, you can:
-- Update your business profile
-- Add photos and gallery images
-- View and manage leads
-- Check your booth location
-
-Questions? Just reply to this email!
+Need help? Reply to this email and our team will assist.
 
 ${data.appName}
 ${data.appUrl}
     `
-  })
+    };
+  }
 };
 
 /**
@@ -776,12 +1281,22 @@ ${data.appUrl}
  */
 async function sendEmail(to, template, templateData) {
   const apiKey = process.env.SENDGRID_API_KEY;
-  const fromEmail = process.env.FROM_EMAIL || 'noreply@winnpro-shows.app';
+  const fromEmail = process.env.FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_FROM || 'noreply@winnpro-shows.app';
+  const replyToEmail = process.env.REPLY_TO_EMAIL || process.env.SUPPORT_EMAIL || '';
   const appName = process.env.APP_NAME || 'WinnPro Shows';
   const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
   
   if (!apiKey) {
     throw new Error('SENDGRID_API_KEY environment variable not set');
+  }
+
+  if (!isValidEmail(fromEmail)) {
+    throw new Error('FROM_EMAIL (or SENDGRID_FROM_EMAIL) is missing or invalid');
+  }
+
+  const recipients = normalizeRecipients(to);
+  if (!recipients.length) {
+    throw new Error('No valid recipient email address provided');
   }
   
   // Add app info to template data
@@ -802,7 +1317,7 @@ async function sendEmail(to, template, templateData) {
   const emailPayload = {
     personalizations: [
       {
-        to: Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }]
+        to: recipients.map((email) => ({ email }))
       }
     ],
     from: { email: fromEmail, name: appName },
@@ -810,8 +1325,18 @@ async function sendEmail(to, template, templateData) {
     content: [
       { type: 'text/plain', value: text },
       { type: 'text/html', value: html }
-    ]
+    ],
+    tracking_settings: {
+      click_tracking: {
+        enable: false,
+        enable_text: false
+      }
+    }
   };
+
+  if (isValidEmail(replyToEmail)) {
+    emailPayload.reply_to = { email: replyToEmail };
+  }
   
   const response = await fetch(SENDGRID_API_URL, {
     method: 'POST',
@@ -823,11 +1348,16 @@ async function sendEmail(to, template, templateData) {
   });
   
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`SendGrid API error: ${response.status} - ${error}`);
+    const errorBody = await response.text();
+    const errorPreview = String(errorBody || '').slice(0, 600);
+    throw new Error(`SendGrid API error (${response.status}): ${errorPreview}`);
   }
   
-  return { success: true };
+  return {
+    success: true,
+    recipients,
+    messageId: response.headers.get('x-message-id') || null
+  };
 }
 
 /**
@@ -837,7 +1367,7 @@ exports.handler = async (event, context) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Internal-Function-Key',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
   
@@ -856,7 +1386,8 @@ exports.handler = async (event, context) => {
   }
   
   try {
-    const { to, template, data } = JSON.parse(event.body);
+    const parsedBody = JSON.parse(event.body || '{}');
+    const { to, template, data } = parsedBody;
     
     if (!to || !template) {
       return {
@@ -877,13 +1408,22 @@ exports.handler = async (event, context) => {
         })
       };
     }
+
+    const authResult = await authorizeTemplateRequest(event, template);
+    if (!authResult.ok) {
+      return {
+        statusCode: authResult.status || 403,
+        headers,
+        body: JSON.stringify({ error: authResult.error || 'Not authorized to send this email template' })
+      };
+    }
     
-    await sendEmail(to, template, data || {});
+    const sendResult = await sendEmail(to, template, data || {});
     
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, message: 'Email sent successfully' })
+      body: JSON.stringify({ success: true, message: 'Email sent successfully', ...sendResult })
     };
   } catch (error) {
     console.error('Email send error:', error);
@@ -895,3 +1435,4 @@ exports.handler = async (event, context) => {
     };
   }
 };
+

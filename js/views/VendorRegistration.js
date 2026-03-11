@@ -3,6 +3,29 @@ import { navigate } from "../router.js";
 import { getState } from "../store.js";
 import { CATEGORY_COLORS, getCategoryColor } from "../brand.js";
 import { getCurrentShowId, getCurrentShow, getActiveShows, setCurrentShow, SHOWS } from "../shows.js";
+import { mergeDuplicateVendors } from "../utils/vendorMerge.js";
+import { getVendorContractUrl, VENDOR_CONTRACT_VERSION, VENDOR_CONTRACT_TERMS } from "../utils/vendorContract.js";
+
+function escHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeCanvasPoint(canvas, evt) {
+  const rect = canvas.getBoundingClientRect();
+  const clientX = evt.clientX ?? (evt.touches?.[0]?.clientX || 0);
+  const clientY = evt.clientY ?? (evt.touches?.[0]?.clientY || 0);
+  const scaleX = canvas.width / Math.max(rect.width, 1);
+  const scaleY = canvas.height / Math.max(rect.height, 1);
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
 
 export default async function VendorRegistration(root) {
   const state = getState();
@@ -14,16 +37,22 @@ export default async function VendorRegistration(root) {
   // Check if user is already a vendor (approved, pending, or denied)
   if (!state.user.isAnonymous) {
     try {
-      const { getDb } = await import("../firebase.js");
+      const { getDb, claimVendorAccountByEmail } = await import("../firebase.js");
       const db = getDb();
-      const { collection, query, where, getDocs } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { collection, query, where, getDocs, limit } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
       
       const vendorsRef = collection(db, 'vendors');
-      const q = query(vendorsRef, where('ownerUid', '==', state.user.uid));
-      const snapshot = await getDocs(q);
+      const qOwner = query(vendorsRef, where('ownerUid', '==', state.user.uid), limit(20));
+      let snapshot = await getDocs(qOwner);
+
+      if (snapshot.empty) {
+        await claimVendorAccountByEmail({ showId: getCurrentShowId(), silent: true });
+        snapshot = await getDocs(qOwner);
+      }
       
       if (!snapshot.empty) {
-        const vendorData = snapshot.docs[0].data();
+        const owned = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const vendorData = mergeDuplicateVendors(owned, { fallbackShowId: getCurrentShowId() }).vendors[0] || owned[0];
         // If vendor exists (approved, pending, or denied), redirect to dashboard
         // The dashboard will handle showing appropriate UI for each status
         const { default: VendorDashboard } = await import("./VendorDashboard.js");
@@ -81,6 +110,9 @@ export default async function VendorRegistration(root) {
   let step = draft._step || 1;
   let data = { ...draft };
   delete data._step;
+  data.contractSignatureMode = String(data.contractSignatureMode || 'draw').toLowerCase() === 'type' ? 'type' : 'draw';
+  data.contractDrawnSignatureDataUrl = String(data.contractDrawnSignatureDataUrl || '').trim();
+  data.contractTypedSignature = String(data.contractTypedSignature || '').trim();
 
   function saveDraft() {
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, _step: step })); } catch {}
@@ -95,7 +127,7 @@ export default async function VendorRegistration(root) {
     "Security","Cabinets","Countertops","Tile & Stone","Appliances","Furniture","Interior Design","Lighting",
     "Garage","Fencing","Masonry","Concrete","Pest Control","Water Treatment","Home Cleaning","Remodeling",
     "General Contractor","Real Estate","Mortgage","Insurance","Energy Efficiency","Outdoor Living",
-    "Garden/Nursery","Home Theater/AV","Other"
+    "Garden/Nursery","Home Theater/AV","Food Truck","Other"
   ];
   // Comprehensive booth layout - representing actual venue layout
   const boothOptions = (() => {
@@ -110,6 +142,7 @@ export default async function VendorRegistration(root) {
   const POWER_FEE = 75;
   const TABLE_FEE = 25;
   const CHAIR_FEE = 10;
+  const contractUrl = getVendorContractUrl();
   
   // Track taken booths with their categories (for color coding)
   let takenBooths = new Set();
@@ -201,6 +234,47 @@ export default async function VendorRegistration(root) {
       return new Set();
     }
   };
+
+  const sendContractSignatureConfirmation = async (vendorId, signingData = {}) => {
+    if (!vendorId || !state.user || state.user.isAnonymous) return { ok: false, reason: 'missing_vendor_or_user' };
+
+    try {
+      const { getAuth } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js");
+      const currentUser = getAuth().currentUser;
+      if (!currentUser) return { ok: false, reason: 'missing_auth_user' };
+      const token = await currentUser.getIdToken();
+      if (!token) return { ok: false, reason: 'missing_auth_token' };
+
+      const response = await fetch('/.netlify/functions/sign-vendor-contract', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          vendorId,
+          signerName: signingData.contractSignerName || '',
+          signatureMode: signingData.contractSignatureMode || 'draw',
+          typedSignature: signingData.contractSignatureMode === 'type' ? (signingData.contractTypedSignature || signingData.contractSignerName || '') : '',
+          drawnSignatureDataUrl: signingData.contractSignatureMode === 'draw' ? (signingData.contractDrawnSignatureDataUrl || '') : '',
+          contractVersion: VENDOR_CONTRACT_VERSION,
+          contractUrl: signingData.contractUrl || contractUrl
+        })
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        return { ok: false, reason: payload.error || `sign-vendor-contract failed (${response.status})` };
+      }
+      return {
+        ok: true,
+        warning: Array.isArray(payload.emailErrors) && payload.emailErrors.length ? 'Some confirmation emails need admin retry.' : ''
+      };
+    } catch (error) {
+      return { ok: false, reason: error?.message || 'confirmation dispatch failed' };
+    }
+  };
+
   async function render() {
     // Load booth availability if on step 3
     if (step === 3) {
@@ -214,7 +288,7 @@ export default async function VendorRegistration(root) {
           <span>Cancel</span>
         </button>
         <h2 class="text-xl font-bold mb-2 text-glass">Vendor Registration</h2>
-        <p class="text-glass-secondary text-sm mb-4">Step ${step} of 5: ${step===1?'Company Info':step===2?'Contact Details':step===3?'Booth Selection':step===4?'Additional Services':'Agreement'}</p>
+        <p class="text-glass-secondary text-sm mb-4">Step ${step} of 5: ${step===1?'Company Info':step===2?'Contact Details':step===3?'Booth Selection':step===4?'Additional Services':'Agreement + Contract'}</p>
         <div class="mb-4 flex gap-2 items-center">
           <div class="w-4 h-2 rounded ${step>=1?'bg-primary':'bg-white/20'}"></div>
           <div class="w-4 h-2 rounded ${step>=2?'bg-primary':'bg-white/20'}"></div>
@@ -385,25 +459,74 @@ export default async function VendorRegistration(root) {
           `:step===5?`
             <div class="mb-4">
               <h3 class="text-lg font-semibold mb-3 text-glass">Vendor Agreement</h3>
+              <div class="mb-3 p-4 rounded-lg border-2 border-red-500/50 bg-red-500/10">
+                <div class="flex items-start gap-3">
+                  <ion-icon name="alert-circle" class="text-red-400 text-2xl mt-0.5"></ion-icon>
+                  <div class="flex-1">
+                    <div class="text-red-300 font-semibold">Contract Signature Required</div>
+                    <p class="text-sm text-red-200 mt-1">You must complete an in-app digital signature to submit your vendor registration.</p>
+                    <a href="${contractUrl}" target="_blank" rel="noopener" class="inline-flex items-center mt-3 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium">
+                      <ion-icon name="document-text-outline" class="mr-2"></ion-icon>
+                      View Source Contract
+                    </a>
+                  </div>
+                </div>
+              </div>
               <div class="max-h-64 overflow-y-auto glass-card p-4 text-sm text-glass">
                 <h4 class="font-semibold mb-2">VENDOR AGREEMENT</h4>
-                
-                <p class="mb-2"><strong>1. BOOTH SETUP & BREAKDOWN:</strong> Vendors may begin setup on Friday 4:00 PM - 8:00 PM or Saturday 7:00 AM - 9:00 AM. Show hours are Saturday 10:00 AM - 8:00 PM and Sunday 10:00 AM - 4:00 PM. Breakdown begins Sunday at 4:00 PM.</p>
-                
-                <p class="mb-2"><strong>2. PAYMENT TERMS:</strong> Full payment is due within 30 days of application approval. Booth assignments are made upon payment receipt.</p>
-                
-                <p class="mb-2"><strong>3. CANCELLATION POLICY:</strong> Cancellations made 60+ days before show: 75% refund. 30-59 days: 50% refund. Less than 30 days: No refund.</p>
-                
-                <p class="mb-2"><strong>4. VENDOR RESPONSIBILITIES:</strong> Vendors must provide their own displays, marketing materials, and staffing. All electrical and table rentals must be arranged through show management.</p>
-                
-                <p class="mb-2"><strong>5. INSURANCE:</strong> Vendors are responsible for their own insurance coverage. Show management is not liable for theft, damage, or injury.</p>
-                
-                <p class="mb-2"><strong>6. CONDUCT:</strong> Professional conduct is required. Show management reserves the right to remove vendors who violate this agreement.</p>
-                
-                <p class="mb-2"><strong>7. FORCE MAJEURE:</strong> If the show is cancelled due to circumstances beyond our control, vendors will receive a full refund minus processing fees.</p>
+                ${VENDOR_CONTRACT_TERMS.map((term, idx) => `
+                  <p class="mb-2"><strong>${idx + 1}. ${escHtml(String(term.title || '').toUpperCase())}:</strong> ${escHtml(term.body)}</p>
+                `).join('')}
               </div>
-              
+               
               <div class="mt-4 space-y-3">
+                <div class="glass-card p-3">
+                  <label class="block text-sm font-medium mb-2 text-glass">Legal Name (Contract Signature) *</label>
+                  <input
+                    type="text"
+                    name="contractSignerName"
+                    required
+                    value="${String(data.contractSignerName || '').replace(/"/g, '&quot;')}"
+                    placeholder="Full legal name"
+                    class="w-full p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary"
+                  >
+                  <p class="text-xs text-glass-secondary mt-1">This name is stored as your contract signature on file.</p>
+                </div>
+
+                <div class="glass-card p-3">
+                  <div class="flex gap-2 mb-3">
+                    <button type="button" id="regSignatureModeDrawBtn" class="glass-button px-3 py-2 text-sm ${data.contractSignatureMode === 'draw' ? 'brand-bg' : ''}">
+                      <ion-icon name="brush-outline" class="mr-1"></ion-icon>Draw Signature
+                    </button>
+                    <button type="button" id="regSignatureModeTypeBtn" class="glass-button px-3 py-2 text-sm ${data.contractSignatureMode === 'type' ? 'brand-bg' : ''}">
+                      <ion-icon name="text-outline" class="mr-1"></ion-icon>Type Signature
+                    </button>
+                  </div>
+
+                  <div id="regTypedSignatureWrap" class="${data.contractSignatureMode === 'type' ? '' : 'hidden'}">
+                    <label class="block text-sm font-medium mb-2 text-glass">Typed Signature *</label>
+                    <input
+                      type="text"
+                      id="regTypedSignatureInput"
+                      value="${escHtml(String(data.contractTypedSignature || data.contractSignerName || ''))}"
+                      placeholder="Type your signature"
+                      class="w-full p-3 rounded border border-white/20 bg-white/10 text-glass placeholder-glass-secondary"
+                    >
+                    <div id="regTypedSignaturePreview" class="mt-2 p-3 rounded border border-white/20 bg-white text-gray-800 text-2xl" style="font-family: 'Brush Script MT', 'Segoe Script', cursive;">
+                      ${escHtml(String(data.contractTypedSignature || data.contractSignerName || ''))}
+                    </div>
+                  </div>
+
+                  <div id="regDrawSignatureWrap" class="${data.contractSignatureMode === 'draw' ? '' : 'hidden'}">
+                    <div class="flex items-center justify-between mb-2">
+                      <label class="text-sm font-medium text-glass">Draw Signature *</label>
+                      <button type="button" id="regClearSignatureBtn" class="glass-button px-3 py-1 text-xs">Clear</button>
+                    </div>
+                    <canvas id="registrationSignatureCanvas" width="680" height="220" class="w-full h-40 rounded border border-white/20 bg-white touch-none"></canvas>
+                    <p class="text-xs text-glass-secondary mt-1">Use your finger or mouse to sign above.</p>
+                  </div>
+                </div>
+
                 <label class="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" name="agreeTerms" required class="w-4 h-4 mt-1">
                   <span class="text-sm text-glass">I have read and agree to the Vendor Agreement terms and conditions</span>
@@ -417,6 +540,11 @@ export default async function VendorRegistration(root) {
                 <label class="flex items-start gap-3 cursor-pointer">
                   <input type="checkbox" name="agreeInsurance" required class="w-4 h-4 mt-1">
                   <span class="text-sm text-glass">I understand that I am responsible for my own insurance coverage</span>
+                </label>
+
+                <label class="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" name="agreeElectronicSignature" required class="w-4 h-4 mt-1">
+                  <span class="text-sm text-glass">I agree that this electronic signature is legally binding for my vendor registration</span>
                 </label>
               </div>
             </div>
@@ -494,15 +622,35 @@ export default async function VendorRegistration(root) {
         await render();
       } else if (step===5) {
         // Validate agreement checkboxes
+        const contractSignerName = String(fd.get("contractSignerName") || '').trim();
+        const signatureMode = data.contractSignatureMode === 'type' ? 'type' : 'draw';
+        const typedSignatureInput = root.querySelector('#regTypedSignatureInput');
+        const typedSignature = String(typedSignatureInput?.value || data.contractTypedSignature || contractSignerName).trim();
+        const drawnSignatureDataUrl = String(data.contractDrawnSignatureDataUrl || '').trim();
+
+        if (!contractSignerName) { Toast('Please enter the legal signer name for the contract'); return; }
         if (!fd.get("agreeTerms")) { Toast('Please agree to the terms and conditions'); return; }
         if (!fd.get("agreePayment")) { Toast('Please acknowledge the payment terms'); return; }
         if (!fd.get("agreeInsurance")) { Toast('Please acknowledge the insurance requirement'); return; }
+        if (!fd.get("agreeElectronicSignature")) { Toast('Please acknowledge the electronic signature notice'); return; }
+        if (signatureMode === 'type' && !typedSignature) { Toast('Please type your signature'); return; }
+        if (signatureMode === 'draw' && !drawnSignatureDataUrl) { Toast('Please draw your signature'); return; }
+
+        data.contractSignerName = contractSignerName;
+        data.contractSignatureMode = signatureMode;
+        data.contractTypedSignature = typedSignature;
+        data.contractDrawnSignatureDataUrl = drawnSignatureDataUrl;
+        data.contractSigned = true;
+        data.contractSignedAt = new Date().toISOString();
+        data.contractUrl = contractUrl;
+
         // Submit to Firestore with transaction to prevent booth race condition
         import("../firebase.js").then(async ({ getDb }) => {
           try {
             const db = getDb();
-            const { collection, doc, setDoc, getDocs, query, where, runTransaction, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+            const { collection, doc, runTransaction, serverTimestamp } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
             const showId = data.showId;
+            let createdVendorId = '';
 
             // Use a transaction: reserve booth docs then create vendor
             await runTransaction(db, async (txn) => {
@@ -519,6 +667,7 @@ export default async function VendorRegistration(root) {
 
               // 2. Create vendor doc
               const vendorRef = doc(collection(db, 'vendors'));
+              createdVendorId = vendorRef.id;
               txn.set(vendorRef, {
                 showId: showId,
                 showName: data.showName,
@@ -542,6 +691,18 @@ export default async function VendorRegistration(root) {
                 status: 'pending',
                 verified: false,
                 profile: {},
+                contractRequired: true,
+                contractSigned: false,
+                contractSignerName: '',
+                contractSignerEmail: (data.email || '').trim().toLowerCase(),
+                contractVersion: VENDOR_CONTRACT_VERSION,
+                contractUrl: data.contractUrl || contractUrl,
+                contractSignatureMode: '',
+                contractSignatureTyped: '',
+                contractSignatureImage: '',
+                contractSignedByUid: '',
+                contractSignedSource: '',
+                contractSignedAt: null,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp()
               });
@@ -551,6 +712,7 @@ export default async function VendorRegistration(root) {
                 const ref = doc(db, 'boothReservations', `${showId}_${boothId}`);
                 txn.set(ref, {
                   vendorId: vendorRef.id,
+                  vendorOwnerUid: state.user.uid,
                   vendorName: data.companyName,
                   category: data.category,
                   showId: showId,
@@ -560,8 +722,20 @@ export default async function VendorRegistration(root) {
               }
             });
 
+            const confirmationResult = await sendContractSignatureConfirmation(createdVendorId, data);
+            if (!confirmationResult.ok) {
+              console.warn('[VendorRegistration] contract confirmation dispatch failed:', confirmationResult.reason || 'unknown');
+              Toast('Registration submitted, but contract signature could not be finalized. Open your profile to complete signing.');
+            }
+
             clearDraft();
-            Modal(document.createTextNode("Registration submitted! Waiting for admin approval."));
+            Modal(document.createTextNode(
+              confirmationResult.ok && !confirmationResult.warning
+                ? "Registration submitted! Contract signed and confirmation emails sent."
+              : confirmationResult.ok && confirmationResult.warning
+                  ? `Registration submitted! Contract signed. ${confirmationResult.warning}`
+                  : "Registration submitted! Contract signature still needs completion."
+            ));
             setTimeout(() => { Modal(null); navigate("/home"); }, 1400);
           } catch (e) {
             if (e.message && e.message.startsWith('BOOTH_TAKEN:')) {
@@ -668,6 +842,138 @@ export default async function VendorRegistration(root) {
       
       // Initial cost calculation
       updateCostSummary();
+    }
+
+    // Step 5: In-app digital signature capture
+    if (step === 5) {
+      const signerInput = root.querySelector('input[name="contractSignerName"]');
+      const modeDrawBtn = root.querySelector('#regSignatureModeDrawBtn');
+      const modeTypeBtn = root.querySelector('#regSignatureModeTypeBtn');
+      const drawWrap = root.querySelector('#regDrawSignatureWrap');
+      const typeWrap = root.querySelector('#regTypedSignatureWrap');
+      const typedInput = root.querySelector('#regTypedSignatureInput');
+      const typedPreview = root.querySelector('#regTypedSignaturePreview');
+      const canvas = root.querySelector('#registrationSignatureCanvas');
+      const clearBtn = root.querySelector('#regClearSignatureBtn');
+
+      const updateModeUi = () => {
+        const mode = data.contractSignatureMode === 'type' ? 'type' : 'draw';
+        if (drawWrap) drawWrap.classList.toggle('hidden', mode !== 'draw');
+        if (typeWrap) typeWrap.classList.toggle('hidden', mode !== 'type');
+        if (modeDrawBtn) modeDrawBtn.classList.toggle('brand-bg', mode === 'draw');
+        if (modeTypeBtn) modeTypeBtn.classList.toggle('brand-bg', mode === 'type');
+      };
+
+      if (modeDrawBtn) {
+        modeDrawBtn.onclick = () => {
+          data.contractSignatureMode = 'draw';
+          updateModeUi();
+          saveDraft();
+        };
+      }
+      if (modeTypeBtn) {
+        modeTypeBtn.onclick = () => {
+          data.contractSignatureMode = 'type';
+          updateModeUi();
+          saveDraft();
+        };
+      }
+
+      if (signerInput) {
+        signerInput.oninput = () => {
+          data.contractSignerName = signerInput.value;
+          if (typedPreview && !String(typedInput?.value || '').trim()) {
+            typedPreview.textContent = signerInput.value || '';
+          }
+          saveDraft();
+        };
+      }
+
+      if (typedInput && typedPreview) {
+        typedInput.oninput = () => {
+          data.contractTypedSignature = typedInput.value;
+          typedPreview.textContent = typedInput.value || data.contractSignerName || '';
+          saveDraft();
+        };
+        typedPreview.textContent = typedInput.value || data.contractSignerName || '';
+      }
+
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#111827';
+          ctx.lineWidth = 2.2;
+
+          let drawing = false;
+
+          const beginStroke = (evt) => {
+            drawing = true;
+            const p = normalizeCanvasPoint(canvas, evt);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+          };
+
+          const continueStroke = (evt) => {
+            if (!drawing) return;
+            const p = normalizeCanvasPoint(canvas, evt);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+          };
+
+          const endStroke = () => {
+            if (!drawing) return;
+            drawing = false;
+            data.contractDrawnSignatureDataUrl = canvas.toDataURL('image/png');
+            saveDraft();
+          };
+
+          canvas.addEventListener('mousedown', beginStroke);
+          canvas.addEventListener('mousemove', continueStroke);
+          canvas.addEventListener('mouseup', endStroke);
+          canvas.addEventListener('mouseleave', endStroke);
+
+          canvas.addEventListener('touchstart', (evt) => {
+            evt.preventDefault();
+            beginStroke(evt);
+          }, { passive: false });
+
+          canvas.addEventListener('touchmove', (evt) => {
+            evt.preventDefault();
+            continueStroke(evt);
+          }, { passive: false });
+
+          canvas.addEventListener('touchend', (evt) => {
+            evt.preventDefault();
+            endStroke();
+          }, { passive: false });
+
+          canvas.addEventListener('touchcancel', (evt) => {
+            evt.preventDefault();
+            endStroke();
+          }, { passive: false });
+
+          if (data.contractDrawnSignatureDataUrl) {
+            const img = new Image();
+            img.onload = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = data.contractDrawnSignatureDataUrl;
+          }
+
+          if (clearBtn) {
+            clearBtn.onclick = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              data.contractDrawnSignatureDataUrl = '';
+              saveDraft();
+            };
+          }
+        }
+      }
+
+      updateModeUi();
     }
   }
   render();

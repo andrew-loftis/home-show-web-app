@@ -17,32 +17,25 @@
  * - invoice.payment_failed
  */
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { getStripeContext, getWebhookSecretForAccount } = require('./utils/stripe-context');
+const INTERNAL_FUNCTION_KEY = String(process.env.INTERNAL_FUNCTIONS_KEY || process.env.STRIPE_WEBHOOK_SECRET || '').trim();
+
+function internalFunctionHeaders() {
+  return INTERNAL_FUNCTION_KEY
+    ? { 'X-Internal-Function-Key': INTERNAL_FUNCTION_KEY }
+    : {};
+}
 
 // Initialize Firebase Admin SDK for Firestore updates
+const { getAdmin } = require('./utils/verify-admin');
 let admin = null;
 let db = null;
 
 async function initFirebase() {
   if (db) return db;
-  
+
   try {
-    const adminModule = await import('firebase-admin');
-    admin = adminModule.default;
-    
-    if (!admin.apps.length) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-      
-      if (serviceAccount.project_id) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      } else {
-        // Fallback: try default credentials (for local development)
-        admin.initializeApp();
-      }
-    }
-    
+    admin = getAdmin();
     db = admin.firestore();
     return db;
   } catch (error) {
@@ -122,7 +115,7 @@ async function sendPaymentNotificationEmails(paymentData) {
       
       const vendorResponse = await fetch(`${appUrl}/.netlify/functions/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...internalFunctionHeaders() },
         body: JSON.stringify({
           to: paymentData.vendorEmail,
           template: 'paymentConfirmation',
@@ -150,7 +143,7 @@ async function sendPaymentNotificationEmails(paymentData) {
       for (const adminEmail of adminEmails) {
         const adminResponse = await fetch(`${appUrl}/.netlify/functions/send-email`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...internalFunctionHeaders() },
           body: JSON.stringify({
             to: adminEmail,
             template: 'adminPaymentNotification',
@@ -189,7 +182,7 @@ async function sendPushNotification(options) {
     
     const response = await fetch(`${appUrl}/.netlify/functions/send-push`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...internalFunctionHeaders() },
       body: JSON.stringify(options)
     });
 
@@ -206,6 +199,24 @@ async function sendPushNotification(options) {
     // Don't throw - push failures shouldn't fail the webhook
     return null;
   }
+}
+
+function getHeaderValue(headers = {}, key = '') {
+  const lowerKey = String(key || '').toLowerCase();
+  if (!lowerKey) return '';
+
+  for (const [headerName, headerValue] of Object.entries(headers || {})) {
+    if (String(headerName || '').toLowerCase() === lowerKey) {
+      return String(headerValue || '');
+    }
+  }
+
+  return '';
+}
+
+function getVendorIdFromEventObject(eventObject = {}) {
+  const metadata = eventObject?.metadata || {};
+  return String(metadata.vendorId || '').trim();
 }
 exports.handler = async (event) => {
   const headers = {
@@ -226,8 +237,24 @@ exports.handler = async (event) => {
     };
   }
 
-  const sig = event.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const requestHeaders = event.headers || {};
+  const sig = getHeaderValue(requestHeaders, 'stripe-signature');
+  const eventBody = String(event.body || '').trim();
+  const rawEvent = eventBody;
+  let parsedEvent = null;
+
+  try {
+    parsedEvent = eventBody ? JSON.parse(eventBody) : {};
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: 'Invalid JSON payload' })
+    };
+  }
+
+  const accountId = String(parsedEvent?.account || getHeaderValue(requestHeaders, 'stripe-account') || '').trim();
+  const webhookSecret = getWebhookSecretForAccount(accountId);
 
   let stripeEvent;
 
@@ -249,8 +276,16 @@ exports.handler = async (event) => {
     };
   }
 
+  let context;
   try {
-    stripeEvent = stripe.webhooks.constructEvent(event.body, sig, webhookSecret);
+    context = await getStripeContext({
+      accountId,
+      showId: '',
+      vendorShowId: '',
+      vendorId: '',
+      fallbackShowId: ''
+    });
+    stripeEvent = context.stripe.webhooks.constructEvent(rawEvent, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return {
@@ -262,6 +297,17 @@ exports.handler = async (event) => {
 
   // Handle the event
   try {
+    const vendorIdHint = getVendorIdFromEventObject(stripeEvent?.data?.object || {});
+    const webhookContext = vendorIdHint ? await getStripeContext({
+      accountId,
+      vendorId: vendorIdHint,
+      showId: '',
+      vendorShowId: '',
+      fallbackShowId: ''
+    }) : context;
+    const stripe = webhookContext.stripe;
+    const requestOptions = webhookContext.requestOptions;
+
     switch (stripeEvent.type) {
       case 'checkout.session.completed': {
         const session = stripeEvent.data.object;
@@ -431,7 +477,7 @@ exports.handler = async (event) => {
         // Handle refunds if needed
         const paymentIntent = charge.payment_intent;
         if (paymentIntent) {
-          const pi = await stripe.paymentIntents.retrieve(paymentIntent);
+          const pi = await stripe.paymentIntents.retrieve(paymentIntent, requestOptions);
           const vendorId = pi.metadata?.vendorId;
           
           if (vendorId) {

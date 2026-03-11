@@ -1,6 +1,7 @@
 import { getState, leadsForVendor, currentVendor } from "../store.js";
 import { Toast } from "../utils/ui.js";
 import { EmptyLeads, EmptyBusinessCard, EmptySentCards, EmptySavedVendors } from "../utils/skeleton.js";
+import { vendorSourceIds, findVendorByAnyId } from "../utils/vendorMerge.js";
 
 // Save contact to device using vCard format
 function saveContactToDevice(contact) {
@@ -166,14 +167,21 @@ function renderVendorCard(vendor) {
 export default function Cards(root) {
   const state = getState();
   const role = state.role;
+
+  // Vendor card exchanges are unified with leads; use a single destination/view.
+  if (role === "vendor") {
+    window.location.hash = "/vendor-leads";
+    return;
+  }
+
   root.innerHTML = `
     <div class="container-glass fade-in">
       <div class="text-center mb-6 md:mb-8">
         <h1 class="text-2xl md:text-3xl font-bold text-glass">Cards</h1>
-        <p class="text-glass-secondary text-sm md:text-base">${role === "vendor" ? "Leads & card exchanges" : "Cards you've sent and saved"}</p>
+        <p class="text-glass-secondary text-sm md:text-base">Cards you've sent and saved</p>
       </div>
 
-      ${role === "vendor" ? renderVendorCards(state) : renderAttendeeCards(state)}
+      ${renderAttendeeCards(state)}
     </div>
   `;
 }
@@ -258,7 +266,8 @@ function renderAttendeeCards(state) {
   const savedVendorIds = (attendee.savedVendors && Array.isArray(attendee.savedVendors) && attendee.savedVendors.length)
     ? attendee.savedVendors
     : (state.savedVendorsByAttendee[attendee.id] || []);
-  const saved = state.vendors.filter(v => savedVendorIds.includes(v.id));
+  const savedSet = new Set(savedVendorIds);
+  const saved = state.vendors.filter(v => vendorSourceIds(v).some(id => savedSet.has(id)));
 
   // Better card detection - check if card exists and has meaningful content
   const hasCard = attendee.card && (
@@ -360,15 +369,16 @@ function renderAttendeeCards(state) {
 }
 
 function renderSentRow(lead, state) {
-  const vendor = state.vendors.find(v => v.id === lead.vendor_id);
+  const vendor = findVendorByAnyId(state.vendors || [], lead.vendor_id);
   const time = new Date(lead.timestamp).toLocaleString();
+  const vendorRouteId = vendor?.id || lead.vendor_id || '';
   return `
     <div class="flex items-center justify-between py-2 border-b border-white/10 last:border-b-0">
       <div>
         <div class="text-glass font-medium">${vendor?.name || 'Vendor'}</div>
         <div class="text-xs text-glass-secondary">${lead.exchangeMethod === 'card_share' ? 'Card shared' : 'Manual'} • ${time}</div>
       </div>
-      <button class="glass-button px-3 py-2 text-sm touch-target" onclick="window.location.hash='/vendor/${vendor?.id}'">View</button>
+      <button class="glass-button px-3 py-2 text-sm touch-target" onclick="window.location.hash='/vendor/${vendorRouteId}'">View</button>
     </div>
   `;
 }

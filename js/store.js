@@ -63,6 +63,7 @@
  * @property {boolean=} emailSent
  * @property {boolean=} cardShared
  */
+import { mergeDuplicateVendors, findVendorByAnyId, vendorSourceIds } from "./utils/vendorMerge.js";
 
 const LS_KEY = "homeshow:v1";
 const OLD_LS_KEY = "leadpass:v1";
@@ -135,6 +136,9 @@ function hydrateStore() {
   }
   if (raw) {
     state = { ...state, ...JSON.parse(raw) };
+    if (Array.isArray(state.vendors) && state.vendors.length) {
+      state.vendors = mergeDuplicateVendors(state.vendors, { fallbackShowId: getCurrentShowIdSync() }).vendors;
+    }
   } else {
     // Start empty; hydrate from Firestore when available
     state.attendees = [];
@@ -146,35 +150,40 @@ function hydrateStore() {
     Promise.all([
       import("./firebase.js"),
     ]).then(async ([firebaseMod]) => {
-      const { initFirebase, observeAuth, loadUserPreferences, createOrUpdateUserDoc, getDb, isAdminEmail } = firebaseMod;
+      const { initFirebase, observeAuth, loadUserPreferences, createOrUpdateUserDoc, getDb } = firebaseMod;
       try { initFirebase(); } catch {}
       try {
         observeAuth(async (user) => {
           if (user) {
+            const previousUid = state.user?.uid || null;
+            if (previousUid && previousUid !== user.uid) {
+              // Prevent stale vendor impersonation across account switches.
+              state.vendorLoginId = null;
+              state.myVendor = null;
+              state.attendees = [];
+              state.leads = [];
+            }
+
             state.user = {
               uid: user.uid,
               displayName: user.displayName,
-              email: user.email,
+              email: user.email || (Array.isArray(user.providerData) ? (user.providerData.find(p => p?.email)?.email || null) : null),
               photoURL: user.photoURL,
-              isAnonymous: !!user.isAnonymous
+              isAnonymous: !!user.isAnonymous,
+              providerEmails: Array.isArray(user.providerData)
+                ? Array.from(new Set(user.providerData.map(p => p?.email).filter(Boolean)))
+                : []
             };
-            
+            state.myVendor = null;
+             
             // Set a default role immediately so UI doesn't hang
             // Will be refined below based on admin/vendor checks
             if (!state.role) {
               state.role = 'attendee';
             }
             
-            // Determine admin via Firestore (adminEmails collection)
-            try {
-              state.isAdmin = await isAdminEmail(state.user.email);
-              if (state.isAdmin) {
-                state.role = 'admin';
-              }
-            } catch (error) {
-              console.error('Admin check failed:', error);
-              state.isAdmin = false;
-            }
+            // Determine admin via Firestore (adminEmails collection + bootstrap fallback)
+            await refreshAdminAccess({ forceBootstrap: true, silent: true });
             // Ensure user doc exists/updated
             try {
               await createOrUpdateUserDoc(user.uid, {
@@ -183,6 +192,11 @@ function hydrateStore() {
                 role: state.isAdmin ? 'admin' : 'visitor'
               });
             } catch {}
+            // Auto-link imported vendor records by matching contact email.
+            try {
+              const { claimVendorAccountByEmail } = await import("./firebase.js");
+              await claimVendorAccountByEmail({ showId: getCurrentShowIdSync(), silent: true });
+            } catch {}
             // Determine if user owns a vendor
             try {
               const db = getDb();
@@ -190,9 +204,20 @@ function hydrateStore() {
               const q = query(collection(db, 'vendors'), where('ownerUid', '==', user.uid), limit(1));
               const snap = await getDocs(q);
               let mine = null;
-              snap.forEach(d => { mine = { id: d.id, approved: !!d.data().approved }; });
+              snap.forEach(d => {
+                const data = d.data() || {};
+                mine = {
+                  id: d.id,
+                  approved: !!data.approved,
+                  ownerUid: data.ownerUid || null,
+                  name: data.name || '',
+                  contactEmail: data.contactEmail || ''
+                };
+              });
               state.myVendor = mine;
-            } catch {}
+            } catch {
+              state.myVendor = null;
+            }
             // Load attendee data owned by this user
             let attendeeRole = null;
             try {
@@ -211,12 +236,21 @@ function hydrateStore() {
             // Update role assignment to respect stored role in attendee record
             if (state.isAdmin) {
               state.role = 'admin';
+            } else if (state.myVendor) {
+              // Vendor ownership takes precedence over a stale attendee role.
+              state.role = 'vendor';
             } else if (attendeeRole && (attendeeRole === 'vendor' || attendeeRole === 'attendee')) {
               // Use stored role from attendee record if valid
               state.role = attendeeRole;
             } else {
               // Fallback to automatic detection
               state.role = state.myVendor ? 'vendor' : 'attendee';
+            }
+
+            // Non-admins should only keep a vendor session for their owned vendor.
+            if (!state.isAdmin) {
+              const ownedVendorId = state.myVendor?.id || null;
+              state.vendorLoginId = ownedVendorId;
             }
             
             // Load per-user preferences (e.g., theme)
@@ -232,6 +266,8 @@ function hydrateStore() {
             state.user = null;
             state.isAdmin = false;
             state.myVendor = null;
+            state.vendorLoginId = null;
+            state.attendees = [];
             state.leads = [];
             // When signed out, reflect Guest in header by clearing role
             state.role = null;
@@ -250,7 +286,9 @@ function hydrateStore() {
           snap.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
           // Filter by current show — legacy vendors without showId belong to default show
           const currentShow = getCurrentShowIdSync();
-          state.vendors = list.filter(v => (v.showId || 'putnam-spring-2026') === currentShow);
+          const filtered = list.filter(v => (v.showId || 'putnam-spring-2026') === currentShow);
+          const merged = mergeDuplicateVendors(filtered, { fallbackShowId: currentShow });
+          state.vendors = merged.vendors;
           persist();
           notify();
         });
@@ -417,15 +455,91 @@ function clearUser() {
 }
 function vendorLogin(vendorId) {
   state.vendorLoginId = vendorId;
-  state.role = "vendor";
+  // Preserve admin capabilities even when selecting a vendor context.
+  state.role = state.isAdmin ? "admin" : "vendor";
   persist();
   notify();
 }
 function vendorLogout() {
   state.vendorLoginId = null;
-  if (state.role === "vendor") state.role = null;
+  if (state.role === "vendor") state.role = state.isAdmin ? "admin" : null;
   persist();
   notify();
+}
+
+async function refreshAdminAccess(options = {}) {
+  const forceBootstrap = !!options.forceBootstrap;
+  const silent = !!options.silent;
+  const allowDowngrade = options.allowDowngrade === true;
+  const prevIsAdmin = !!state.isAdmin;
+  const prevRole = state.role;
+  const currentRole = state.role;
+
+  if (!state.user || state.user.isAnonymous) {
+    state.isAdmin = false;
+    if (currentRole === 'admin') {
+      state.role = state.myVendor ? 'vendor' : 'attendee';
+    }
+    const changed = (prevIsAdmin !== !!state.isAdmin) || (prevRole !== state.role);
+    if (!silent && changed) {
+      persist();
+      notify();
+    }
+    return false;
+  }
+
+  let email = String(state.user.email || '').trim().toLowerCase();
+  if (!email && Array.isArray(state.user.providerEmails) && state.user.providerEmails.length) {
+    email = String(state.user.providerEmails[0] || '').trim().toLowerCase();
+  }
+
+  if (!email) {
+    try {
+      const { getAuthInstance } = await import('./firebase.js');
+      const auth = getAuthInstance();
+      const current = auth.currentUser;
+      const fromProfile = String(current?.email || '').trim().toLowerCase();
+      if (fromProfile) {
+        email = fromProfile;
+      } else if (current) {
+        const token = await current.getIdTokenResult();
+        const fromClaim = String(token?.claims?.email || '').trim().toLowerCase();
+        if (fromClaim) email = fromClaim;
+      }
+    } catch {}
+  }
+
+  let isAdmin = false;
+  try {
+    const { isAdminEmail } = await import("./firebase.js");
+    if (email) {
+      isAdmin = await isAdminEmail(email, { forceBootstrap });
+      if (!isAdmin) {
+        isAdmin = await isAdminEmail(email);
+      }
+    }
+  } catch {}
+
+  if (isAdmin) {
+    state.isAdmin = true;
+  } else if (prevIsAdmin && !allowDowngrade) {
+    // Keep existing admin access during transient bootstrap/network failures.
+    state.isAdmin = true;
+  } else {
+    state.isAdmin = false;
+  }
+  if (state.isAdmin && currentRole !== 'admin') {
+    state.role = 'admin';
+  } else if (!state.isAdmin && currentRole === 'admin') {
+    state.role = state.myVendor ? 'vendor' : 'attendee';
+  }
+
+  const changed = (prevIsAdmin !== !!state.isAdmin) || (prevRole !== state.role);
+  if (!silent && changed) {
+    persist();
+    notify();
+  }
+  return state.isAdmin;
 }
 async function upsertAttendee(payload) {
   // Require a non-guest account
@@ -637,10 +751,12 @@ function dequeueAll() {
   notify();
 }
 function currentVendor() {
-  return state.vendors.find(v => v.id === state.vendorLoginId);
+  return findVendorByAnyId(state.vendors || [], state.vendorLoginId);
 }
 function leadsForVendor(vendorId) {
-  return state.leads.filter(l => l.vendor_id === vendorId);
+  const vendor = findVendorByAnyId(state.vendors || [], vendorId);
+  const sourceIds = vendor ? vendorSourceIds(vendor) : [vendorId];
+  return state.leads.filter(l => sourceIds.includes(l.vendor_id));
 }
 function topVendorsByLeadCount() {
   const counts = {};
@@ -648,7 +764,7 @@ function topVendorsByLeadCount() {
     counts[l.vendor_id] = (counts[l.vendor_id] || 0) + 1;
   });
   return state.vendors
-    .map(v => ({ ...v, leadCount: counts[v.id] || 0 }))
+    .map(v => ({ ...v, leadCount: vendorSourceIds(v).reduce((sum, id) => sum + (counts[id] || 0), 0) }))
     .sort((a, b) => b.leadCount - a.leadCount)
     .slice(0, 5);
 }
@@ -722,5 +838,6 @@ export {
   currentVendor,
   leadsForVendor,
   topVendorsByLeadCount,
-  shareBusinessCard
+  shareBusinessCard,
+  refreshAdminAccess
 };

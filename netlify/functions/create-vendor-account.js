@@ -1,30 +1,24 @@
 /**
  * Create Vendor Account Netlify Function
- * Creates a Firebase Auth account for imported vendors and optionally sends password reset email
+ * Creates a Firebase Auth account for imported vendors and optionally returns a password reset link.
  */
 
-const admin = require('firebase-admin');
+const { verifyAdmin, getAdmin } = require('./utils/verify-admin');
 
-// Initialize Firebase Admin if not already done
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      })
-    });
-  } catch (error) {
-    console.error('Firebase Admin init error:', error);
-  }
+function resolveAppUrls() {
+  const raw = String(process.env.APP_URL || process.env.SITE_URL || process.env.URL || 'https://winnpro-shows.app').trim();
+  const baseUrl = raw.replace(/\/+$/, '').split('#')[0];
+  return {
+    baseUrl,
+    continueUrl: `${baseUrl}/#/more`
+  };
 }
 
 exports.handler = async (event) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
@@ -42,7 +36,14 @@ exports.handler = async (event) => {
     };
   }
 
+  // Require admin authentication
+  const auth = await verifyAdmin(event);
+  if (auth.error) {
+    return { statusCode: auth.status, headers, body: JSON.stringify({ error: auth.error }) };
+  }
+
   try {
+    const admin = getAdmin();
     const { email, displayName, sendPasswordReset } = JSON.parse(event.body);
 
     if (!email) {
@@ -78,16 +79,16 @@ exports.handler = async (event) => {
       }
     }
 
-    // Send password reset email if requested
+    let resetLink = null;
+    // Generate password reset link if requested
     if (sendPasswordReset) {
       try {
-        const resetLink = await admin.auth().generatePasswordResetLink(normalizedEmail);
-        // You could send this via your email function, or Firebase will send it automatically
-        // For now, we'll use Firebase's built-in email
+        const { continueUrl } = resolveAppUrls();
+        resetLink = await admin.auth().generatePasswordResetLink(normalizedEmail, {
+          url: continueUrl,
+          handleCodeInApp: false
+        });
         console.log('Password reset link generated for:', normalizedEmail);
-        
-        // Optionally send via custom email
-        // await sendCustomEmail(normalizedEmail, resetLink);
       } catch (resetError) {
         console.warn('Could not generate password reset:', resetError);
       }
@@ -100,6 +101,7 @@ exports.handler = async (event) => {
         success: true,
         uid: userRecord.uid,
         email: userRecord.email,
+        resetLink,
         isNewUser,
         message: isNewUser 
           ? 'Account created successfully' 

@@ -28,13 +28,25 @@ let dragStartSVG = null;
 let dragBoothOrigPos = null;
 let _root = null;
 let _showId = null;
+let _lastViewportIsDesktop = null;
+let _resizeListenerAdded = false;
+let _resizeRaf = null;
+let _loadedBoothVendorIds = new Set();
 
 // ── Constants ─────────────────────────────────────────────────────────────
 const BOOTH_PRESETS = [
-  { label: '8 × 8',   widthFeet: 8,  heightFeet: 8 },
-  { label: '10 × 10', widthFeet: 10, heightFeet: 10 },
-  { label: '10 × 20', widthFeet: 10, heightFeet: 20 },
-  { label: '20 × 20', widthFeet: 20, heightFeet: 20 },
+  { key: '8x8', label: '8 x 8', widthFeet: 8, heightFeet: 8, shape: 'rectangle' },
+  { key: '10x10', label: '10 x 10', widthFeet: 10, heightFeet: 10, shape: 'rectangle' },
+  { key: '10x20', label: '10 x 20', widthFeet: 10, heightFeet: 20, shape: 'rectangle' },
+  { key: '20x20', label: '20 x 20', widthFeet: 20, heightFeet: 20, shape: 'rectangle' },
+  { key: 'food-truck-30x15', label: 'Food Truck 30 x 15', widthFeet: 30, heightFeet: 15, shape: 'rectangle' },
+  { key: 'corner-16x8', label: 'Corner 16 x 8', widthFeet: 16, heightFeet: 8, shape: 'corner', cornerOrientation: 'top-left' },
+];
+const CORNER_ORIENTATIONS = [
+  { value: 'top-left', label: 'Top Left' },
+  { value: 'top-right', label: 'Top Right' },
+  { value: 'bottom-left', label: 'Bottom Left' },
+  { value: 'bottom-right', label: 'Bottom Right' },
 ];
 
 const DEFAULT_CONFIG = {
@@ -85,8 +97,8 @@ export function renderFloorPlanTab() {
             <div class="space-y-2" id="fp-booth-bank">
               ${BOOTH_PRESETS.map((p, i) => `
                 <div class="fp-bank-item glass-button px-3 py-2 rounded text-xs cursor-grab text-center"
-                     draggable="true" data-preset="${i}">
-                  <ion-icon name="move-outline" class="mr-1"></ion-icon>${p.label} ft
+                     draggable="true" data-preset="${p.key || i}">
+                  <ion-icon name="move-outline" class="mr-1"></ion-icon>${p.label}${p.shape === 'corner' ? '' : ' ft'}
                 </div>
               `).join('')}
               <div class="fp-bank-item glass-button px-3 py-2 rounded text-xs cursor-grab text-center"
@@ -106,13 +118,19 @@ export function renderFloorPlanTab() {
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
-                  <label class="text-glass-secondary block mb-1">W (ft)</label>
+                  <label id="fp-prop-w-label" class="text-glass-secondary block mb-1">W (ft)</label>
                   <input id="fp-prop-w" type="number" min="1" class="w-full bg-glass-surface/40 border border-glass-border rounded px-2 py-1 text-glass text-xs" />
                 </div>
                 <div>
-                  <label class="text-glass-secondary block mb-1">H (ft)</label>
+                  <label id="fp-prop-h-label" class="text-glass-secondary block mb-1">H (ft)</label>
                   <input id="fp-prop-h" type="number" min="1" class="w-full bg-glass-surface/40 border border-glass-border rounded px-2 py-1 text-glass text-xs" />
                 </div>
+              </div>
+              <div id="fp-corner-controls" class="hidden">
+                <label class="text-glass-secondary block mb-1">Corner Position</label>
+                <select id="fp-prop-corner-orientation" class="w-full bg-glass-surface/40 border border-glass-border rounded px-2 py-1 text-glass text-xs">
+                  ${CORNER_ORIENTATIONS.map((opt) => `<option value="${opt.value}">${opt.label}</option>`).join('')}
+                </select>
               </div>
               <div>
                 <label class="text-glass-secondary block mb-1">Category</label>
@@ -144,7 +162,7 @@ export function renderFloorPlanTab() {
         <!-- Canvas area -->
         <div class="flex-1 glass-card p-2 relative overflow-auto" id="fp-canvas-wrap"
              style="max-height: 75vh; -webkit-overflow-scrolling: touch;">
-          <div id="fp-canvas-container" class="relative inline-block">
+          <div id="fp-canvas-container" class="relative w-full">
             <!-- SVG rendered here -->
           </div>
           <!-- Calibration overlay text -->
@@ -173,19 +191,35 @@ export async function loadFloorPlan(root, options = {}) {
     const configRef = fsm.doc(db, 'floorPlanConfigs', _showId);
     const snap = await fsm.getDoc(configRef);
     config = snap.exists() ? { ...DEFAULT_CONFIG, ...snap.data() } : { ...DEFAULT_CONFIG };
+    if (Array.isArray(config.booths)) {
+      config.booths = config.booths.map(normalizeBoothData);
+    }
+    _loadedBoothVendorIds = collectAssignedVendorIds(config.booths);
+    await syncCanvasToBackgroundImageSize();
 
     // Load vendors for assignment dropdown
     const vendorsSnap = await fsm.getDocs(
-      fsm.query(fsm.collection(db, 'vendors'), fsm.limit(500))
+      fsm.query(fsm.collection(db, 'vendors'), fsm.limit(2000))
     );
     vendors = [];
     vendorsSnap.forEach(d => {
       const v = d.data();
       if ((v.showId || 'putnam-spring-2026') === _showId) {
-        vendors.push({ id: d.id, companyName: v.companyName || v.company_name || 'Unknown', category: v.category || '' });
+        const displayName = getVendorDisplayName(v, d.id);
+        const boothList = normalizeBoothList(v.booths || v.booth || v.boothNumber);
+        vendors.push({
+          id: d.id,
+          displayName,
+          companyName: displayName,
+          category: v.category || '',
+          booths: boothList,
+          boothNumber: String(v.boothNumber || '').trim(),
+          contactEmail: String(v.contactEmail || v.email || '').trim().toLowerCase(),
+        });
       }
     });
-    vendors.sort((a, b) => a.companyName.localeCompare(b.companyName));
+    vendors.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+    hydrateBoothVendorNamesFromDirectory();
 
     renderCanvas();
     updateScaleDisplay();
@@ -204,6 +238,8 @@ let showGrid = false;
 function renderCanvas() {
   const container = _root.querySelector('#fp-canvas-container');
   if (!container || !config) return;
+  const isDesktop = isDesktopViewport();
+  _lastViewportIsDesktop = isDesktop;
 
   container.innerHTML = renderFloorPlanSVG(config, {
     interactive: true,
@@ -211,23 +247,84 @@ function renderCanvas() {
     showCategoryColors: true,
     showGrid,
     showLabels: true,
+    fitToContainer: isDesktop,
   });
+  applyCanvasViewportStyles(isDesktop);
 
-  // Highlight selected
-  if (selectedBoothIdx !== null) {
-    const sel = container.querySelector(`[data-booth-index="${selectedBoothIdx}"]`);
-    if (sel) {
-      const rect = sel.querySelector('.fp-booth-rect');
-      if (rect) {
-        rect.setAttribute('stroke', '#3b82f6');
-        rect.setAttribute('stroke-width', '3');
-        rect.setAttribute('stroke-dasharray', '6 3');
-      }
-    }
-  }
+  applySelectionHighlight();
 
   // Wire booth pointer events
   wireBoothPointerEvents();
+}
+
+function isDesktopViewport() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+  return window.matchMedia('(min-width: 1024px)').matches;
+}
+
+function applyCanvasViewportStyles(isDesktop) {
+  const wrap = _root?.querySelector('#fp-canvas-wrap');
+  const container = _root?.querySelector('#fp-canvas-container');
+  const svg = _root?.querySelector('#fp-canvas');
+  if (!wrap || !container || !svg) return;
+
+  wrap.style.maxHeight = '75vh';
+  wrap.style.webkitOverflowScrolling = 'touch';
+  wrap.style.overflowX = isDesktop ? 'hidden' : 'auto';
+  wrap.style.overflowY = isDesktop ? 'hidden' : 'auto';
+
+  if (isDesktop) {
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'flex-start';
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.overflow = 'hidden';
+
+    const availableHeight = Math.max(280, wrap.clientHeight - 8);
+    svg.style.display = 'block';
+    svg.style.width = 'auto';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = '100%';
+    svg.style.maxHeight = `${availableHeight}px`;
+    svg.style.minWidth = '0';
+  } else {
+    container.style.display = 'inline-block';
+    container.style.justifyContent = '';
+    container.style.alignItems = '';
+    container.style.width = '';
+    container.style.maxWidth = '';
+    container.style.overflow = '';
+
+    svg.style.display = 'block';
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.maxWidth = '';
+    svg.style.maxHeight = '';
+    svg.style.minWidth = '';
+  }
+}
+
+function applySelectionHighlight() {
+  const container = _root?.querySelector('#fp-canvas-container');
+  if (!container) return;
+
+  container.querySelectorAll('.fp-booth .fp-booth-rect').forEach((rect) => {
+    rect.setAttribute('stroke', 'rgba(255,255,255,0.3)');
+    rect.setAttribute('stroke-width', '1.5');
+    rect.removeAttribute('stroke-dasharray');
+  });
+
+  if (selectedBoothIdx === null) return;
+  const sel = container.querySelector(`[data-booth-index="${selectedBoothIdx}"]`);
+  const rects = sel?.querySelectorAll('.fp-booth-rect');
+  if (!rects || !rects.length) return;
+
+  rects.forEach((rect) => {
+    rect.setAttribute('stroke', '#3b82f6');
+    rect.setAttribute('stroke-width', '3');
+    rect.setAttribute('stroke-dasharray', '6 3');
+  });
 }
 
 // ── Wire all UI listeners (once) ──────────────────────────────────────────
@@ -296,8 +393,11 @@ function wireListeners() {
       if (presetKey === 'custom') {
         dragBoothPreset = { widthFeet: 10, heightFeet: 10, custom: true };
       } else {
-        dragBoothPreset = { ...BOOTH_PRESETS[parseInt(presetKey)] };
+        const preset = BOOTH_PRESETS.find((p) => String(p.key) === String(presetKey))
+          || BOOTH_PRESETS[parseInt(presetKey, 10)];
+        dragBoothPreset = preset ? { ...preset } : null;
       }
+      if (!dragBoothPreset) return;
       e.dataTransfer.setData('text/plain', 'booth');
       e.dataTransfer.effectAllowed = 'copy';
     });
@@ -310,6 +410,23 @@ function wireListeners() {
       if (dragBoothPreset) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
     });
     canvasWrap.addEventListener('drop', handleBoothDrop);
+  }
+
+  if (!_resizeListenerAdded && typeof window !== 'undefined') {
+    _resizeListenerAdded = true;
+    window.addEventListener('resize', () => {
+      if (!_root?.querySelector('#fp-configurator')) return;
+      if (_resizeRaf) cancelAnimationFrame(_resizeRaf);
+      _resizeRaf = requestAnimationFrame(() => {
+        _resizeRaf = null;
+        const isDesktop = isDesktopViewport();
+        if (isDesktop !== _lastViewportIsDesktop) {
+          renderCanvas();
+        } else {
+          applyCanvasViewportStyles(isDesktop);
+        }
+      });
+    });
   }
 
   // Property panel changes
@@ -334,14 +451,20 @@ function wireBoothPointerEvents() {
       e.preventDefault();
       e.stopPropagation();
 
-      const idx = parseInt(el.dataset.boothIndex);
-      selectBooth(idx);
+      const idx = parseInt(el.dataset.boothIndex, 10);
+      if (!Number.isFinite(idx) || !config?.booths?.[idx]) return;
+      // Don't re-render here or the active pointer element is replaced mid-drag.
+      selectBooth(idx, { rerender: false });
 
       // Start drag
       isDragging = true;
       dragStartSVG = screenToSVG(svg, e.clientX, e.clientY);
       dragBoothOrigPos = { x: config.booths[idx].x, y: config.booths[idx].y };
-      el.setPointerCapture(e.pointerId);
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // Non-fatal; pointer events still work for simple click/move.
+      }
 
       const onMove = (ev) => {
         if (!isDragging || selectedBoothIdx !== idx) return;
@@ -357,14 +480,32 @@ function wireBoothPointerEvents() {
         // Update transform directly for smooth drag
         el.setAttribute('transform', `translate(${config.booths[idx].x}, ${config.booths[idx].y})`);
       };
-      const onUp = () => {
+      const stopDrag = () => {
+        if (!isDragging) return;
         isDragging = false;
+        try {
+          if (el.hasPointerCapture?.(e.pointerId)) {
+            el.releasePointerCapture(e.pointerId);
+          }
+        } catch {}
         el.removeEventListener('pointermove', onMove);
         el.removeEventListener('pointerup', onUp);
+        el.removeEventListener('pointercancel', onCancel);
+        el.removeEventListener('lostpointercapture', stopDrag);
         renderCanvas(); // Re-render to fix any visual glitches
+      };
+      const onUp = (ev) => {
+        if (ev.pointerId !== e.pointerId) return;
+        stopDrag();
+      };
+      const onCancel = (ev) => {
+        if (ev.pointerId !== e.pointerId) return;
+        stopDrag();
       };
       el.addEventListener('pointermove', onMove);
       el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onCancel);
+      el.addEventListener('lostpointercapture', stopDrag);
     });
   });
 
@@ -381,9 +522,11 @@ function wireBoothPointerEvents() {
 }
 
 // ── Selection ─────────────────────────────────────────────────────────────
-function selectBooth(idx) {
+function selectBooth(idx, options = {}) {
+  const rerender = options.rerender !== false;
   selectedBoothIdx = idx;
-  const booth = config.booths[idx];
+  const booth = normalizeBoothData(config.booths[idx]);
+  config.booths[idx] = booth;
   if (!booth) return;
 
   const panel = _root.querySelector('#fp-props-panel');
@@ -392,21 +535,31 @@ function selectBooth(idx) {
   const idInput = _root.querySelector('#fp-prop-id');
   const wInput = _root.querySelector('#fp-prop-w');
   const hInput = _root.querySelector('#fp-prop-h');
+  const wLabel = _root.querySelector('#fp-prop-w-label');
+  const hLabel = _root.querySelector('#fp-prop-h-label');
+  const cornerControls = _root.querySelector('#fp-corner-controls');
+  const cornerSelect = _root.querySelector('#fp-prop-corner-orientation');
   const catSelect = _root.querySelector('#fp-prop-category');
   const vendorSelect = _root.querySelector('#fp-prop-vendor');
+  const isCorner = booth.shape === 'corner';
 
   if (idInput) idInput.value = booth.id || '';
-  if (wInput) wInput.value = booth.widthFeet || 10;
-  if (hInput) hInput.value = booth.heightFeet || 10;
+  if (wInput) wInput.value = booth.widthFeet || (isCorner ? 16 : 10);
+  if (hInput) hInput.value = booth.heightFeet || (isCorner ? 8 : 10);
+  if (wLabel) wLabel.textContent = isCorner ? 'Long Side (ft)' : 'W (ft)';
+  if (hLabel) hLabel.textContent = isCorner ? 'Depth (ft)' : 'H (ft)';
+  if (cornerControls) cornerControls.classList.toggle('hidden', !isCorner);
+  if (cornerSelect) cornerSelect.value = normalizeCornerOrientation(booth.cornerOrientation);
   if (catSelect) catSelect.value = booth.category || '';
 
   // Populate vendor dropdown
   if (vendorSelect) {
     vendorSelect.innerHTML = '<option value="">Unassigned</option>' +
-      vendors.map(v => `<option value="${v.id}" ${v.id === booth.vendorId ? 'selected' : ''}>${escHtml(v.companyName)}</option>`).join('');
+      vendors.map(v => `<option value="${v.id}" ${v.id === booth.vendorId ? 'selected' : ''}>${escHtml(v.displayName)}</option>`).join('');
   }
 
-  renderCanvas();
+  if (rerender) renderCanvas();
+  else applySelectionHighlight();
 }
 
 function deselectBooth() {
@@ -421,12 +574,14 @@ function wirePropertyListeners() {
   const idInput = _root.querySelector('#fp-prop-id');
   const wInput = _root.querySelector('#fp-prop-w');
   const hInput = _root.querySelector('#fp-prop-h');
+  const cornerSelect = _root.querySelector('#fp-prop-corner-orientation');
   const catSelect = _root.querySelector('#fp-prop-category');
   const vendorSelect = _root.querySelector('#fp-prop-vendor');
 
   const applyProp = () => {
     if (selectedBoothIdx === null || !config.booths[selectedBoothIdx]) return;
-    const booth = config.booths[selectedBoothIdx];
+    const booth = normalizeBoothData(config.booths[selectedBoothIdx]);
+    config.booths[selectedBoothIdx] = booth;
     const ppf = config.calibration?.pixelsPerFoot || 10;
 
     if (idInput) booth.id = idInput.value.trim() || booth.id;
@@ -438,13 +593,16 @@ function wirePropertyListeners() {
       booth.heightFeet = Math.max(1, parseInt(hInput.value) || 10);
       booth.heightPx = booth.heightFeet * ppf;
     }
+    if (cornerSelect && booth.shape === 'corner') {
+      booth.cornerOrientation = normalizeCornerOrientation(cornerSelect.value);
+    }
     if (catSelect) booth.category = catSelect.value;
     if (vendorSelect) {
       const vid = vendorSelect.value;
       if (vid) {
         const v = vendors.find(vn => vn.id === vid);
         booth.vendorId = vid;
-        booth.vendorName = v?.companyName || '';
+        booth.vendorName = v?.displayName || '';
         // Auto-set category from vendor if booth has none
         if (!booth.category && v?.category) {
           booth.category = v.category;
@@ -464,7 +622,7 @@ function wirePropertyListeners() {
       el.addEventListener('change', applyProp);
     }
   });
-  [catSelect, vendorSelect].forEach(el => {
+  [cornerSelect, catSelect, vendorSelect].forEach(el => {
     if (el && !el._fpListener) {
       el._fpListener = true;
       el.addEventListener('change', applyProp);
@@ -488,12 +646,27 @@ async function handleUploadBackground() {
     try {
       setButtonLoading(uploadBtn, true, 'Uploading...');
 
-      // Compress before upload
-      const { compressBackgroundImage } = await import('../../utils/imageResize.js');
-      const compressed = await compressBackgroundImage(file);
+      // Re-sync admin access before storage write so rules recognize admin status.
+      const { refreshAdminAccess, getState } = await import('../../store.js');
+      await refreshAdminAccess({ forceBootstrap: true, allowDowngrade: false, silent: true });
+      if (!getState().isAdmin) {
+        throw new Error('Admin access is not synced yet. Reopen Admin and try again.');
+      }
 
-      const { uploadImage } = await import('../../firebase.js');
-      const url = await uploadImage(compressed, `shows/${_showId}/floorplan`);
+      const MAX_UPLOAD_BYTES = 9.5 * 1024 * 1024;
+      if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error('Image is too large to upload at full quality (max 9.5 MB). Export as SVG or a smaller high-res image and retry.');
+      }
+
+      const { getAuthInstance } = await import('../../firebase.js');
+      const auth = getAuthInstance();
+      if (!auth.currentUser || auth.currentUser.isAnonymous) {
+        throw new Error('Sign in with your admin account before uploading floor plan images.');
+      }
+      await auth.currentUser.getIdToken(true);
+
+      // Use server-side admin upload so stale client storage rules do not block floor-plan uploads.
+      const url = await uploadBackgroundViaAdminFunction(file, file.name || 'floorplan');
 
       // Get image dimensions
       const dims = await getImageDimensions(url);
@@ -505,12 +678,72 @@ async function handleUploadBackground() {
       Toast('Background image uploaded');
     } catch (err) {
       console.error('[AdminFloorPlan] Upload failed:', err);
-      await AlertDialog('Upload Failed', err.message || 'Could not upload image', { type: 'error' });
+      const code = String(err?.code || '');
+      const status = Number(err?.status || 0);
+      const baseMessage = err?.message || 'Could not upload image';
+      let message = baseMessage;
+      if (status === 401) {
+        message = 'Your login session expired. Sign out/in and try upload again.';
+      } else if (status === 403) {
+        message = 'Upload endpoint says this account is not admin-authorized. Confirm your email is in Netlify ADMIN_EMAILS and/or Firestore admin-users, then reload.';
+      } else if (status === 413 || /too large|payload/i.test(baseMessage)) {
+        message = 'Image exceeds the full-quality upload limit. Export a smaller file (or SVG) and try again.';
+      } else if (code === 'storage/unauthorized') {
+        message = 'Upload blocked by Firebase Storage rules. Confirm your admin email exists in Firestore under admin-users/adminEmails, then re-login and try again.';
+      }
+      await AlertDialog('Upload Failed', message, { type: 'error' });
     } finally {
       setButtonLoading(uploadBtn, false);
     }
   };
   input.click();
+}
+
+async function uploadBackgroundViaAdminFunction(fileBlob, fileName = 'floorplan') {
+  const { getAuthInstance } = await import('../../firebase.js');
+  const auth = getAuthInstance();
+  if (!auth.currentUser || auth.currentUser.isAnonymous) {
+    throw new Error('Admin sign-in required');
+  }
+
+  const token = await auth.currentUser.getIdToken(true);
+  const dataUrl = await blobToDataUrl(fileBlob);
+  const response = await fetch('/.netlify/functions/admin-upload-image', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      dataUrl,
+      pathPrefix: `shows/${_showId}/floorplan`,
+      fileName
+    })
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {}
+
+  if (!response.ok) {
+    const error = new Error(payload?.error || `Admin upload failed (${response.status})`);
+    error.status = response.status;
+    throw error;
+  }
+  if (!payload?.url) {
+    throw new Error('Admin upload did not return a download URL');
+  }
+  return payload.url;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Failed to read image before upload'));
+    reader.readAsDataURL(blob);
+  });
 }
 
 function getImageDimensions(url) {
@@ -520,6 +753,22 @@ function getImageDimensions(url) {
     img.onerror = () => reject(new Error('Failed to load image'));
     img.src = url;
   });
+}
+
+async function syncCanvasToBackgroundImageSize() {
+  const imageUrl = config?.backgroundImageUrl;
+  if (!imageUrl) return;
+  try {
+    const dims = await getImageDimensions(imageUrl);
+    if (!Number.isFinite(dims.width) || !Number.isFinite(dims.height)) return;
+    if (Number(config.imageWidth) !== dims.width || Number(config.imageHeight) !== dims.height) {
+      config.imageWidth = dims.width;
+      config.imageHeight = dims.height;
+      console.info(`[AdminFloorPlan] Synced canvas size to image: ${dims.width}x${dims.height}`);
+    }
+  } catch (err) {
+    console.warn('[AdminFloorPlan] Could not read background image dimensions:', err);
+  }
 }
 
 // ── Calibration ───────────────────────────────────────────────────────────
@@ -660,22 +909,33 @@ function handleBoothDrop(e) {
 
   let wFeet = dragBoothPreset.widthFeet;
   let hFeet = dragBoothPreset.heightFeet;
+  let shape = normalizeBoothShape(dragBoothPreset.shape);
+  let cornerOrientation = normalizeCornerOrientation(dragBoothPreset.cornerOrientation);
 
   // If custom, prompt for size
   if (dragBoothPreset.custom) {
     // Use defaults; user can edit in property panel after placement
     wFeet = 10;
     hFeet = 10;
+    shape = 'rectangle';
+    cornerOrientation = 'top-left';
   }
+  wFeet = Math.max(1, parseInt(wFeet, 10) || 10);
+  hFeet = Math.max(1, parseInt(hFeet, 10) || 10);
+
+  const dropWFeet = wFeet;
+  const dropHFeet = shape === 'corner' ? wFeet : hFeet;
 
   const newBooth = {
     id: generateBoothId(),
-    x: snap(pt.x - (wFeet * ppf) / 2, ppf),
-    y: snap(pt.y - (hFeet * ppf) / 2, ppf),
+    x: snap(pt.x - (dropWFeet * ppf) / 2, ppf),
+    y: snap(pt.y - (dropHFeet * ppf) / 2, ppf),
     widthFeet: wFeet,
     heightFeet: hFeet,
     widthPx: wFeet * ppf,
     heightPx: hFeet * ppf,
+    shape,
+    cornerOrientation: shape === 'corner' ? cornerOrientation : null,
     category: '',
     vendorId: null,
     vendorName: null,
@@ -735,7 +995,18 @@ async function handleSave() {
     }
 
     await fsm.setDoc(fsm.doc(db, 'floorPlanConfigs', _showId), payload, { merge: true });
-    Toast('Floor plan saved');
+    const vendorSync = await syncVendorAssignmentsToVendorProfiles(db, fsm);
+    if (vendorSync.failed > 0) {
+      await AlertDialog(
+        'Saved with Warnings',
+        `Floor plan saved, but ${vendorSync.failed} vendor profile update(s) failed. Booth assignments may be partially synced.`,
+        { type: 'error' }
+      );
+    } else if (vendorSync.updated > 0) {
+      Toast(`Floor plan saved • synced ${vendorSync.updated} vendor profile${vendorSync.updated === 1 ? '' : 's'}`);
+    } else {
+      Toast('Floor plan saved');
+    }
   } catch (err) {
     console.error('[AdminFloorPlan] Save failed:', err);
     await AlertDialog('Save Failed', err.message || 'Could not save floor plan', { type: 'error' });
@@ -854,3 +1125,161 @@ function snap(value, gridSize) {
 function escHtml(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
+
+function getVendorDisplayName(vendor = {}, fallbackId = '') {
+  const candidates = [
+    vendor.companyName,
+    vendor.company_name,
+    vendor.businessName,
+    vendor.business_name,
+    vendor.name,
+    vendor.displayName,
+    vendor.contactName,
+    vendor.contact_name,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+  const emailCandidate = String(vendor.contactEmail || vendor.email || '').trim();
+  if (emailCandidate) {
+    return emailCandidate.split('@')[0];
+  }
+  if (fallbackId) {
+    return `Vendor ${fallbackId.slice(0, 6)}`;
+  }
+  return 'Unnamed Vendor';
+}
+
+function normalizeBoothList(input) {
+  if (Array.isArray(input)) {
+    return Array.from(new Set(
+      input.map(v => String(v || '').trim()).filter(Boolean)
+    ));
+  }
+  if (typeof input === 'string') {
+    return Array.from(new Set(
+      input.split(',').map(v => v.trim()).filter(Boolean)
+    ));
+  }
+  return [];
+}
+
+function hydrateBoothVendorNamesFromDirectory() {
+  if (!config?.booths?.length || !vendors.length) return;
+  const vendorById = new Map(vendors.map(v => [v.id, v]));
+  let changed = false;
+  config.booths.forEach((booth) => {
+    const vid = String(booth?.vendorId || '').trim();
+    if (!vid) return;
+    const vendor = vendorById.get(vid);
+    if (!vendor) return;
+    if (booth.vendorName !== vendor.displayName) {
+      booth.vendorName = vendor.displayName;
+      changed = true;
+    }
+    if (!booth.category && vendor.category) {
+      booth.category = vendor.category;
+      changed = true;
+    }
+  });
+  if (changed) {
+    console.info('[AdminFloorPlan] Hydrated booth vendor names from vendor directory.');
+  }
+}
+
+async function syncVendorAssignmentsToVendorProfiles(db, fsm) {
+  const boothAssignments = new Map();
+  (config?.booths || []).forEach((booth) => {
+    const vendorId = String(booth?.vendorId || '').trim();
+    const boothId = String(booth?.id || '').trim();
+    if (!vendorId || !boothId) return;
+    if (!boothAssignments.has(vendorId)) boothAssignments.set(vendorId, []);
+    const list = boothAssignments.get(vendorId);
+    if (!list.includes(boothId)) list.push(boothId);
+  });
+
+  boothAssignments.forEach((value, key) => {
+    value.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    boothAssignments.set(key, value);
+  });
+
+  const vendorIds = new Set(_loadedBoothVendorIds);
+  boothAssignments.forEach((_value, key) => vendorIds.add(key));
+
+  let updated = 0;
+  let failed = 0;
+  for (const vendorId of vendorIds) {
+    const assignedBooths = boothAssignments.get(vendorId) || [];
+    const boothText = assignedBooths.join(', ');
+    const primaryBooth = assignedBooths[0] || '';
+    const vendorMeta = vendors.find(v => v.id === vendorId);
+    const existingBooths = normalizeBoothList(vendorMeta?.booths);
+    const existingBoothText = existingBooths.join(', ');
+    const existingPrimary = String(vendorMeta?.boothNumber || '').trim();
+
+    const unchanged = (
+      existingBoothText === boothText &&
+      existingPrimary === primaryBooth
+    );
+    if (unchanged) continue;
+
+    try {
+      await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), {
+        booths: assignedBooths,
+        booth: boothText,
+        boothNumber: primaryBooth,
+        boothCount: assignedBooths.length,
+        updatedAt: fsm.serverTimestamp(),
+      });
+      updated += 1;
+      if (vendorMeta) {
+        vendorMeta.booths = assignedBooths;
+        vendorMeta.boothNumber = primaryBooth;
+      }
+    } catch (err) {
+      failed += 1;
+      console.warn(`[AdminFloorPlan] Failed to sync booth assignment for vendor ${vendorId}:`, err);
+    }
+  }
+
+  _loadedBoothVendorIds = new Set(boothAssignments.keys());
+  return { updated, failed };
+}
+
+function collectAssignedVendorIds(booths = []) {
+  const ids = new Set();
+  (booths || []).forEach((booth) => {
+    const vendorId = String(booth?.vendorId || '').trim();
+    if (vendorId) ids.add(vendorId);
+  });
+  return ids;
+}
+
+function normalizeBoothShape(value) {
+  return value === 'corner' ? 'corner' : 'rectangle';
+}
+
+function normalizeCornerOrientation(value) {
+  const valid = new Set(['top-left', 'top-right', 'bottom-left', 'bottom-right']);
+  return valid.has(value) ? value : 'top-left';
+}
+
+function normalizeBoothData(booth = {}) {
+  const normalized = { ...booth };
+  normalized.shape = normalizeBoothShape(normalized.shape);
+
+  if (normalized.shape === 'corner') {
+    normalized.cornerOrientation = normalizeCornerOrientation(normalized.cornerOrientation);
+    normalized.widthFeet = Math.max(1, parseInt(normalized.widthFeet, 10) || 16);
+    normalized.heightFeet = Math.max(1, parseInt(normalized.heightFeet, 10) || 8);
+  } else {
+    normalized.widthFeet = Math.max(1, parseInt(normalized.widthFeet, 10) || 10);
+    normalized.heightFeet = Math.max(1, parseInt(normalized.heightFeet, 10) || 10);
+    delete normalized.cornerOrientation;
+  }
+
+  return normalized;
+}
+

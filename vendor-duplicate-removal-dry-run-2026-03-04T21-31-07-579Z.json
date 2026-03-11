@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-03-04T21:31:07.580Z",
+  "mode": "dry-run",
+  "allVendorCount": 157,
+  "totalMatchedDocs": 0,
+  "targets": [
+    {
+      "name": "All American Matters",
+      "email": "derrick@allamericanmatress.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "American Home Design",
+      "email": "unknown@americanhomedesign.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Bruck Contractors",
+      "email": "info@bruckcontractors.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Budget Blinds",
+      "email": "itaylor@budgetblinds.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Cumberland Cleaning Company",
+      "email": "mail@cumberlandcleaning.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Cutco",
+      "email": "events@cutco.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Innovative Home Services",
+      "email": "uknown@innovativehomeservices.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "LeafHome Bath",
+      "email": "events@leafhomeenhancements.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "LeafX of TN",
+      "email": "tjholland.th@gmail.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "Upper Cumberland Generators",
+      "email": "ucgenerators@gmail.com",
+      "matchCount": 0,
+      "matches": []
+    },
+    {
+      "name": "USA Granite",
+      "email": "help@theusagranite.com",
+      "matchCount": 0,
+      "matches": []
+    }
+  ]
+}

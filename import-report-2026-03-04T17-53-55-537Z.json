@@ -1,0 +1,1032 @@
+{
+  "startedAt": "2026-03-04T17:48:09.601Z",
+  "filePath": "c:\\Users\\aloft\\Downloads\\Putnam County Spring Home Show 2026-Exhibitors (Cookeville,TN) (6).csv",
+  "totalParsed": 70,
+  "totalProcessed": 70,
+  "showId": "putnam-spring-2026",
+  "showName": "WinnPro Spring Home Show",
+  "dryRun": false,
+  "sendReset": true,
+  "resendExistingReset": true,
+  "sendContractReminders": true,
+  "autoApprove": true,
+  "created": 0,
+  "existing": 70,
+  "skippedDuplicateInput": 0,
+  "failed": 15,
+  "authUsersCreated": 0,
+  "existingSignedIn": 5,
+  "existingNotSignedIn": 65,
+  "resetEmailsSent": 52,
+  "resetEmailsSentNew": 0,
+  "resetEmailsSentExisting": 52,
+  "contractRemindersSent": 55,
+  "contractRemindersSentNew": 0,
+  "contractRemindersSentExisting": 55,
+  "details": [
+    {
+      "row": 1,
+      "name": "A Cut Above Roofing",
+      "email": "acutaboveroofing@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "yFN42br8uHQ51orwdr49"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 2,
+      "name": "All American Mattress LLC",
+      "email": "derrick@allamericanmattress.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "T3bwP30CRpU8RwRSBE1O"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 3,
+      "name": "Allen's land development",
+      "email": "allenslanddevelopment@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "b0hUWeUldgULIaiDNTx4"
+      ],
+      "hasSignedIn": true,
+      "actions": [
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 4,
+      "name": "American Home Builders",
+      "email": "gayle.edmiston@yahoo.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "w8IZHRiZVV3yfa59P9WB"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 5,
+      "name": "American Home Design",
+      "email": "mgoodchild@americanhomedesign.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "oE3t3cNmkk8dC90vatLF"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 6,
+      "name": "America's Home Place",
+      "email": "jbrezeale@americashomeplace.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "R6i3bfnIfy1Yjsz0u1BP"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 7,
+      "name": "Aqua Pools",
+      "email": "sales@aquapoolsllc.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "gK5kinTzccFqiqyG1E9S"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 8,
+      "name": "Axen Realty",
+      "email": "canglin@axenrealty.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "ZLmIdWTrlg8tu8HYHfk9"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 9,
+      "name": "B&H Storm Shelters",
+      "email": "bandhshelters@yahoo.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "QN6D1F8ZPjInxVhFV5PP"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 10,
+      "name": "Barrier Waterproofing Systems",
+      "email": "barrieroftn@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "1Yc1z3pkIV5czgUpyPCh"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 11,
+      "name": "Bath Fitter",
+      "email": "marshellia.johnson@bathfitter.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "JOXDH6ijMeecMwynXpuH"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 12,
+      "name": "Beautiful Homes and Decks",
+      "email": "curbappealoftn@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "zGnXoL89lfca76KqThvP"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 13,
+      "name": "Bruck Contractors LLC",
+      "email": "zeke@bruckcontractors.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "cZNaTSI37tQHroYQ2cxt"
+      ],
+      "hasSignedIn": true,
+      "actions": [
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 14,
+      "name": "Budget Blinds",
+      "email": "itaylor@budgetblinds.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "aAaGXp6y6ceiG0lMMw6z"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 15,
+      "name": "C & W Mechanical",
+      "email": "lisa@cwmechanicalservices.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "Wsk1C4oFh0IqS3F4yg6y"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 16,
+      "name": "Campbell Pest Solutions",
+      "email": "russell@campbellpestsolutions.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "uQ27BgQjWk76hIVL1rsQ"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 17,
+      "name": "Cana Event Backdrops",
+      "email": "canaeventbackdrops@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "Vc9NqJibNl2TeY01Lk3g"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 18,
+      "name": "Clinic Shape",
+      "email": "nathaliaskincare@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "QcTr9yrxaep7Kw1NZetz"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 19,
+      "name": "Craft Body Scan",
+      "email": "rick@crafthealth.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "nLs2EhDAsuj7eiMSucwR"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 20,
+      "name": "Creative Log Cabins",
+      "email": "vwinneccs@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "L0mwFI9tMcyv0wyqKIcn"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 21,
+      "name": "Cumberland Cleaning Company",
+      "email": "mail@cumberlandcleaning.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "OhzhHjmf6tcvG8og6Noc"
+      ],
+      "hasSignedIn": true,
+      "actions": [
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 22,
+      "name": "Custom Bath & Shower",
+      "email": "pat@custombathandshower.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "hsPq9qYJcTYWqTffqJTx"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 23,
+      "name": "Cutco",
+      "email": "events@cutco.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "6qIS5NuPHacrpjbxEVze"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 24,
+      "name": "Erie Home",
+      "email": "erieevents@leafhome.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "zMcdaybWAtZeh7qhTBnX"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 25,
+      "name": "FLOWSHIELD GUTTER PROTECTION",
+      "email": "rob@tnshield.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "srWLNO2UiEnRu4SU7RZT"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 26,
+      "name": "Garage Force of Nashville",
+      "email": "wwatson@garageforce.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "WvtsWuQa5T1Vou6hgNgU"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 27,
+      "name": "H20 Waterbiz southeast LLC",
+      "email": "dennis@h20waterbiz.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "2WWObrzOgRIcYNmwyMqa"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 28,
+      "name": "Historic Granville",
+      "email": "granvilletnoffice@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "PZMMjq31RAc1ioc9w1lt"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 29,
+      "name": "HOMEstretch",
+      "email": "james.blair@home-stretch.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "apAgy08sYhZPFIhFKThg"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 30,
+      "name": "House of KnA LLC",
+      "email": "aloft2@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "uCoSSnyF9GvmqT2qtRgx"
+      ],
+      "hasSignedIn": true,
+      "actions": [
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 31,
+      "name": "Improveit Home Remodeling",
+      "email": "ihrshowmanager@improveitusa.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "bEbsh4rxpyWvINpizu1y"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 32,
+      "name": "Innovative Home Services",
+      "email": "moriah@irtn.co",
+      "status": "existing_updated",
+      "vendorIds": [
+        "Xpm05ItcTHvQbTEcVAO7"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 33,
+      "name": "Integrity Metal Sales & Lumber",
+      "email": "ims@ibyfax.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "4EqMFW6V5MUFCxj6p8To"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 34,
+      "name": "Karen's Cleaning Service",
+      "email": "kpresley1@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "RqjGkRuFzZ26Zpq1rURd"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 35,
+      "name": "LeafFilter Gutter Protection",
+      "email": "events@leaffilter.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "cDEZUYEbzUOOjmlLox6M"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 36,
+      "name": "Leafguard",
+      "email": "kschwarz@leafguard.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "pBfEOZiuTjhoZcUQBdYL"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 37,
+      "name": "LeafHome Bath",
+      "email": "events@leafhomeenhancements.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "37UfUePjPZaaA2SpndxQ"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 38,
+      "name": "LeafX of TN",
+      "email": "tjholland1.th@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "UdRwtcOa226dWzqifnLV"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 39,
+      "name": "Middle Tennessee Cleaners",
+      "email": "mike@middletennesseecleaners.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "3BBxMRqHturfaui2sXBU"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 40,
+      "name": "Modern Development",
+      "email": "jaden@moderndevelopment.co",
+      "status": "existing_updated",
+      "vendorIds": [
+        "rxYfhc6kNSZNknzuIE6R"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 41,
+      "name": "NXT Generation Painting, LLC",
+      "email": "jasonbo1462@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "HdTSX4zTnZWTyK8lRcbN"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 42,
+      "name": "Olympic Air LLC",
+      "email": "allison@meetinthemiddle.club",
+      "status": "existing_updated",
+      "vendorIds": [
+        "WoAfjFfxfWSLak4eD0lR"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 43,
+      "name": "Passanante's Home Food Services",
+      "email": "jenna@homefoodservices.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "2aNyvJ8sSf8FjrSZShp0"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 44,
+      "name": "Patio Enclosures",
+      "email": "shanautica.sales@greatdayimprovements.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "6KQuSbF6SiiosCnc7AO1"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 45,
+      "name": "Patriot Contractors, LLC",
+      "email": "joe.patriotcontractors@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "9uvpD8REijb5jchdqrLk"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 46,
+      "name": "Pella Windows and Doors",
+      "email": "events@pelladirect.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "PIGSWL7x0sN1KZ7PRRGe"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 47,
+      "name": "Putnam County Tree Service",
+      "email": "putnamcountytreeservice@yahoo.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "Oww07z5rsYOAPuSRZITC"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 48,
+      "name": "Putnam Plumbing",
+      "email": "garry@putnamplumbing.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "HciFosSqcQttkzWLDdaj"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 49,
+      "name": "Renewal by Andersen",
+      "email": "nashevents@windowsbyrba.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "FDtHlbDubGta5VukMK0I"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 50,
+      "name": "Roberts Excavation LLC",
+      "email": "robertsexcavationllc@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "wV8H2NXCS1JGYEELuiMM"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 51,
+      "name": "Rolling Thunder Carts",
+      "email": "admin@rollingthundercarts.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "zD1qCd9UIcrI6Up3NqD1"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 52,
+      "name": "SAY HEATING AND COOLING",
+      "email": "sayheatingandcooling@gmail.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "0KN6K4hZ7j5MZNQ2lJBS"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 53,
+      "name": "Selk Solutions",
+      "email": "amber@selksolutions.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "sBUzzxo7ptnTxnYNqRsB"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 54,
+      "name": "Southern Showers",
+      "email": "events@southernshowers.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "H3YFJemEIaUb4R0JFFUN"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 55,
+      "name": "Sullivan Walter Homes",
+      "email": "heather@sullivanwalter.com",
+      "status": "existing_updated",
+      "vendorIds": [
+        "LmeqlDaTI1NALTfOxecZ"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset",
+        "sent_contract_reminder"
+      ],
+      "error": ""
+    },
+    {
+      "row": 56,
+      "name": "SUPERIOR SLEEP",
+      "email": "patrice@supsleep.com",
+      "status": "failed",
+      "vendorIds": [
+        "PrUiHOICyHXNyLykxBt5"
+      ],
+      "hasSignedIn": false,
+      "actions": [
+        "sent_password_reset"
+      ],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 57,
+      "name": "The Crawlspace Kings",
+      "email": "contact@thecrawlspacekings.com",
+      "status": "failed",
+      "vendorIds": [
+        "NjEQrD4j41jVwcvdcyNl"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 58,
+      "name": "T-Mobile",
+      "email": "thomas.surratt1@t-mobile.com",
+      "status": "failed",
+      "vendorIds": [
+        "3uKLJzUmLGd1eixPSwkj"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 59,
+      "name": "True Metal Supply",
+      "email": "shannon@truemetalsupply.com",
+      "status": "failed",
+      "vendorIds": [
+        "BhDy1dRhg9YFDQh9atBk"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 60,
+      "name": "Two Men and a Truck",
+      "email": "kevin.christensen@twomen.com",
+      "status": "failed",
+      "vendorIds": [
+        "0m8EPoXbR5Ggo73qe9JT"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 61,
+      "name": "TWO MEN AND A TRUCK",
+      "email": "jen.christensen@twomen.com",
+      "status": "failed",
+      "vendorIds": [
+        "wgszuraXIvwQQVzlalV5"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 62,
+      "name": "United Structural Systems (USS)",
+      "email": "marketing@stabledry.com",
+      "status": "failed",
+      "vendorIds": [
+        "DhPBN57AYgprKYN29Kas"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 63,
+      "name": "Upper Cumberland Cabinetry",
+      "email": "design@uccabinetry.com",
+      "status": "failed",
+      "vendorIds": [
+        "uf8JvaD9HgxRRA7v6Dog"
+      ],
+      "hasSignedIn": true,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 64,
+      "name": "Upper Cumberland Generators",
+      "email": "ucgenerators@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "WLKXMv8kWUm7KWbDbtKt"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 65,
+      "name": "Upper Cumberland Remodeling LLC",
+      "email": "dunn2676@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "Gyb5trl5g1JbxEI6wi55"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 66,
+      "name": "USA Granite",
+      "email": "help@theusagranite.com",
+      "status": "failed",
+      "vendorIds": [
+        "z21TnmeK6BJz4HnREIgn"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 67,
+      "name": "Willow Window",
+      "email": "931window1@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "htpc5riuYvCJhgoK8VxI"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 68,
+      "name": "Wilson Bank & Trust",
+      "email": "events@wilsonbank.com",
+      "status": "failed",
+      "vendorIds": [
+        "hhzPD48LoM7HadF7FgVg"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 69,
+      "name": "Window Depot & Bath Team",
+      "email": "ashlyn.windowdepot@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "N1VinlN8AR4PwGGN2LXb"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    },
+    {
+      "row": 70,
+      "name": "Window Nation",
+      "email": "bredding@windownation.com",
+      "status": "failed",
+      "vendorIds": [
+        "k6Np2eODi6UyiJKORa5h"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "SendGrid API error (403): {\"errors\":[{\"message\":\"You have exceeded your messaging limits\",\"field\":null,\"help\":null}]}"
+    }
+  ],
+  "completedAt": "2026-03-04T17:53:55.536Z"
+}

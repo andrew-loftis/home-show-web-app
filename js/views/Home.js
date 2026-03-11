@@ -155,7 +155,7 @@ export default async function Home(root) {
               <ion-icon name="chevron-forward" class="text-glass-secondary text-sm sm:text-base"></ion-icon>
             </div>
           </div>
-          <div class="action-card p-3 sm:p-4 group cursor-pointer" onclick="window.location.hash='/map'">
+          <div class="action-card p-3 sm:p-4 group cursor-pointer" onclick="window.location.hash='/interactive-map'">
             <div class="flex items-center gap-2.5 sm:gap-3">
               <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center flex-shrink-0">
                 <ion-icon name="map-outline" class="text-white text-sm sm:text-lg"></ion-icon>
@@ -236,7 +236,7 @@ export default async function Home(root) {
             </div>
           </div>
           
-          <div class="action-card p-3 sm:p-4 cursor-pointer" onclick="window.location.hash='/map'">
+          <div class="action-card p-3 sm:p-4 cursor-pointer" onclick="window.location.hash='/interactive-map'">
             <div class="flex items-center gap-2.5 sm:gap-3">
               <div class="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-600 to-slate-500 flex items-center justify-center flex-shrink-0">
                 <ion-icon name="map-outline" class="text-white text-sm sm:text-lg"></ion-icon>
@@ -354,7 +354,7 @@ export default async function Home(root) {
                 </div>
               </div>
             </div>
-            <div class="glass-card p-6 group hover:scale-[1.02] transition-all cursor-pointer" onclick="window.location.hash='/map'">
+            <div class="glass-card p-6 group hover:scale-[1.02] transition-all cursor-pointer" onclick="window.location.hash='/interactive-map'">
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 flex items-center justify-center flex-shrink-0">
                   <ion-icon name="map-outline" class="text-white text-xl"></ion-icon>
@@ -375,7 +375,7 @@ export default async function Home(root) {
           <div class="glass-card p-8 mb-8">
             <div class="flex items-center gap-6 mb-6">
               <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-white/20 to-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center overflow-hidden">
-                ${vendor?.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>'}
+                ${(vendor?.profile?.profileImage || vendor?.logoUrl) ? '<img src="' + (vendor?.profile?.profileImage || vendor?.logoUrl) + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-2xl"></ion-icon>'}
               </div>
               <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1">
@@ -408,7 +408,7 @@ export default async function Home(root) {
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/vendor-leads'">
               <ion-icon name="scan-outline" class="text-2xl text-blue-400 mb-2"></ion-icon>
-              <div class="text-sm font-medium text-glass">Scan Lead</div>
+              <div class="text-sm font-medium text-glass">Leads & Cards</div>
             </button>
             <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/edit-vendor'">
               <ion-icon name="create-outline" class="text-2xl text-purple-400 mb-2"></ion-icon>
@@ -432,20 +432,20 @@ export default async function Home(root) {
                   <ion-icon name="analytics-outline" class="text-white text-xl"></ion-icon>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-glass group-hover:text-blue-400 transition-colors">Lead Management</h3>
-                  <p class="text-glass-secondary text-sm">View, organize, and follow up with your leads</p>
+                  <h3 class="text-lg font-semibold text-glass group-hover:text-blue-400 transition-colors">Leads & Collected Cards</h3>
+                  <p class="text-glass-secondary text-sm">One list for all swaps, captured cards, and follow-up contacts</p>
                 </div>
               </div>
             </div>
             
-            <div class="glass-card p-6 group hover:scale-[1.02] transition-all cursor-pointer border border-transparent hover:border-purple-500/30" onclick="window.location.hash='/cards'">
+            <div class="glass-card p-6 group hover:scale-[1.02] transition-all cursor-pointer border border-transparent hover:border-purple-500/30" onclick="window.location.hash='/my-card'">
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 flex items-center justify-center flex-shrink-0">
                   <ion-icon name="card-outline" class="text-white text-xl"></ion-icon>
                 </div>
                 <div>
-                  <h3 class="text-lg font-semibold text-glass group-hover:text-purple-400 transition-colors">Collected Cards</h3>
-                  <p class="text-glass-secondary text-sm">Business cards from interested attendees</p>
+                  <h3 class="text-lg font-semibold text-glass group-hover:text-purple-400 transition-colors">My Business Card</h3>
+                  <p class="text-glass-secondary text-sm">Edit what attendees receive when they swap cards with you</p>
                 </div>
               </div>
             </div>
@@ -523,7 +523,7 @@ export default async function Home(root) {
             <ion-icon name="calendar-outline" class="text-2xl text-blue-400 mb-2"></ion-icon>
             <div class="text-sm font-medium text-glass">Schedule</div>
           </button>
-          <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/map'">
+          <button class="glass-card p-4 text-center group hover:scale-105 transition-transform" onclick="window.location.hash='/interactive-map'">
             <ion-icon name="map-outline" class="text-2xl text-purple-400 mb-2"></ion-icon>
             <div class="text-sm font-medium text-glass">Floor Plan</div>
           </button>

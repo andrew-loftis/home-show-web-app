@@ -13,6 +13,13 @@
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
+# Legacy contract link from previous emails now routes to in-app digital signer.
+[[redirects]]
+  from = "/assets/contracts/Contracrt.docx"
+  to = "/#/vendor-contract"
+  status = 302
+  force = true
+
 # Single Page App redirect
 [[redirects]]
   from = "/*"

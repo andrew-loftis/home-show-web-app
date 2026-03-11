@@ -1,0 +1,13 @@
+import React from 'react';
+import AllValidation from './components/AllValidation';
+import PageTitle from '@/components/PageTitle';
+export const metadata = {
+  title: 'Form Validation'
+};
+const ValidationPage = () => {
+  return <>
+      <PageTitle title='Form Validation' subTitle="Forms" />
+      <AllValidation />
+    </>;
+};
+export default ValidationPage;

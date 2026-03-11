@@ -1,0 +1,1569 @@
+{
+  "generatedAt": "2026-03-04T21:10:28.944Z",
+  "dryRun": false,
+  "csvPath": "c:\\Users\\aloft\\Downloads\\Putnam County Spring Home Show 2026-Exhibitors (Cookeville,TN) (6).csv",
+  "springShowId": "putnam-spring-2026",
+  "fallShowId": "putnam-fall-2026",
+  "fallShowName": "Putnam County Fall Home Show",
+  "csvRowsParsed": 70,
+  "springVendors": 86,
+  "fallVendors": 9,
+  "requiredUniqueVendorsForFall": 86,
+  "alreadyInFall": 4,
+  "missingBeforeAdd": 82,
+  "addedToFall": 82,
+  "failedToAdd": 0,
+  "authUsersCreated": 0,
+  "resetSentNoLoginCount": 70,
+  "missingBeforeAddList": [
+    {
+      "email": "houseofkna@gmail.com",
+      "name": "Middle Tennessee Metals",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "sayheatingandcooling@gmail.com",
+      "name": "SAY HEATING AND COOLING",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "kevin.christensen@twomen.com",
+      "name": "Two Men and a Truck",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "barrieroftn@gmail.com",
+      "name": "Barrier Waterproofing",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "dennis@h20waterbiz.com",
+      "name": "H20 Waterbiz southeast LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jenna@homefoodservices.com",
+      "name": "Passanante's Home Food Services",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "natalie.bloomer@leafhome.com",
+      "name": "LeafHome Bath",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "events@leafhomeenhancements.com",
+      "name": "LeafHome Bath",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "mike@middletennesseecleaners.com",
+      "name": "Middle Tennessee Cleaners",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "tjholland.th@gmail.com",
+      "name": "LeafX of TN",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "thomas.surratt1@t-mobile.com",
+      "name": "T-Mobile",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "ims@ibyfax.com",
+      "name": "Integrity Metal Sales & Lumber",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "shanautica.sales@greatdayimprovements.com",
+      "name": "Patio Enclosures",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "events@cutco.com",
+      "name": "Cutco",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "glayton@improveitusa.com",
+      "name": "Improveit Home Remodeling",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "amy@uppercumberlandgenerators.com",
+      "name": "Upper Cumberland Generators",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "joe.patriotcontractors@gmail.com",
+      "name": "Patriot Contractors, LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "shannon@truemetalsupply.com",
+      "name": "True Metal Supply",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "derrick@allamericanmatress.com",
+      "name": "All American Matters",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "jwilliams@budgetblinds.com",
+      "name": "Budget Blinds",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "jaden@flynndevelopment.co",
+      "name": "Flynn Development",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "marketing@stabledry.com",
+      "name": "United Structural Systems (USS)",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "nashevents@windowsbyrba.com",
+      "name": "Renewal by Andersen",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "unknown@americanhomedesign.com",
+      "name": "American Home Design",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "dunn2676@gmail.com",
+      "name": "Upper Cumberland Remodeling LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "events@southernshowers.com",
+      "name": "Southern Showers",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "garry@putnamplumbing.com",
+      "name": "Putnam Plumbing",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jasonbo1462@gmail.com",
+      "name": "NXT Generation Painting, LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "marshellia.johnson@bathfitter.com",
+      "name": "Bath Fitter",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "vwinneccs@gmail.com",
+      "name": "Creative Log Cabins",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "uknown@innovativehomeservices.com",
+      "name": "Innovative Home Services",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "tomb@properplumbing.com",
+      "name": "Proper Plumbing",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "heather@sullivanwalter.com",
+      "name": "Sullivan Walter Homes",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "ashlyn.windowdepot@gmail.com",
+      "name": "Window Depot & Bath Team",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "contact@thecrawlspacekings.com",
+      "name": "The Crawlspace Kings",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "nick@cumberlandcleaning.com",
+      "name": "Cumberland Cleaning",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "mail@cumberlandcleaning.com",
+      "name": "Cumberland Cleaning Company",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "putnamcountytreeservice@yahoo.com",
+      "name": "Putnam County Tree Service",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "events@pelladirect.com",
+      "name": "Pella Windows and Doors",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "granvilletnoffice@gmail.com",
+      "name": "Historic Granville",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "patrice@supsleep.com",
+      "name": "SUPERIOR SLEEP",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "bandhshelters@yahoo.com",
+      "name": "B&H Storm Shelters",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "nathaliaskincare@gmail.com",
+      "name": "Clinic Shape",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jbrezeale@americashomeplace.com",
+      "name": "America's Home Place",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "kpresley1@gmail.com",
+      "name": "Karen’s Cleaning",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "derrick@allamericanmattress.com",
+      "name": "All American Mattress LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "b&hshelters@yahoo.com",
+      "name": "B&H Storm Shelters",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "tjholland1.th@gmail.com",
+      "name": "LeafX of TN",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "canaeventbackdrops@gmail.com",
+      "name": "Cana Event Backdrops",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "ucgenerators@gmail.com",
+      "name": "Upper Cumberland Generators",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "allison@meetinthemiddle.club",
+      "name": "Olympic Air LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "wwatson@garageforce.com",
+      "name": "Garage Force of Nashville",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "moriah@irtn.co",
+      "name": "Innovative Home Services",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "canglin@axenrealty.com",
+      "name": "Axen Realty",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "itaylor@budgetblinds.com",
+      "name": "Budget Blinds",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "james.blair@home-stretch.com",
+      "name": "Home Stretch",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "ihrshowmanager@improveitusa.com",
+      "name": "Improveit Home Remodeling",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "events@leaffilter.com",
+      "name": "LeafFilter Gutter Protection",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "zeke@bruckcontractors.com",
+      "name": "Bruck Contractors LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "sales@aquapoolsllc.com",
+      "name": "Aqua Pools",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "events@wilsonbank.com",
+      "name": "Wilson Bank & Trust",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "pat@custombathandshower.com",
+      "name": "Custom Bath & Shower",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "931window1@gmail.com",
+      "name": "Willow Window",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "dhurlburt@windowsbyrba.com",
+      "name": "Renewal by Andersen",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "bredding@windownation.com",
+      "name": "Window Nation",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "rick@crafthealth.com",
+      "name": "Craft Body Scan",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "mgoodchild@americanhomedesign.com",
+      "name": "American Home Design",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "kschwarz@leafguard.com",
+      "name": "Leafguard",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jaden@moderndevelopment.co",
+      "name": "Modern Development",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "amber@selksolutions.com",
+      "name": "Selk Solutions",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "rob@tnshield.com",
+      "name": "FLOWSHIELD GUTTER PROTECTION",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "aloft2@gmail.com",
+      "name": "PIXL",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "russell@campbellpestsolutions.com",
+      "name": "Campbell Pest Solutions",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "nxtgenerationpainting22@gmail.com",
+      "name": "NXT Generation Painting, LLC",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "gayle.edmiston@yahoo.com",
+      "name": "American Home",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jen.christensen@twomen.com",
+      "name": "TWO MEN AND A TRUCK",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "jhudgens@pelladirect.com",
+      "name": "Windows & Doors of Nashville",
+      "sourceTypes": "spring"
+    },
+    {
+      "email": "acutaboveroofing@gmail.com",
+      "name": "A Cut Above Roofing LLC",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "help@theusagranite.com",
+      "name": "USA Granite",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "admin@rollingthundercarts.com",
+      "name": "Rolling Thunder Carts",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "curbappealoftn@gmail.com",
+      "name": "Beautiful Homes and Decks",
+      "sourceTypes": "spring|csv"
+    },
+    {
+      "email": "erieevents@leafhome.com",
+      "name": "Erie Home",
+      "sourceTypes": "spring|csv"
+    }
+  ],
+  "addedToFallList": [
+    {
+      "email": "houseofkna@gmail.com",
+      "name": "Middle Tennessee Metals",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "gTos6cVysDf82EaA4nE4CmbY7oF2"
+    },
+    {
+      "email": "sayheatingandcooling@gmail.com",
+      "name": "SAY HEATING AND COOLING",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "NNKKzaW2GBOAdsO9RtO4ycjclcs1"
+    },
+    {
+      "email": "kevin.christensen@twomen.com",
+      "name": "Two Men and a Truck",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "gicP2IFY3jYESRkAEHTWyVPvj8x1"
+    },
+    {
+      "email": "barrieroftn@gmail.com",
+      "name": "Barrier Waterproofing",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "DXrdLJK6UvZqCoy1iDQ8N8OOyPM2"
+    },
+    {
+      "email": "dennis@h20waterbiz.com",
+      "name": "H20 Waterbiz southeast LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "iq9QeBBNqIVl88wE0yEshC3CPOw2"
+    },
+    {
+      "email": "jenna@homefoodservices.com",
+      "name": "Passanante's Home Food Services",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "blxav4fzdherkheL1GYaqLfgTSv2"
+    },
+    {
+      "email": "natalie.bloomer@leafhome.com",
+      "name": "LeafHome Bath",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "lo5BNSQ349SNe1hvWoMCvwnsiaV2"
+    },
+    {
+      "email": "events@leafhomeenhancements.com",
+      "name": "LeafHome Bath",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "q6dsX5YH0JgGesz17TqF0ZoDd792"
+    },
+    {
+      "email": "mike@middletennesseecleaners.com",
+      "name": "Middle Tennessee Cleaners",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "1P1JKqgoBshv81bZA3cRWgPpPFs1"
+    },
+    {
+      "email": "tjholland.th@gmail.com",
+      "name": "LeafX of TN",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "sBixYJ68bnWPESs03LRjo8PwDm12"
+    },
+    {
+      "email": "thomas.surratt1@t-mobile.com",
+      "name": "T-Mobile",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "oAVTQ8B9mFZFZcNaLdUjHJRLiLT2"
+    },
+    {
+      "email": "ims@ibyfax.com",
+      "name": "Integrity Metal Sales & Lumber",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "sKGBLNF0vsedGqMF0wg8Qs3fIya2"
+    },
+    {
+      "email": "shanautica.sales@greatdayimprovements.com",
+      "name": "Patio Enclosures",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "KNfxQWok4Khq5e0Xn9KNTf3niA82"
+    },
+    {
+      "email": "events@cutco.com",
+      "name": "Cutco",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "HqQCr54WV2MZ5EKgtxY0bTw1apm2"
+    },
+    {
+      "email": "glayton@improveitusa.com",
+      "name": "Improveit Home Remodeling",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "gCRIb0xb4EWiAHXRdkU4JWuLVar2"
+    },
+    {
+      "email": "amy@uppercumberlandgenerators.com",
+      "name": "Upper Cumberland Generators",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "2qsj1ehpVPb15rFbKPGTDs795qG3"
+    },
+    {
+      "email": "joe.patriotcontractors@gmail.com",
+      "name": "Patriot Contractors, LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "6iQRDNS1bXNOhFH0CXFAidnV9sH3"
+    },
+    {
+      "email": "shannon@truemetalsupply.com",
+      "name": "True Metal Supply",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "hXYkX3YKDPgbTP2RUG5rxJZMWAF2"
+    },
+    {
+      "email": "derrick@allamericanmatress.com",
+      "name": "All American Matters",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "AOrqHk4lOeOcX0ClKZTIcWdczgv2"
+    },
+    {
+      "email": "jwilliams@budgetblinds.com",
+      "name": "Budget Blinds",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "YwrxucHTJjRFzl1Puq01Xrle4KO2"
+    },
+    {
+      "email": "jaden@flynndevelopment.co",
+      "name": "Flynn Development",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "yJ79SYrdWvgv9pUdPQpRgUERvdu2"
+    },
+    {
+      "email": "marketing@stabledry.com",
+      "name": "United Structural Systems (USS)",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "WWBjAbdArRPHfzV6syAd2lZD3g92"
+    },
+    {
+      "email": "nashevents@windowsbyrba.com",
+      "name": "Renewal by Andersen",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "fOkl9rD508Xnl4bHHktFMbMEUxg1"
+    },
+    {
+      "email": "unknown@americanhomedesign.com",
+      "name": "American Home Design",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "PFpMUdxDcaMIHCmpdeutyBf1ogC2"
+    },
+    {
+      "email": "dunn2676@gmail.com",
+      "name": "Upper Cumberland Remodeling LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "SDtUkeu19nQgbbJZKwFtetAo05D2"
+    },
+    {
+      "email": "events@southernshowers.com",
+      "name": "Southern Showers",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "gGaWKM9ausPakcaKRXxT8Ixez4m1"
+    },
+    {
+      "email": "garry@putnamplumbing.com",
+      "name": "Putnam Plumbing",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "BvooPdSa7fVujB7eoDkeZI9CqGI2"
+    },
+    {
+      "email": "jasonbo1462@gmail.com",
+      "name": "NXT Generation Painting, LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "kcva6ZIv0zRLNoq74PCWBfZZolU2"
+    },
+    {
+      "email": "marshellia.johnson@bathfitter.com",
+      "name": "Bath Fitter",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "UWO9utyN0NZBVbUWBPlbMHdlWQr2"
+    },
+    {
+      "email": "vwinneccs@gmail.com",
+      "name": "Creative Log Cabins",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "yz8KqtkYyQTLI9rZtfOpuhwGQSt2"
+    },
+    {
+      "email": "uknown@innovativehomeservices.com",
+      "name": "Innovative Home Services",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "b0qk9DpAS1bVWP6FPZ5mdF2elgE3"
+    },
+    {
+      "email": "tomb@properplumbing.com",
+      "name": "Proper Plumbing",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "7SgrmJKVJWaUIA96LkmyDQlniR03"
+    },
+    {
+      "email": "heather@sullivanwalter.com",
+      "name": "Sullivan Walter Homes",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "Ph0KQcFhCTTCpwWmKwNSJp4FJWt1"
+    },
+    {
+      "email": "ashlyn.windowdepot@gmail.com",
+      "name": "Window Depot & Bath Team",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "gpkv8dL5tMb9agVYis3OCVEtJGG2"
+    },
+    {
+      "email": "contact@thecrawlspacekings.com",
+      "name": "The Crawlspace Kings",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "dLJ4EDcZF2bwwlJRPWr5ZG6iILK2"
+    },
+    {
+      "email": "nick@cumberlandcleaning.com",
+      "name": "Cumberland Cleaning",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "jsxyon2XlvPE1TtiV7G3SK0EsIE3"
+    },
+    {
+      "email": "mail@cumberlandcleaning.com",
+      "name": "Cumberland Cleaning Company",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "ovUEmUYvYXVOO0bogXqrhUXFFhP2"
+    },
+    {
+      "email": "putnamcountytreeservice@yahoo.com",
+      "name": "Putnam County Tree Service",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "Y9i9BDsIeVQJLeuTM0hppT8tqgI3"
+    },
+    {
+      "email": "events@pelladirect.com",
+      "name": "Pella Windows and Doors",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "fCW1Ddwjz0YNnIO4XqQGtCWq4Sq2"
+    },
+    {
+      "email": "granvilletnoffice@gmail.com",
+      "name": "Historic Granville",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "OwQGkM1rnAU2JzW77OvIVjtIUjJ2"
+    },
+    {
+      "email": "patrice@supsleep.com",
+      "name": "SUPERIOR SLEEP",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "OCfDDcE47XPYLfjmp0hJqdVSOfA3"
+    },
+    {
+      "email": "bandhshelters@yahoo.com",
+      "name": "B&H Storm Shelters",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "MER9Gb5KFRZbofS3tXVQSs8Mc602"
+    },
+    {
+      "email": "nathaliaskincare@gmail.com",
+      "name": "Clinic Shape",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "eZ6ua7HAb1VMAm38fD8oDcxm50z1"
+    },
+    {
+      "email": "jbrezeale@americashomeplace.com",
+      "name": "America's Home Place",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "OWg2sqi1YLR3V3h4RGfHuY9qh6y2"
+    },
+    {
+      "email": "kpresley1@gmail.com",
+      "name": "Karen’s Cleaning",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "JrrGAjTKRhWquJqnjmWes2OCxXD3"
+    },
+    {
+      "email": "derrick@allamericanmattress.com",
+      "name": "All American Mattress LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "loB9tYWEJHhgDQzWJFCot8I3IrU2"
+    },
+    {
+      "email": "b&hshelters@yahoo.com",
+      "name": "B&H Storm Shelters",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "QCaJUdkgMPNinTgtDCTKugVHLAH2"
+    },
+    {
+      "email": "tjholland1.th@gmail.com",
+      "name": "LeafX of TN",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "zFqE8hTHongoOrpsaGpE3PenYBR2"
+    },
+    {
+      "email": "canaeventbackdrops@gmail.com",
+      "name": "Cana Event Backdrops",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "iP58RHiUwsY5ajiXyVJ07WXTPE13"
+    },
+    {
+      "email": "ucgenerators@gmail.com",
+      "name": "Upper Cumberland Generators",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "C5MMkRMcZwUykMf04XRVm4yMrPZ2"
+    },
+    {
+      "email": "allison@meetinthemiddle.club",
+      "name": "Olympic Air LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "WPY0LoIh29XInDyBgObVhXvdwsI3"
+    },
+    {
+      "email": "wwatson@garageforce.com",
+      "name": "Garage Force of Nashville",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "viRLkY922IN124zaWItG5NoAOhY2"
+    },
+    {
+      "email": "moriah@irtn.co",
+      "name": "Innovative Home Services",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "kPBZCXjfh2fmM5orzdGD069ceh93"
+    },
+    {
+      "email": "canglin@axenrealty.com",
+      "name": "Axen Realty",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "qsMBAhnV1CWibEo2tl3Z5fbT97E2"
+    },
+    {
+      "email": "itaylor@budgetblinds.com",
+      "name": "Budget Blinds",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "SzS4QGD7FMUhqbfIj2jbQOJK4NV2"
+    },
+    {
+      "email": "james.blair@home-stretch.com",
+      "name": "Home Stretch",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "U2hBtFGs9hWiFWK5zUs6iCp8QuQ2"
+    },
+    {
+      "email": "ihrshowmanager@improveitusa.com",
+      "name": "Improveit Home Remodeling",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "smcgvdP9ptekmCiNaOzFHkrtr6e2"
+    },
+    {
+      "email": "events@leaffilter.com",
+      "name": "LeafFilter Gutter Protection",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "pyd6jNmgyJYBYTCZR5KBgg1bctt2"
+    },
+    {
+      "email": "zeke@bruckcontractors.com",
+      "name": "Bruck Contractors LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "RlPhavbt3MNrRXciRFJYK4575Q52"
+    },
+    {
+      "email": "sales@aquapoolsllc.com",
+      "name": "Aqua Pools",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "oi84xslzJgXN5qgdL84iFdd1ynZ2"
+    },
+    {
+      "email": "events@wilsonbank.com",
+      "name": "Wilson Bank & Trust",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "tqqeeS6ftdgficLyZMmlZPppYT53"
+    },
+    {
+      "email": "pat@custombathandshower.com",
+      "name": "Custom Bath & Shower",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "Gwo5vjTIHHX8YTjrJkQ5IiJ7XEh2"
+    },
+    {
+      "email": "931window1@gmail.com",
+      "name": "Willow Window",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "J1OMJYjaKzUYS5zid4M4YuCO63i1"
+    },
+    {
+      "email": "dhurlburt@windowsbyrba.com",
+      "name": "Renewal by Andersen",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "NCFyuJs46rcHaATU27tJPi8wa6T2"
+    },
+    {
+      "email": "bredding@windownation.com",
+      "name": "Window Nation",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "cyrTtusECYWcUYJp5DJZkVAxF5i2"
+    },
+    {
+      "email": "rick@crafthealth.com",
+      "name": "Craft Body Scan",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "swPxpz2wUwSw5Q8ln9fxGr8SmI23"
+    },
+    {
+      "email": "mgoodchild@americanhomedesign.com",
+      "name": "American Home Design",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "Rga5uDEEi4eigDQ6sWxm5zyw02H2"
+    },
+    {
+      "email": "kschwarz@leafguard.com",
+      "name": "Leafguard",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "LYNiBAwWu6NVH1QNyCnZujadFnh2"
+    },
+    {
+      "email": "jaden@moderndevelopment.co",
+      "name": "Modern Development",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "wCDtTQcgyQWXXLWHyDxUW8JLcH23"
+    },
+    {
+      "email": "amber@selksolutions.com",
+      "name": "Selk Solutions",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "aBB5PvM2CRXCfbcoAQkvByJvB5O2"
+    },
+    {
+      "email": "rob@tnshield.com",
+      "name": "FLOWSHIELD GUTTER PROTECTION",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "PX1C3FJ7p2hYwxCgUzX2MD9WWiQ2"
+    },
+    {
+      "email": "aloft2@gmail.com",
+      "name": "PIXL",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "4U8GhOK905bYrjzswwZuFf19z7A3"
+    },
+    {
+      "email": "russell@campbellpestsolutions.com",
+      "name": "Campbell Pest Solutions",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "zdoeJpko55N50v4vekdb6XXUyYG3"
+    },
+    {
+      "email": "nxtgenerationpainting22@gmail.com",
+      "name": "NXT Generation Painting, LLC",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "tsmgzrGX65hsFh7RunZCsPk4cSz2"
+    },
+    {
+      "email": "gayle.edmiston@yahoo.com",
+      "name": "American Home",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "qXdhessOnXTuvSL2yPtEUQtlLqT2"
+    },
+    {
+      "email": "jen.christensen@twomen.com",
+      "name": "TWO MEN AND A TRUCK",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "f3fPbRZEAJRVRkZlgMWM0wJsF1g1"
+    },
+    {
+      "email": "jhudgens@pelladirect.com",
+      "name": "Windows & Doors of Nashville",
+      "sourceTypes": "spring",
+      "approved": "yes",
+      "ownerUid": "qzTnab7xr0ZV1qtFeLdWo84evPy2"
+    },
+    {
+      "email": "acutaboveroofing@gmail.com",
+      "name": "A Cut Above Roofing LLC",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "VorTAckfiha30wBmgEOveqtoLnz2"
+    },
+    {
+      "email": "help@theusagranite.com",
+      "name": "USA Granite",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "dR5rcTq3hObQGtM82heFd8zoWXi2"
+    },
+    {
+      "email": "admin@rollingthundercarts.com",
+      "name": "Rolling Thunder Carts",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "7ebFXqSJdIhengDTr6Mh7wvK0uM2"
+    },
+    {
+      "email": "curbappealoftn@gmail.com",
+      "name": "Beautiful Homes and Decks",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "xU29nmQA62bGiSMkIjqbpfR7AxI2"
+    },
+    {
+      "email": "erieevents@leafhome.com",
+      "name": "Erie Home",
+      "sourceTypes": "spring|csv",
+      "approved": "yes",
+      "ownerUid": "SkFuyga5aegQTIVDziVousi2Vs73"
+    }
+  ],
+  "failedToAddList": [],
+  "resetSentNoLoginList": [
+    {
+      "email": "acutaboveroofing@gmail.com",
+      "vendorNames": "A Cut Above Roofing LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:12.000Z"
+    },
+    {
+      "email": "admin@rollingthundercarts.com",
+      "vendorNames": "Rolling Thunder Carts",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:30.000Z"
+    },
+    {
+      "email": "allison@meetinthemiddle.club",
+      "vendorNames": "Olympic Air LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:52:28.000Z"
+    },
+    {
+      "email": "amber@selksolutions.com",
+      "vendorNames": "Selk Solutions",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:34.000Z"
+    },
+    {
+      "email": "amy@uppercumberlandgenerators.com",
+      "vendorNames": "Upper Cumberland Generators",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:16:03.191Z"
+    },
+    {
+      "email": "b&hshelters@yahoo.com",
+      "vendorNames": "B&H Storm Shelters",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:10:26.388Z"
+    },
+    {
+      "email": "bandhshelters@yahoo.com",
+      "vendorNames": "B&H Storm Shelters",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:24.000Z"
+    },
+    {
+      "email": "barrieroftn@gmail.com",
+      "vendorNames": "Barrier Waterproofing",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:26.000Z"
+    },
+    {
+      "email": "canaeventbackdrops@gmail.com",
+      "vendorNames": "Cana Event Backdrops",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:49:36.000Z"
+    },
+    {
+      "email": "canglin@axenrealty.com",
+      "vendorNames": "Axen Realty",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:23.000Z"
+    },
+    {
+      "email": "contact@thecrawlspacekings.com",
+      "vendorNames": "The Crawlspace Kings",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:08:30.732Z"
+    },
+    {
+      "email": "curbappealoftn@gmail.com",
+      "vendorNames": "Beautiful Homes and Decks",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:29.000Z"
+    },
+    {
+      "email": "dennis@h20waterbiz.com",
+      "vendorNames": "H20 Waterbiz southeast LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:31.000Z"
+    },
+    {
+      "email": "derrick@allamericanmatress.com",
+      "vendorNames": "All American Matters",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T21:17:38.608Z"
+    },
+    {
+      "email": "derrick@allamericanmattress.com",
+      "vendorNames": "All American Mattress LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:14.000Z"
+    },
+    {
+      "email": "deshaun@theusagranite.com",
+      "vendorNames": "USA Granite",
+      "showIds": "putnam-fall-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T20:39:30.829Z"
+    },
+    {
+      "email": "dhurlburt@windowsbyrba.com",
+      "vendorNames": "Renewal by Andersen",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:18:40.973Z"
+    },
+    {
+      "email": "erieevents@leafhome.com",
+      "vendorNames": "Erie Home",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:26.000Z"
+    },
+    {
+      "email": "events@cutco.com",
+      "vendorNames": "Cutco",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:25.000Z"
+    },
+    {
+      "email": "events@leaffilter.com",
+      "vendorNames": "LeafFilter Gutter Protection",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:44.000Z"
+    },
+    {
+      "email": "events@leafhomeenhancements.com",
+      "vendorNames": "LeafHome Bath",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:47.000Z"
+    },
+    {
+      "email": "events@pelladirect.com",
+      "vendorNames": "Pella Windows and Doors",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:22.000Z"
+    },
+    {
+      "email": "events@southernshowers.com",
+      "vendorNames": "Southern Showers",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:35.000Z"
+    },
+    {
+      "email": "garry@putnamplumbing.com",
+      "vendorNames": "Putnam Plumbing",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:25.000Z"
+    },
+    {
+      "email": "gayle.edmiston@yahoo.com",
+      "vendorNames": "American Home",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:16.000Z"
+    },
+    {
+      "email": "glayton@improveitusa.com",
+      "vendorNames": "Improveit Home Remodeling",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:13:32.864Z"
+    },
+    {
+      "email": "granvilletnoffice@gmail.com",
+      "vendorNames": "Historic Granville",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:33.000Z"
+    },
+    {
+      "email": "heather@sullivanwalter.com",
+      "vendorNames": "Sullivan Walter Homes",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:37.000Z"
+    },
+    {
+      "email": "ihrshowmanager@improveitusa.com",
+      "vendorNames": "Improveit Home Remodeling",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:37.000Z"
+    },
+    {
+      "email": "ims@ibyfax.com",
+      "vendorNames": "Integrity Metal Sales & Lumber",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:40.000Z"
+    },
+    {
+      "email": "info@bruckcontractors.com",
+      "vendorNames": "Bruck Contractors",
+      "showIds": "putnam-fall-2026",
+      "authUserExists": "no",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T20:36:45.526Z"
+    },
+    {
+      "email": "itaylor@budgetblinds.com",
+      "vendorNames": "Budget Blinds",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:39.000Z"
+    },
+    {
+      "email": "jaden@flynndevelopment.co",
+      "vendorNames": "Flynn Development",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-12T15:55:40.026Z"
+    },
+    {
+      "email": "jaden@moderndevelopment.co",
+      "vendorNames": "Modern Development",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:52.000Z"
+    },
+    {
+      "email": "james.blair@home-stretch.com",
+      "vendorNames": "Home Stretch",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:35.000Z"
+    },
+    {
+      "email": "jasonbo1462@gmail.com",
+      "vendorNames": "NXT Generation Painting, LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:52:09.000Z"
+    },
+    {
+      "email": "jbrezeale@americashomeplace.com",
+      "vendorNames": "America's Home Place",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:19.000Z"
+    },
+    {
+      "email": "jcoley22@gmail.com",
+      "vendorNames": "CUTCO",
+      "showIds": "putnam-fall-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T20:28:45.815Z"
+    },
+    {
+      "email": "jenna@homefoodservices.com",
+      "vendorNames": "Passanante's Home Food Services",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:52:47.000Z"
+    },
+    {
+      "email": "jhudgens@pelladirect.com",
+      "vendorNames": "Windows & Doors of Nashville",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T21:35:55.788Z"
+    },
+    {
+      "email": "joe.patriotcontractors@gmail.com",
+      "vendorNames": "Patriot Contractors, LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:20.000Z"
+    },
+    {
+      "email": "jwilliams@budgetblinds.com",
+      "vendorNames": "Budget Blinds",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:07:23.007Z"
+    },
+    {
+      "email": "kpresley1@gmail.com",
+      "vendorNames": "Karen’s Cleaning",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:42.000Z"
+    },
+    {
+      "email": "kschwarz@leafguard.com",
+      "vendorNames": "Leafguard",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:45.000Z"
+    },
+    {
+      "email": "marshellia.johnson@bathfitter.com",
+      "vendorNames": "Bath Fitter",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:28.000Z"
+    },
+    {
+      "email": "mgoodchild@americanhomedesign.com",
+      "vendorNames": "American Home Design",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:18.000Z"
+    },
+    {
+      "email": "mike@middletennesseecleaners.com",
+      "vendorNames": "Middle Tennessee Cleaners",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:50.000Z"
+    },
+    {
+      "email": "moriah@irtn.co",
+      "vendorNames": "Innovative Home Services",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:39.000Z"
+    },
+    {
+      "email": "nashevents@windowsbyrba.com",
+      "vendorNames": "Renewal by Andersen",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:27.000Z"
+    },
+    {
+      "email": "natalie.bloomer@leafhome.com",
+      "vendorNames": "LeafHome Bath",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T21:45:05.946Z"
+    },
+    {
+      "email": "nathaliaskincare@gmail.com",
+      "vendorNames": "Clinic Shape",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:49:58.000Z"
+    },
+    {
+      "email": "nxtgenerationpainting22@gmail.com",
+      "vendorNames": "NXT Generation Painting, LLC",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T21:07:10.933Z"
+    },
+    {
+      "email": "pat@custombathandshower.com",
+      "vendorNames": "Custom Bath & Shower",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:23.000Z"
+    },
+    {
+      "email": "patrice@supsleep.com",
+      "vendorNames": "SUPERIOR SLEEP",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:39.000Z"
+    },
+    {
+      "email": "putnamcountytreeservice@yahoo.com",
+      "vendorNames": "Putnam County Tree Service",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:23.000Z"
+    },
+    {
+      "email": "rick@crafthealth.com",
+      "vendorNames": "Craft Body Scan",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:50:21.000Z"
+    },
+    {
+      "email": "rob@tnshield.com",
+      "vendorNames": "FLOWSHIELD GUTTER PROTECTION",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:28.000Z"
+    },
+    {
+      "email": "robertsexcavationllc@gmail.com",
+      "vendorNames": "Roberts Excavation LLC",
+      "showIds": "putnam-fall-2026|putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:29.000Z"
+    },
+    {
+      "email": "russell@campbellpestsolutions.com",
+      "vendorNames": "Campbell Pest Solutions",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:49:16.000Z"
+    },
+    {
+      "email": "sales@aquapoolsllc.com",
+      "vendorNames": "Aqua Pools",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:48:21.000Z"
+    },
+    {
+      "email": "sayheatingandcooling@gmail.com",
+      "vendorNames": "SAY HEATING AND COOLING",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:32.000Z"
+    },
+    {
+      "email": "shanautica.sales@greatdayimprovements.com",
+      "vendorNames": "Patio Enclosures",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:53:08.000Z"
+    },
+    {
+      "email": "tjholland.th@gmail.com",
+      "vendorNames": "LeafX of TN",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:11:15.106Z"
+    },
+    {
+      "email": "tjholland1.th@gmail.com",
+      "vendorNames": "LeafX of TN",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:49.000Z"
+    },
+    {
+      "email": "tomb@properplumbing.com",
+      "vendorNames": "Proper Plumbing",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T20:54:59.184Z"
+    },
+    {
+      "email": "twoodward@lbfoster.com",
+      "vendorNames": "CXT",
+      "showIds": "putnam-fall-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T20:43:08.993Z"
+    },
+    {
+      "email": "uknown@innovativehomeservices.com",
+      "vendorNames": "Innovative Home Services",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T22:05:25.960Z"
+    },
+    {
+      "email": "unknown@americanhomedesign.com",
+      "vendorNames": "American Home Design",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-02-22T21:01:48.468Z"
+    },
+    {
+      "email": "vwinneccs@gmail.com",
+      "vendorNames": "Creative Log Cabins",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:50:45.000Z"
+    },
+    {
+      "email": "wwatson@garageforce.com",
+      "vendorNames": "Garage Force of Nashville",
+      "showIds": "putnam-spring-2026",
+      "authUserExists": "yes",
+      "lastSignInTime": "",
+      "latestResetSentAt": "2026-03-04T17:51:30.000Z"
+    }
+  ]
+}

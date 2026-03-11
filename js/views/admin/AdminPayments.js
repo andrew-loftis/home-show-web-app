@@ -13,12 +13,12 @@ async function getIdToken() {
   } catch { return null; }
 }
 
-async function voidStripeInvoice(invoiceId) {
+async function voidStripeInvoice(invoiceId, vendorId = '') {
   const token = await getIdToken();
   const response = await fetch('/.netlify/functions/void-invoice', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ invoiceId })
+    body: JSON.stringify({ invoiceId, vendorId, showId: currentShowId || '' })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -476,8 +476,9 @@ export async function loadPayments(root, options = {}, showPaymentModal) {
                 <p class="text-lg font-bold ${payment.paymentStatus === 'paid' ? 'text-green-400' : 'text-glass'}">$${(payment.totalPrice || 0).toLocaleString()}</p>
                 <div class="flex gap-2 mt-2 flex-wrap justify-end">
                   ${payment.stripeInvoiceUrl ? `<a href="${payment.stripeInvoiceUrl}" target="_blank" rel="noopener" class="px-3 py-1 bg-orange-600 rounded text-white text-sm hover:bg-orange-700">View Invoice</a>` : ''}
-                  ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-gray-600 rounded text-white text-sm hover:bg-gray-700" data-action="check-stripe-status" data-vendor-email="${payment.contactEmail}" data-vendor-name="${payment.name}">Check Status</button>` : ''}
+                ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-gray-600 rounded text-white text-sm hover:bg-gray-700" data-action="check-stripe-status" data-vendor-email="${payment.contactEmail}" data-vendor-name="${payment.name}" data-vendor-id="${payment.id}">Check Status</button>` : ''}
                   ${payment.paymentStatus !== 'paid' ? `<button class="px-3 py-1 bg-brand rounded text-white text-sm hover:bg-brand/80" data-action="send-payment" data-vendor-id="${payment.id}" data-vendor-name="${payment.name}" data-vendor-email="${payment.contactEmail}">${payment.stripeInvoiceId ? 'Resend' : 'Send Invoice'}</button>` : ''}
+                  ${payment.paymentStatus !== 'paid' ? `<button class="px-3 py-1 bg-emerald-600 rounded text-white text-sm hover:bg-emerald-700" data-action="mark-paid" data-vendor-id="${payment.id}" data-vendor-name="${payment.name}">Mark Paid</button>` : `<button class="px-3 py-1 bg-slate-600 rounded text-white text-sm hover:bg-slate-700" data-action="mark-unpaid" data-vendor-id="${payment.id}" data-vendor-name="${payment.name}">Mark Unpaid</button>`}
                   ${payment.paymentStatus !== 'paid' && payment.stripeInvoiceId ? `<button class="px-3 py-1 bg-red-600 rounded text-white text-sm hover:bg-red-700" data-action="remove-invoice" data-vendor-id="${payment.id}" data-invoice-id="${payment.stripeInvoiceId}" data-vendor-name="${payment.name}">Delete Invoice</button>` : ''}
                 </div>
               </div>
@@ -567,6 +568,58 @@ function setupPaymentListeners(root, showPaymentModal) {
   if (!paymentsList._listenerAdded) {
     paymentsList._listenerAdded = true;
     paymentsList.addEventListener('click', async (e) => {
+      const markPaidBtn = e.target.closest('[data-action="mark-paid"]');
+      if (markPaidBtn) {
+        const vendorId = markPaidBtn.getAttribute('data-vendor-id');
+        const vendorName = markPaidBtn.getAttribute('data-vendor-name') || 'this vendor';
+        const { ConfirmDialog, Toast } = await getUi();
+        const confirmed = await ConfirmDialog('Mark Vendor Paid', `Mark ${vendorName} as paid?`, { confirmText: 'Mark Paid' });
+        if (!confirmed) return;
+
+        setButtonLoading(markPaidBtn, true, 'Saving...');
+        try {
+          const db = await getAdminDb();
+          const fsm = await getFirestoreModule();
+          await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), {
+            paymentStatus: 'paid',
+            paidAt: new Date().toISOString(),
+            paidBy: 'admin_manual'
+          });
+          Toast('Vendor marked as paid');
+          reloadPayments();
+        } catch (error) {
+          console.error('[AdminPayments] Failed to mark vendor paid:', error);
+          setButtonLoading(markPaidBtn, false);
+        }
+        return;
+      }
+
+      const markUnpaidBtn = e.target.closest('[data-action="mark-unpaid"]');
+      if (markUnpaidBtn) {
+        const vendorId = markUnpaidBtn.getAttribute('data-vendor-id');
+        const vendorName = markUnpaidBtn.getAttribute('data-vendor-name') || 'this vendor';
+        const { ConfirmDialog, Toast } = await getUi();
+        const confirmed = await ConfirmDialog('Mark Vendor Unpaid', `Set ${vendorName} back to unpaid?`, { confirmText: 'Mark Unpaid' });
+        if (!confirmed) return;
+
+        setButtonLoading(markUnpaidBtn, true, 'Saving...');
+        try {
+          const db = await getAdminDb();
+          const fsm = await getFirestoreModule();
+          await fsm.updateDoc(fsm.doc(db, 'vendors', vendorId), {
+            paymentStatus: 'pending',
+            paidAt: null,
+            paidBy: null
+          });
+          Toast('Vendor marked as unpaid');
+          reloadPayments();
+        } catch (error) {
+          console.error('[AdminPayments] Failed to mark vendor unpaid:', error);
+          setButtonLoading(markUnpaidBtn, false);
+        }
+        return;
+      }
+
       const sendBtn = e.target.closest('[data-action="send-payment"]');
       if (sendBtn) {
         const vendorId = sendBtn.getAttribute('data-vendor-id');
@@ -599,7 +652,7 @@ function setupPaymentListeners(root, showPaymentModal) {
         setButtonLoading(removeBtn, true, 'Deleting...');
         try {
           // 1) Void invoice in Stripe so it won't be payable/active for the vendor.
-          await voidStripeInvoice(invoiceId);
+          await voidStripeInvoice(invoiceId, vendorId);
 
           // 2) Clear vendor-side invoice fields so profile/dashboard doesn't keep showing it as sent.
           const cleared = await clearVendorInvoiceFieldsById(vendorId);
@@ -636,7 +689,7 @@ function setupPaymentListeners(root, showPaymentModal) {
 
         setButtonLoading(removeStripeBtn, true, 'Removing...');
         try {
-          await voidStripeInvoice(invoiceId);
+            await voidStripeInvoice(invoiceId, vendorId);
 
           if (!vendorId && customerEmail) {
             vendorId = await findVendorIdByContactEmail(customerEmail);
@@ -665,10 +718,11 @@ function setupPaymentListeners(root, showPaymentModal) {
       const checkBtn = e.target.closest('[data-action="check-stripe-status"]');
       if (checkBtn) {
         const vendorEmail = checkBtn.getAttribute('data-vendor-email');
+        const vendorId = checkBtn.getAttribute('data-vendor-id') || '';
         const vendorName = checkBtn.getAttribute('data-vendor-name') || vendorEmail;
         setButtonLoading(checkBtn, true, 'Checking...');
         try {
-          const invoice = await getVendorStripeStatus(vendorEmail);
+          const invoice = await getVendorStripeStatus(vendorEmail, vendorId);
           showStripeStatusModal(invoice, vendorName, vendorEmail);
         } catch (error) {
           showStripeStatusModal(null, vendorName, vendorEmail, error.message);
@@ -706,7 +760,7 @@ function setupPaymentListeners(root, showPaymentModal) {
 
       setButtonLoading(removeStripeBtn, true, 'Deleting...');
       try {
-        await voidStripeInvoice(invoiceId);
+          await voidStripeInvoice(invoiceId, vendorId);
 
         if (!vendorId && customerEmail) {
           vendorId = await findVendorIdByContactEmail(customerEmail);
@@ -925,7 +979,11 @@ async function fetchStripeData(action, params = {}) {
     const response = await fetch('/.netlify/functions/get-stripe-invoices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ action, ...params })
+      body: JSON.stringify({
+        action,
+        showId: currentShowId || '',
+        ...params,
+      })
     });
     
     if (!response.ok) {
@@ -1067,7 +1125,10 @@ async function syncVendorStatuses(root) {
     
     for (const vendor of vendors) {
       if (!vendor.contactEmail) continue;
-      
+      if (currentShowId && vendor.showId && vendor.showId !== currentShowId) {
+        continue;
+      }
+
       // Find matching Stripe invoice
       const matchingInvoice = stripeInvoices.find(inv => 
         inv.customer_email?.toLowerCase() === vendor.contactEmail.toLowerCase() ||
@@ -1112,11 +1173,15 @@ async function syncVendorStatuses(root) {
 /**
  * Get Stripe invoice status for a specific vendor
  * @param {string} vendorEmail - The vendor's email address
+ * @param {string} vendorId - Optional vendor ID for context-aware lookup
  * @returns {Promise<Object|null>} Invoice data or null
  */
-export async function getVendorStripeStatus(vendorEmail) {
+export async function getVendorStripeStatus(vendorEmail, vendorId = '') {
   try {
-    const data = await fetchStripeData('getCustomerInvoices', { vendorEmail });
+    const data = await fetchStripeData('getCustomerInvoices', {
+      vendorEmail,
+      vendorId
+    });
     return data.invoices && data.invoices.length > 0 ? data.invoices[0] : null;
   } catch (error) {
     console.error('[AdminPayments] Failed to get vendor Stripe status:', error);

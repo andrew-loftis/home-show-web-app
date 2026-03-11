@@ -1,5 +1,6 @@
 import { getState } from "../store.js";
 import { Toast } from "../utils/ui.js";
+import { vendorSourceIds, findVendorByAnyId } from "../utils/vendorMerge.js";
 
 export default async function SavedBusinessCards(root) {
   const state = getState();
@@ -15,25 +16,25 @@ export default async function SavedBusinessCards(root) {
   }
   
   // Get vendors from local state
-  let vendors = state.vendors.filter(v => savedIds.includes(v.id));
+  let savedIdSet = new Set(savedIds);
+  let vendors = state.vendors.filter(v => vendorSourceIds(v).some(id => savedIdSet.has(id)));
   
   // If we don't have local data, try to load from Firestore
   if (savedIds.length > 0 && vendors.length === 0) {
     try {
-      const { getDb } = await import("../firebase.js");
-      const db = getDb();
-      const { doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
+      const { getVendorById } = await import("../firebase.js");
       
       for (const vendorId of savedIds) {
         try {
-          const vendorDoc = await getDoc(doc(db, 'vendors', vendorId));
-          if (vendorDoc.exists()) {
-            vendors.push({ id: vendorDoc.id, ...vendorDoc.data() });
-          }
+          const vendorData = await getVendorById(vendorId);
+          if (vendorData) vendors.push(vendorData);
         } catch (e) {
           console.warn('Could not load vendor:', vendorId);
         }
       }
+      const canonical = new Map();
+      vendors.forEach((vendor) => canonical.set(vendor.id, vendor));
+      vendors = Array.from(canonical.values());
     } catch (error) {
       console.error('Error loading saved vendors:', error);
     }
@@ -41,18 +42,24 @@ export default async function SavedBusinessCards(root) {
   
   const removeVendor = async (vendorId) => {
     try {
+      const canonicalVendor = findVendorByAnyId(state.vendors || vendors, vendorId);
+      const idsToRemove = canonicalVendor ? vendorSourceIds(canonicalVendor) : [vendorId];
+      const removeSet = new Set(idsToRemove);
+
       // Remove from local state
       if (attendee) {
-        attendee.savedBusinessCards = (attendee.savedBusinessCards || []).filter(id => id !== vendorId);
+        attendee.savedBusinessCards = (attendee.savedBusinessCards || []).filter(id => !removeSet.has(id));
         if (attendee.id && state.savedVendorsByAttendee[attendee.id]) {
-          state.savedVendorsByAttendee[attendee.id] = state.savedVendorsByAttendee[attendee.id].filter(id => id !== vendorId);
+          state.savedVendorsByAttendee[attendee.id] = state.savedVendorsByAttendee[attendee.id].filter(id => !removeSet.has(id));
         }
       }
       
       // Remove from Firestore
       if (attendee?.id) {
         const { removeSavedVendor } = await import("../firebase.js");
-        await removeSavedVendor(attendee.id, vendorId);
+        for (const id of idsToRemove) {
+          await removeSavedVendor(attendee.id, id);
+        }
       }
       
       Toast("Vendor removed from saved list");

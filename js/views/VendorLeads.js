@@ -1,6 +1,7 @@
-import { getState, leadsForVendor } from "../store.js";
+import { getState } from "../store.js";
 import { formatDate } from "../utils/format.js";
-import { EmptyLeads, SkeletonCard } from "../utils/skeleton.js";
+import { EmptyLeads, SkeletonVendorRow } from "../utils/skeleton.js";
+import { findVendorByAnyId, vendorSourceIds, mergeDuplicateVendors } from "../utils/vendorMerge.js";
 
 export default async function VendorLeads(root) {
   const state = getState();
@@ -10,13 +11,13 @@ export default async function VendorLeads(root) {
     <div class="container-glass fade-in">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl md:text-3xl font-bold text-glass">My Leads</h1>
+          <h1 class="text-2xl md:text-3xl font-bold text-glass">Leads & Collected Cards</h1>
           <p class="text-glass-secondary text-sm">Loading...</p>
         </div>
       </div>
-      ${SkeletonCard()}
-      ${SkeletonCard()}
-      ${SkeletonCard()}
+      ${SkeletonVendorRow()}
+      ${SkeletonVendorRow()}
+      ${SkeletonVendorRow()}
     </div>
   `;
   
@@ -26,14 +27,14 @@ export default async function VendorLeads(root) {
   
   // Method 1: Check vendorLoginId (legacy vendor login flow)
   if (state.vendorLoginId && state.vendors) {
-    vendor = state.vendors.find(v => v.id === state.vendorLoginId);
-    vendorId = state.vendorLoginId;
+    vendor = findVendorByAnyId(state.vendors || [], state.vendorLoginId);
+    vendorId = vendor?.id || state.vendorLoginId;
   }
   
   // Method 2: Check myVendor
   if (!vendor && state.myVendor) {
-    vendor = state.myVendor;
-    vendorId = state.myVendor.id;
+    vendor = findVendorByAnyId(state.vendors || [], state.myVendor.id) || state.myVendor;
+    vendorId = vendor?.id || state.myVendor.id;
   }
   
   // Method 3: Query Firestore by ownerUid
@@ -48,8 +49,10 @@ export default async function VendorLeads(root) {
       const snapshot = await getDocs(q);
       
       if (!snapshot.empty) {
-        vendor = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
-        vendorId = vendor.id;
+        const ownedVendors = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const merged = mergeDuplicateVendors(ownedVendors);
+        vendor = merged.vendors[0] || ownedVendors[0] || null;
+        vendorId = vendor?.id || null;
       }
     } catch (error) {
       console.error('Error loading vendor:', error);
@@ -77,6 +80,7 @@ export default async function VendorLeads(root) {
   // Load leads from Firestore with full attendee data
   let leads = [];
   let attendeeMap = {};
+  const sourceVendorIds = vendor ? vendorSourceIds(vendor) : (vendorId ? [vendorId] : []);
   
   try {
     const { getDb, getLeadsForVendor } = await import("../firebase.js");
@@ -84,20 +88,53 @@ export default async function VendorLeads(root) {
     const { collection, query, where, getDocs, doc, getDoc } = await import("https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js");
     
     // Fetch leads from Firestore
-    const leadsData = await getLeadsForVendor(vendorId, 100);
-    leads = leadsData.map(l => ({
+    const remoteBuckets = await Promise.all(
+      sourceVendorIds.map((id) =>
+        getLeadsForVendor(id, 200, {
+          // Vendor leads view has no show switcher; include all shows to avoid "missing leads" when show context differs.
+          showId: null,
+          includeLegacyVendorField: true
+        }).catch(() => [])
+      )
+    );
+    const remoteLeads = remoteBuckets.flat().map(l => ({
       id: l.id,
-      attendee_id: l.attendeeId,
-      vendor_id: l.vendorId,
+      attendee_id: l.attendeeId || l.attendee_id || '',
+      vendor_id: l.vendorId || l.vendor_id || '',
       timestamp: l.timestamp || (l.createdAt?.seconds ? l.createdAt.seconds * 1000 : Date.now()),
+      exchangeMethod: l.exchangeMethod || l.exchange_method || 'card_share',
+      emailSent: l.emailSent || l.email_sent || false,
+      cardShared: l.cardShared || l.card_shared || false,
+      notes: l.notes || '',
+      attendeeName: l.attendeeName || l.name || '',
+      attendeeEmail: l.attendeeEmail || l.email || '',
+      attendeePhone: l.attendeePhone || l.phone || ''
+    }));
+
+    // Merge with local leads so recently captured/test leads still appear
+    // even if Firestore query filtering returns an empty set.
+    const localLeads = (state.leads || [])
+      .filter((l) => sourceVendorIds.includes(l.vendor_id))
+      .map(l => ({
+      id: l.id,
+      attendee_id: l.attendee_id,
+      vendor_id: l.vendor_id,
+      timestamp: l.timestamp || Date.now(),
       exchangeMethod: l.exchangeMethod || 'card_share',
-      emailSent: l.emailSent || false,
-      cardShared: l.cardShared || false,
+      emailSent: !!l.emailSent,
+      cardShared: !!l.cardShared,
       notes: l.notes || '',
       attendeeName: l.attendeeName || '',
       attendeeEmail: l.attendeeEmail || '',
       attendeePhone: l.attendeePhone || ''
     }));
+
+    const mergedById = new Map();
+    [...localLeads, ...remoteLeads].forEach((lead) => {
+      if (!lead || !lead.id) return;
+      mergedById.set(lead.id, lead);
+    });
+    leads = Array.from(mergedById.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
     
     // Fetch attendee details for each lead
     const attendeeIds = [...new Set(leads.map(l => l.attendee_id).filter(Boolean))];
@@ -114,7 +151,7 @@ export default async function VendorLeads(root) {
   } catch (error) {
     console.error('Error loading leads:', error);
     // Fall back to local state leads
-    leads = leadsForVendor(vendorId);
+    leads = (state.leads || []).filter((l) => sourceVendorIds.includes(l.vendor_id));
   }
   
   // Helper function to get display name for a lead
@@ -149,10 +186,21 @@ export default async function VendorLeads(root) {
         <ion-icon name="arrow-back-outline"></ion-icon>
         <span>Back to Dashboard</span>
       </button>
+
+      <div class="glass-card p-3 mb-4">
+        <div class="grid grid-cols-2 gap-2">
+          <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/my-card'">
+            <ion-icon name="card-outline" class="mr-1"></ion-icon>My Card
+          </button>
+          <button class="glass-button p-2.5 text-xs touch-target" onclick="window.location.hash='/edit-vendor'">
+            <ion-icon name="create-outline" class="mr-1"></ion-icon>Edit Profile
+          </button>
+        </div>
+      </div>
       
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl md:text-3xl font-bold text-glass">My Leads</h1>
+          <h1 class="text-2xl md:text-3xl font-bold text-glass">Leads & Collected Cards</h1>
           <p class="text-glass-secondary text-sm">${vendor?.name || "Vendor"}</p>
         </div>
         ${leads.length ? `
@@ -191,7 +239,10 @@ export default async function VendorLeads(root) {
             </div>
           `}).join("")}
         </div>
-      ` : EmptyLeads()}
+      ` : `
+        ${EmptyLeads()}
+        <div class="text-center text-xs text-glass-secondary -mt-6 mb-2">No leads generated yet.</div>
+      `}
     </div>
   `;
   

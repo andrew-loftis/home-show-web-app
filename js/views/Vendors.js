@@ -23,6 +23,12 @@ export default function Vendors(root) {
     );
   };
 
+  const getVendorAvatarUrl = (vendor) => {
+    const profileImage = String(vendor?.profile?.profileImage || '').trim();
+    const logoUrl = String(vendor?.logoUrl || '').trim();
+    return profileImage || logoUrl || '';
+  };
+
   function renderSkeleton() {
     root.innerHTML = `
       <div class="fade-in min-h-screen">
@@ -131,7 +137,7 @@ export default function Vendors(root) {
         ${list.map(v => `
           <div class="glass-card">
             <div class="flex items-center gap-4 p-3 cursor-pointer vendor-row touch-target" data-id="${v.id}">
-              ${logoImg(v.logoUrl, 'storefront-outline', 'w-10 h-10')}
+              ${logoImg(getVendorAvatarUrl(v), 'storefront-outline', 'w-10 h-10')}
               <div class="flex-1 min-w-0">
                 <div class="font-semibold truncate">${v.name}</div>
                 <div class="text-xs text-glass-secondary">${v.category} ${v.booth ? `• Booth ${v.booth}` : ''}</div>
@@ -157,12 +163,13 @@ export default function Vendors(root) {
   const renderVendorCard = (vendor) => {
     const profile = vendor.profile || {};
     const selectedSocials = profile.selectedSocials || [];
+    const avatarUrl = getVendorAvatarUrl(vendor);
     return `
       <div class="glass-card overflow-hidden slide-up border border-white/10">
         <!-- Header - compact -->
         <div class="flex items-center gap-3 p-4 border-b border-white/10">
           <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-white/15 to-white/5 border border-white/15 flex items-center justify-center overflow-hidden flex-shrink-0">
-            ${vendor.logoUrl ? '<img src="' + vendor.logoUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-lg"></ion-icon>'}
+            ${avatarUrl ? '<img src="' + avatarUrl + '" class="w-full h-full object-cover lazy-img" loading="lazy" onerror="this.style.display=\'none\'">' : '<ion-icon name="business-outline" class="text-white text-lg"></ion-icon>'}
           </div>
           <div class="flex-1 min-w-0">
             <h3 class="text-base font-bold text-glass truncate">${vendor.name}</h3>

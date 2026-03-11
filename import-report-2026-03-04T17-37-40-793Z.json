@@ -1,0 +1,869 @@
+{
+  "startedAt": "2026-03-04T17:35:32.725Z",
+  "filePath": "c:\\Users\\aloft\\Downloads\\Putnam County Spring Home Show 2026-Exhibitors (Cookeville,TN) (6).csv",
+  "totalParsed": 70,
+  "totalProcessed": 70,
+  "showId": "putnam-spring-2026",
+  "showName": "WinnPro Spring Home Show",
+  "dryRun": false,
+  "sendReset": true,
+  "resendExistingReset": true,
+  "sendContractReminders": true,
+  "autoApprove": true,
+  "created": 60,
+  "existing": 10,
+  "skippedDuplicateInput": 0,
+  "failed": 70,
+  "authUsersCreated": 54,
+  "existingSignedIn": 1,
+  "existingNotSignedIn": 9,
+  "resetEmailsSent": 0,
+  "resetEmailsSentNew": 0,
+  "resetEmailsSentExisting": 0,
+  "contractRemindersSent": 0,
+  "contractRemindersSentNew": 0,
+  "contractRemindersSentExisting": 0,
+  "details": [
+    {
+      "row": 1,
+      "name": "A Cut Above Roofing",
+      "email": "acutaboveroofing@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "yFN42br8uHQ51orwdr49"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 2,
+      "name": "All American Mattress LLC",
+      "email": "derrick@allamericanmattress.com",
+      "status": "failed",
+      "vendorIds": [
+        "T3bwP30CRpU8RwRSBE1O"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 3,
+      "name": "Allen's land development",
+      "email": "allenslanddevelopment@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "b0hUWeUldgULIaiDNTx4"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 4,
+      "name": "American Home Builders",
+      "email": "gayle.edmiston@yahoo.com",
+      "status": "failed",
+      "vendorIds": [
+        "w8IZHRiZVV3yfa59P9WB"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 5,
+      "name": "American Home Design",
+      "email": "mgoodchild@americanhomedesign.com",
+      "status": "failed",
+      "vendorIds": [
+        "oE3t3cNmkk8dC90vatLF"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 6,
+      "name": "America's Home Place",
+      "email": "jbrezeale@americashomeplace.com",
+      "status": "failed",
+      "vendorIds": [
+        "R6i3bfnIfy1Yjsz0u1BP"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 7,
+      "name": "Aqua Pools",
+      "email": "sales@aquapoolsllc.com",
+      "status": "failed",
+      "vendorIds": [
+        "gK5kinTzccFqiqyG1E9S"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 8,
+      "name": "Axen Realty",
+      "email": "canglin@axenrealty.com",
+      "status": "failed",
+      "vendorIds": [
+        "ZLmIdWTrlg8tu8HYHfk9"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 9,
+      "name": "B&H Storm Shelters",
+      "email": "bandhshelters@yahoo.com",
+      "status": "failed",
+      "vendorIds": [
+        "QN6D1F8ZPjInxVhFV5PP"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 10,
+      "name": "Barrier Waterproofing Systems",
+      "email": "barrieroftn@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "1Yc1z3pkIV5czgUpyPCh"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 11,
+      "name": "Bath Fitter",
+      "email": "marshellia.johnson@bathfitter.com",
+      "status": "failed",
+      "vendorIds": [
+        "JOXDH6ijMeecMwynXpuH"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 12,
+      "name": "Beautiful Homes and Decks",
+      "email": "curbappealoftn@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "zGnXoL89lfca76KqThvP"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 13,
+      "name": "Bruck Contractors LLC",
+      "email": "zeke@bruckcontractors.com",
+      "status": "failed",
+      "vendorIds": [
+        "cZNaTSI37tQHroYQ2cxt"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 14,
+      "name": "Budget Blinds",
+      "email": "itaylor@budgetblinds.com",
+      "status": "failed",
+      "vendorIds": [
+        "aAaGXp6y6ceiG0lMMw6z"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 15,
+      "name": "C & W Mechanical",
+      "email": "lisa@cwmechanicalservices.com",
+      "status": "failed",
+      "vendorIds": [
+        "Wsk1C4oFh0IqS3F4yg6y"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 16,
+      "name": "Campbell Pest Solutions",
+      "email": "russell@campbellpestsolutions.com",
+      "status": "failed",
+      "vendorIds": [
+        "uQ27BgQjWk76hIVL1rsQ"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 17,
+      "name": "Cana Event Backdrops",
+      "email": "canaeventbackdrops@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "Vc9NqJibNl2TeY01Lk3g"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 18,
+      "name": "Clinic Shape",
+      "email": "nathaliaskincare@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "QcTr9yrxaep7Kw1NZetz"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 19,
+      "name": "Craft Body Scan",
+      "email": "rick@crafthealth.com",
+      "status": "failed",
+      "vendorIds": [
+        "nLs2EhDAsuj7eiMSucwR"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 20,
+      "name": "Creative Log Cabins",
+      "email": "vwinneccs@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "L0mwFI9tMcyv0wyqKIcn"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 21,
+      "name": "Cumberland Cleaning Company",
+      "email": "mail@cumberlandcleaning.com",
+      "status": "failed",
+      "vendorIds": [
+        "OhzhHjmf6tcvG8og6Noc"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 22,
+      "name": "Custom Bath & Shower",
+      "email": "pat@custombathandshower.com",
+      "status": "failed",
+      "vendorIds": [
+        "hsPq9qYJcTYWqTffqJTx"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 23,
+      "name": "Cutco",
+      "email": "events@cutco.com",
+      "status": "failed",
+      "vendorIds": [
+        "6qIS5NuPHacrpjbxEVze"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 24,
+      "name": "Erie Home",
+      "email": "erieevents@leafhome.com",
+      "status": "failed",
+      "vendorIds": [
+        "zMcdaybWAtZeh7qhTBnX"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 25,
+      "name": "FLOWSHIELD GUTTER PROTECTION",
+      "email": "rob@tnshield.com",
+      "status": "failed",
+      "vendorIds": [
+        "srWLNO2UiEnRu4SU7RZT"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 26,
+      "name": "Garage Force of Nashville",
+      "email": "wwatson@garageforce.com",
+      "status": "failed",
+      "vendorIds": [
+        "WvtsWuQa5T1Vou6hgNgU"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 27,
+      "name": "H20 Waterbiz southeast LLC",
+      "email": "dennis@h20waterbiz.com",
+      "status": "failed",
+      "vendorIds": [
+        "2WWObrzOgRIcYNmwyMqa"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 28,
+      "name": "Historic Granville",
+      "email": "granvilletnoffice@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "PZMMjq31RAc1ioc9w1lt"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 29,
+      "name": "HOMEstretch",
+      "email": "james.blair@home-stretch.com",
+      "status": "failed",
+      "vendorIds": [
+        "apAgy08sYhZPFIhFKThg"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 30,
+      "name": "House of KnA LLC",
+      "email": "aloft2@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "uCoSSnyF9GvmqT2qtRgx"
+      ],
+      "hasSignedIn": true,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 31,
+      "name": "Improveit Home Remodeling",
+      "email": "ihrshowmanager@improveitusa.com",
+      "status": "failed",
+      "vendorIds": [
+        "bEbsh4rxpyWvINpizu1y"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 32,
+      "name": "Innovative Home Services",
+      "email": "moriah@irtn.co",
+      "status": "failed",
+      "vendorIds": [
+        "Xpm05ItcTHvQbTEcVAO7"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 33,
+      "name": "Integrity Metal Sales & Lumber",
+      "email": "ims@ibyfax.com",
+      "status": "failed",
+      "vendorIds": [
+        "4EqMFW6V5MUFCxj6p8To"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 34,
+      "name": "Karen's Cleaning Service",
+      "email": "kpresley1@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "RqjGkRuFzZ26Zpq1rURd"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 35,
+      "name": "LeafFilter Gutter Protection",
+      "email": "events@leaffilter.com",
+      "status": "failed",
+      "vendorIds": [
+        "cDEZUYEbzUOOjmlLox6M"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 36,
+      "name": "Leafguard",
+      "email": "kschwarz@leafguard.com",
+      "status": "failed",
+      "vendorIds": [
+        "pBfEOZiuTjhoZcUQBdYL"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 37,
+      "name": "LeafHome Bath",
+      "email": "events@leafhomeenhancements.com",
+      "status": "failed",
+      "vendorIds": [
+        "37UfUePjPZaaA2SpndxQ"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 38,
+      "name": "LeafX of TN",
+      "email": "tjholland1.th@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "UdRwtcOa226dWzqifnLV"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 39,
+      "name": "Middle Tennessee Cleaners",
+      "email": "mike@middletennesseecleaners.com",
+      "status": "failed",
+      "vendorIds": [
+        "3BBxMRqHturfaui2sXBU"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 40,
+      "name": "Modern Development",
+      "email": "jaden@moderndevelopment.co",
+      "status": "failed",
+      "vendorIds": [
+        "rxYfhc6kNSZNknzuIE6R"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 41,
+      "name": "NXT Generation Painting, LLC",
+      "email": "jasonbo1462@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "HdTSX4zTnZWTyK8lRcbN"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 42,
+      "name": "Olympic Air LLC",
+      "email": "allison@meetinthemiddle.club",
+      "status": "failed",
+      "vendorIds": [
+        "WoAfjFfxfWSLak4eD0lR"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 43,
+      "name": "Passanante's Home Food Services",
+      "email": "jenna@homefoodservices.com",
+      "status": "failed",
+      "vendorIds": [
+        "2aNyvJ8sSf8FjrSZShp0"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 44,
+      "name": "Patio Enclosures",
+      "email": "shanautica.sales@greatdayimprovements.com",
+      "status": "failed",
+      "vendorIds": [
+        "6KQuSbF6SiiosCnc7AO1"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 45,
+      "name": "Patriot Contractors, LLC",
+      "email": "joe.patriotcontractors@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "9uvpD8REijb5jchdqrLk"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 46,
+      "name": "Pella Windows and Doors",
+      "email": "events@pelladirect.com",
+      "status": "failed",
+      "vendorIds": [
+        "PIGSWL7x0sN1KZ7PRRGe"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 47,
+      "name": "Putnam County Tree Service",
+      "email": "putnamcountytreeservice@yahoo.com",
+      "status": "failed",
+      "vendorIds": [
+        "Oww07z5rsYOAPuSRZITC"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 48,
+      "name": "Putnam Plumbing",
+      "email": "garry@putnamplumbing.com",
+      "status": "failed",
+      "vendorIds": [
+        "HciFosSqcQttkzWLDdaj"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 49,
+      "name": "Renewal by Andersen",
+      "email": "nashevents@windowsbyrba.com",
+      "status": "failed",
+      "vendorIds": [
+        "FDtHlbDubGta5VukMK0I"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 50,
+      "name": "Roberts Excavation LLC",
+      "email": "robertsexcavationllc@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "wV8H2NXCS1JGYEELuiMM"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 51,
+      "name": "Rolling Thunder Carts",
+      "email": "admin@rollingthundercarts.com",
+      "status": "failed",
+      "vendorIds": [
+        "zD1qCd9UIcrI6Up3NqD1"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 52,
+      "name": "SAY HEATING AND COOLING",
+      "email": "sayheatingandcooling@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "0KN6K4hZ7j5MZNQ2lJBS"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 53,
+      "name": "Selk Solutions",
+      "email": "amber@selksolutions.com",
+      "status": "failed",
+      "vendorIds": [
+        "sBUzzxo7ptnTxnYNqRsB"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 54,
+      "name": "Southern Showers",
+      "email": "events@southernshowers.com",
+      "status": "failed",
+      "vendorIds": [
+        "H3YFJemEIaUb4R0JFFUN"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 55,
+      "name": "Sullivan Walter Homes",
+      "email": "heather@sullivanwalter.com",
+      "status": "failed",
+      "vendorIds": [
+        "LmeqlDaTI1NALTfOxecZ"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 56,
+      "name": "SUPERIOR SLEEP",
+      "email": "patrice@supsleep.com",
+      "status": "failed",
+      "vendorIds": [
+        "PrUiHOICyHXNyLykxBt5"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 57,
+      "name": "The Crawlspace Kings",
+      "email": "contact@thecrawlspacekings.com",
+      "status": "failed",
+      "vendorIds": [
+        "NjEQrD4j41jVwcvdcyNl"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 58,
+      "name": "T-Mobile",
+      "email": "thomas.surratt1@t-mobile.com",
+      "status": "failed",
+      "vendorIds": [
+        "3uKLJzUmLGd1eixPSwkj"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 59,
+      "name": "True Metal Supply",
+      "email": "shannon@truemetalsupply.com",
+      "status": "failed",
+      "vendorIds": [
+        "BhDy1dRhg9YFDQh9atBk"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 60,
+      "name": "Two Men and a Truck",
+      "email": "kevin.christensen@twomen.com",
+      "status": "failed",
+      "vendorIds": [
+        "0m8EPoXbR5Ggo73qe9JT"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 61,
+      "name": "TWO MEN AND A TRUCK",
+      "email": "jen.christensen@twomen.com",
+      "status": "failed",
+      "vendorIds": [
+        "wgszuraXIvwQQVzlalV5"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 62,
+      "name": "United Structural Systems (USS)",
+      "email": "marketing@stabledry.com",
+      "status": "failed",
+      "vendorIds": [
+        "DhPBN57AYgprKYN29Kas"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 63,
+      "name": "Upper Cumberland Cabinetry",
+      "email": "design@uccabinetry.com",
+      "status": "failed",
+      "vendorIds": [
+        "uf8JvaD9HgxRRA7v6Dog"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 64,
+      "name": "Upper Cumberland Generators",
+      "email": "ucgenerators@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "WLKXMv8kWUm7KWbDbtKt"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 65,
+      "name": "Upper Cumberland Remodeling LLC",
+      "email": "dunn2676@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "Gyb5trl5g1JbxEI6wi55"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 66,
+      "name": "USA Granite",
+      "email": "help@theusagranite.com",
+      "status": "failed",
+      "vendorIds": [
+        "z21TnmeK6BJz4HnREIgn"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 67,
+      "name": "Willow Window",
+      "email": "931window1@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "htpc5riuYvCJhgoK8VxI"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 68,
+      "name": "Wilson Bank & Trust",
+      "email": "events@wilsonbank.com",
+      "status": "failed",
+      "vendorIds": [
+        "hhzPD48LoM7HadF7FgVg"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 69,
+      "name": "Window Depot & Bath Team",
+      "email": "ashlyn.windowdepot@gmail.com",
+      "status": "failed",
+      "vendorIds": [
+        "N1VinlN8AR4PwGGN2LXb"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    },
+    {
+      "row": 70,
+      "name": "Window Nation",
+      "email": "bredding@windownation.com",
+      "status": "failed",
+      "vendorIds": [
+        "k6Np2eODi6UyiJKORa5h"
+      ],
+      "hasSignedIn": false,
+      "actions": [],
+      "error": "Missing Authorization header"
+    }
+  ],
+  "completedAt": "2026-03-04T17:37:40.793Z"
+}

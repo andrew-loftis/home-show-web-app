@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test MyCard Import</title>
+</head>
+<body>
+  <h1>Testing MyCard.js Import</h1>
+  <div id="result"></div>
+  
+  <script type="module">
+    const resultDiv = document.getElementById('result');
+    try {
+      const mod = await import('./js/views/MyCard.js');
+      resultDiv.innerHTML = '<p style="color: green;">✓ Import successful! MyCard module loaded.</p>';
+      console.log('MyCard module:', mod);
+    } catch (e) {
+      resultDiv.innerHTML = `<p style="color: red;">✗ Import failed:</p><pre>${e.message}\n${e.stack}</pre>`;
+      console.error('Import error:', e);
+    }
+  </script>
+</body>
+</html>

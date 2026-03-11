@@ -6,6 +6,7 @@ import { renderShowSelector, initShowSelector, getCurrentShow, initShows } from 
 
 // Setup global error handlers early
 setupGlobalErrorHandlers();
+const AUTH_RETURN_HASH_KEY = 'winnpro_auth_return_hash';
 
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -15,6 +16,33 @@ async function registerServiceWorker() {
   } catch (e) {
     console.warn('[App] Service worker registration failed:', e);
   }
+}
+
+function setupViewportInsetObserver() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const root = document.documentElement;
+  const vv = window.visualViewport;
+  if (!root || !vv) return;
+
+  const update = () => {
+    try {
+      const rawBottomOffset = Math.max(0, Math.round(window.innerHeight - (vv.height + vv.offsetTop)));
+      // Large offsets are usually keyboard; avoid jumping tab bar too far up.
+      const clampedBottomOffset = rawBottomOffset > 180 ? 0 : rawBottomOffset;
+      root.style.setProperty('--vv-bottom-offset', `${clampedBottomOffset}px`);
+    } catch {
+      root.style.setProperty('--vv-bottom-offset', '0px');
+    }
+  };
+
+  update();
+  vv.addEventListener('resize', update);
+  vv.addEventListener('scroll', update);
+  window.addEventListener('resize', update);
+  window.addEventListener('orientationchange', () => {
+    setTimeout(update, 120);
+    setTimeout(update, 320);
+  });
 }
 
 // Setup foreground push notification listener (non-blocking)
@@ -69,14 +97,31 @@ function renderShell() {
 function renderHeader(state) {
   const header = document.createElement("header");
   header.className = "flex items-center justify-between px-3 py-2 nav-glass shadow-glass fixed top-0 left-0 right-0 z-30 safe-area-inset-top";
-  const roleLabel = state.user ? (state.role ? state.role.charAt(0).toUpperCase() + state.role.slice(1) : 'Select Role') : 'Guest';
+  const isApprovedVendor = !!state.myVendor?.approved;
+  const isPendingVendor = !!state.myVendor && !state.myVendor?.approved;
+  const isAdminVendor = state.isAdmin && isApprovedVendor;
+  const roleLabel = !state.user
+    ? 'Guest'
+    : isAdminVendor
+      ? 'Vendor + Admin'
+      : state.isAdmin
+        ? 'Admin'
+        : isApprovedVendor
+          ? 'Vendor'
+          : isPendingVendor
+            ? 'Vendor (Pending)'
+            : 'Attendee';
   
   // Role badge styling based on role type
-  const roleBadgeClass = state.role === 'admin' 
-    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
-    : state.role === 'vendor' 
-      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-      : 'glass-button';
+  const roleBadgeClass = isAdminVendor
+    ? 'bg-gradient-to-r from-emerald-500 to-amber-500 text-white'
+    : state.isAdmin
+      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' 
+      : isApprovedVendor 
+        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+        : isPendingVendor
+          ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white'
+          : 'glass-button';
   
   header.innerHTML = `
     <div class="flex items-center gap-2">
@@ -102,13 +147,24 @@ function renderTabbar(state) {
   let tabs = [];
   
   if (state.isAdmin) {
-    // Admin: Home, Vendors, Admin Dashboard, Profile
-    tabs = [
-      { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
-      { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
-      { label: "Admin", icon: "shield-checkmark-outline", iconActive: "shield-checkmark", route: "/admin" },
-      { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
-    ];
+    if (state.myVendor?.approved) {
+      // Admin + Approved Vendor: keep vendor tools and add Admin as an extra tab.
+      tabs = [
+        { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+        { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+        { label: "Leads", icon: "people-outline", iconActive: "people", route: "/vendor-leads" },
+        { label: "Admin", icon: "shield-checkmark-outline", iconActive: "shield-checkmark", route: "/admin" },
+        { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+      ];
+    } else {
+      // Admin (no approved vendor): keep direct access to Admin dashboard.
+      tabs = [
+        { label: "Home", icon: "home-outline", iconActive: "home", route: "/home" },
+        { label: "Vendors", icon: "storefront-outline", iconActive: "storefront", route: "/vendors" },
+        { label: "Admin", icon: "shield-checkmark-outline", iconActive: "shield-checkmark", route: "/admin" },
+        { label: "Profile", icon: "person-circle-outline", iconActive: "person-circle", route: "/more" }
+      ];
+    }
   } else if (state.myVendor?.approved) {
     // Approved Vendor: Home, Vendors, Leads, Profile
     tabs = [
@@ -177,6 +233,9 @@ function renderTabbar(state) {
 
 // Coalesce renders to avoid multiple flashes during boot/auth hydration
 let renderQueued = false;
+let adsInitPromise = null;
+let adsInitScheduled = false;
+
 function scheduleRender() {
   if (renderQueued) return;
   renderQueued = true;
@@ -189,25 +248,66 @@ function scheduleRender() {
 
 // Initialize ads system (non-blocking)
 async function initAdsSystem() {
+  if (adsInitPromise) return adsInitPromise;
+
   try {
     const state = getState();
     // Only show ads after onboarding is complete
-    if (!state.hasOnboarded) return;
-    
-    const { initAds } = await import('./utils/ads.js');
-    await initAds();
+    if (!state.hasOnboarded) return null;
+
+    adsInitPromise = (async () => {
+      const { initAds } = await import('./utils/ads.js');
+      await initAds();
+    })();
+
+    await adsInitPromise;
+    return adsInitPromise;
   } catch (e) {
+    // Allow retry on a later state update (e.g., reconnect, auth settle).
+    adsInitPromise = null;
     // Silently fail - ads are optional
     console.log('[App] Ads system not initialized:', e.message);
+    return null;
   }
+}
+
+function queueAdsInit(delayMs = 0) {
+  if (adsInitPromise || adsInitScheduled) return;
+  adsInitScheduled = true;
+  setTimeout(() => {
+    adsInitScheduled = false;
+    initAdsSystem();
+  }, delayMs);
+}
+
+function peekPendingAuthRoute() {
+  try {
+    const route = String(localStorage.getItem(AUTH_RETURN_HASH_KEY) || '').trim();
+    if (!route) return null;
+    return route.startsWith('/') ? route : null;
+  } catch {
+    return null;
+  }
+}
+
+function consumePendingAuthRoute() {
+  const route = peekPendingAuthRoute();
+  if (!route) return null;
+  try { localStorage.removeItem(AUTH_RETURN_HASH_KEY); } catch {}
+  return route;
 }
 
 function boot() {
   console.log('[App] Booting V-3.1...');
+  setupViewportInsetObserver();
+  import('./firebase.js')
+    .then(({ processAuthRedirectResult }) => processAuthRedirectResult?.())
+    .catch(() => {});
+
   hydrateStore();
   // Expose getState globally for some views
   window.getState = getState;
-  
+
   // Initialize shows from Firestore (non-blocking)
   initShows().then(() => {
     console.log('[App] Shows initialized');
@@ -216,7 +316,7 @@ function boot() {
   }).catch(e => {
     console.warn('[App] Shows init failed, using defaults:', e);
   });
-  
+
   // Initialize router; let it render on hash changes
   initRouter(renderShell);
 
@@ -227,14 +327,26 @@ function boot() {
   // On any state change (e.g., theme toggle), coalesce renders
   subscribe(() => {
     scheduleRender();
+    const latest = getState();
+    const pendingAuthRoute = peekPendingAuthRoute();
+    if (pendingAuthRoute && latest.user && !latest.user.isAnonymous && latest.hasOnboarded) {
+      const currentRoute = window.location.hash.replace('#', '') || '/home';
+      if (currentRoute !== pendingAuthRoute) {
+        consumePendingAuthRoute();
+        navigate(pendingAuthRoute);
+        return;
+      }
+      consumePendingAuthRoute();
+    }
+    if (latest.hasOnboarded) queueAdsInit(300);
   });
-  
+
   // Setup foreground push notification listener
   setupNotificationListener();
-  
+
   // Initialize ads system (after a short delay to let app render first)
-  setTimeout(initAdsSystem, 2000);
-  
+  queueAdsInit(2000);
+
   // Listen for notification click messages from service worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
@@ -244,12 +356,19 @@ function boot() {
       }
     });
   }
-  
+
   // Onboarding gate - roles are auto-detected by store.js
   const state = getState();
   const currentHash = window.location.hash;
   console.log('[App] State:', { hasOnboarded: state.hasOnboarded, user: !!state.user, role: state.role, currentHash });
-  
+  const pendingAuthRoute = peekPendingAuthRoute();
+  if (pendingAuthRoute && state.user && !state.user.isAnonymous && state.hasOnboarded) {
+    consumePendingAuthRoute();
+    navigate(pendingAuthRoute);
+    console.log('[App] Restored post-auth route:', pendingAuthRoute);
+    return;
+  }
+
   if (!state.hasOnboarded) {
     navigate("/onboarding");
   } else if (!currentHash || currentHash === '#' || currentHash === '#/') {
@@ -257,7 +376,7 @@ function boot() {
     navigate("/home");
   }
   // Otherwise, stay on current page (hash already set)
-  
+
   console.log('[App] Boot complete');
 }
 

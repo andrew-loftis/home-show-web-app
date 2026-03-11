@@ -10,7 +10,7 @@ const routes = {
   // Backward-compat routes -> unified Vendors
   "/exhibitors": "Vendors",
   "/vendor-gallery": "Vendors",
-  "/map": "Map",
+  "/map": "InteractiveMap",
   "/interactive-map": "InteractiveMap",
   "/cards": "Cards",
   "/my-card": "MyCard",
@@ -21,6 +21,7 @@ const routes = {
   "/share-card/:vendorId": "ShareCard",
   "/vendor-registration": "VendorRegistration",
   "/vendor-dashboard": "VendorDashboard", 
+  "/vendor-contract": "VendorContract",
   "/edit-vendor": "EditVendorProfile",
   "/saved-vendors": "SavedVendors",
   "/business-cards": "SavedBusinessCards",

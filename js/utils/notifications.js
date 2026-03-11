@@ -12,6 +12,17 @@ const getVapidKey = () => window.FCM_VAPID_KEY || localStorage.getItem('fcmVapid
 let messaging = null;
 let currentToken = null;
 
+async function getAuthHeaders() {
+  try {
+    const { getAuth } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js');
+    const token = await getAuth().currentUser?.getIdToken?.();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
+}
+
 /**
  * Check if notifications are supported
  */
@@ -221,9 +232,10 @@ export function getNotificationStatus() {
  */
 export async function sendPushNotification(options) {
   try {
+    const authHeaders = await getAuthHeaders();
     const response = await fetch('/.netlify/functions/send-push', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(options)
     });
 

@@ -8,8 +8,6 @@
  * - Admin-controlled via Firestore
  */
 
-import { closeModal } from './ui.js';
-
 // Ad display state
 let adsLoaded = false;
 let activeAds = [];
@@ -26,25 +24,48 @@ export async function loadAds() {
     const { getDb } = await import('../firebase.js');
     const db = getDb();
     const { collection, getDocs, query, where, orderBy } = await import('https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js');
-    
-    const adsQuery = query(
-      collection(db, 'ads'),
-      where('active', '==', true),
-      orderBy('priority', 'desc')
-    );
-    
-    const snapshot = await getDocs(adsQuery);
+
+    let snapshot;
+    try {
+      const adsQuery = query(
+        collection(db, 'ads'),
+        where('active', '==', true),
+        orderBy('priority', 'desc')
+      );
+      snapshot = await getDocs(adsQuery);
+    } catch (queryError) {
+      const code = String(queryError?.code || '');
+      const message = String(queryError?.message || '').toLowerCase();
+      const missingIndex = code.includes('failed-precondition')
+        || message.includes('requires an index')
+        || message.includes('failed precondition');
+
+      if (!missingIndex) throw queryError;
+
+      console.warn('[Ads] Missing composite index for ads query; retrying without orderBy.');
+      const fallbackQuery = query(
+        collection(db, 'ads'),
+        where('active', '==', true)
+      );
+      snapshot = await getDocs(fallbackQuery);
+    }
+
     activeAds = [];
-    
+
     snapshot.forEach(doc => {
       activeAds.push({ id: doc.id, ...doc.data() });
     });
-    
+
+    // Keep priority ordering even when fallback query is used.
+    activeAds.sort((a, b) => (Number(b.priority) || 0) - (Number(a.priority) || 0));
+
     adsLoaded = true;
     console.log('[Ads] Loaded', activeAds.length, 'active ads');
     return activeAds;
   } catch (error) {
     console.error('[Ads] Failed to load ads:', error);
+    activeAds = [];
+    adsLoaded = false;
     return [];
   }
 }
@@ -57,6 +78,10 @@ export function showAdPopup(ad) {
   
   const root = document.getElementById('modal-root');
   if (!root) return;
+
+  // Ensure only one ad popup is mounted at a time.
+  const existing = document.getElementById('ad-overlay');
+  if (existing) existing.remove();
   
   // Track impression
   trackAdImpression(ad.id);
@@ -104,12 +129,12 @@ export function showAdPopup(ad) {
         ${ad.linkUrl ? `
           <a href="${ad.linkUrl}" target="_blank" rel="noopener" 
              class="brand-bg px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-1"
-             onclick="window.closeAdPopup && window.closeAdPopup()">
+             data-ad-link>
             ${ad.buttonText || 'Learn More'}
             <ion-icon name="open-outline"></ion-icon>
           </a>
         ` : ''}
-        <button class="glass-button px-4 py-2 rounded-lg text-sm" onclick="window.closeAdPopup && window.closeAdPopup()">
+        <button class="glass-button px-4 py-2 rounded-lg text-sm" data-close-ad>
           Close
         </button>
       </div>
@@ -119,24 +144,35 @@ export function showAdPopup(ad) {
   overlay.appendChild(panel);
   root.appendChild(overlay);
   
-  // Global close function
-  window.closeAdPopup = () => {
+  const closeAd = () => {
     const el = document.getElementById('ad-overlay');
     if (el) el.remove();
-    delete window.closeAdPopup;
+    // Only remove our own global reference.
+    if (window.closeAdPopup === closeAd) {
+      delete window.closeAdPopup;
+    }
   };
+
+  // Keep global for backward compatibility with any older inline handlers.
+  window.closeAdPopup = closeAd;
+
+  // Wire CTA and close controls without relying on inline globals.
+  const closeBtn = panel.querySelector('[data-close-ad]');
+  if (closeBtn) closeBtn.addEventListener('click', closeAd);
+  const linkBtn = panel.querySelector('[data-ad-link]');
+  if (linkBtn) linkBtn.addEventListener('click', () => closeAd());
   
   // Close on overlay click
   overlay.onclick = (e) => {
     if (e.target === overlay) {
-      window.closeAdPopup();
+      closeAd();
     }
   };
   
   // Auto-dismiss after duration (if set)
   if (ad.autoDismiss && ad.dismissAfter) {
     setTimeout(() => {
-      if (window.closeAdPopup) window.closeAdPopup();
+      closeAd();
     }, ad.dismissAfter * 1000);
   }
 }

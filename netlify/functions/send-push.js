@@ -10,29 +10,50 @@
  */
 
 // Initialize Firebase Admin
+const { getAdmin, verifyAdmin } = require('./utils/verify-admin');
 let admin = null;
 let messaging = null;
 let db = null;
 
+function getHeader(event, key) {
+  if (!event || !event.headers) return '';
+  const lower = String(key || '').toLowerCase();
+  if (!lower) return '';
+  const headers = event.headers;
+  const direct = headers[lower];
+  if (typeof direct === 'string') return direct;
+  const alt = Object.keys(headers).find((k) => String(k).toLowerCase() === lower);
+  if (alt) return String(headers[alt] || '');
+  return '';
+}
+
+function hasValidInternalKey(event) {
+  const keys = [
+    process.env.INTERNAL_FUNCTIONS_KEY,
+    process.env.STRIPE_WEBHOOK_SECRET
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+  if (!keys.length) return false;
+  const received = String(getHeader(event, 'x-internal-function-key') || '').trim();
+  return !!received && keys.includes(received);
+}
+
+function normalizeAppRoute(path) {
+  const raw = String(path || '').trim();
+  if (!raw) return '/#/home';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('/#/')) return raw;
+  if (raw.startsWith('#/')) return `/${raw}`;
+  if (raw.startsWith('/')) return `/#${raw}`;
+  return `/#/${raw.replace(/^\/+/, '')}`;
+}
+
 async function initFirebase() {
   if (admin && messaging && db) return { messaging, db };
-  
+
   try {
-    const adminModule = await import('firebase-admin');
-    admin = adminModule.default;
-    
-    if (!admin.apps.length) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-      
-      if (serviceAccount.project_id) {
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
-        });
-      } else {
-        throw new Error('Firebase service account not configured');
-      }
-    }
-    
+    admin = getAdmin();
     messaging = admin.messaging();
     db = admin.firestore();
     return { messaging, db };
@@ -53,7 +74,7 @@ const notificationTemplates = {
     tag: 'payment',
     data: {
       type: 'payment_received',
-      url: '/vendor-dashboard',
+      url: '/#/vendor-dashboard',
       ...data
     }
   }),
@@ -66,7 +87,7 @@ const notificationTemplates = {
     tag: 'invoice',
     data: {
       type: 'invoice_sent',
-      url: '/vendor-dashboard',
+      url: '/#/vendor-dashboard',
       invoiceUrl: data.invoiceUrl,
       ...data
     }
@@ -81,7 +102,7 @@ const notificationTemplates = {
     tag: 'vendor-status',
     data: {
       type: 'vendor_approved',
-      url: '/vendor-dashboard',
+      url: '/#/vendor-dashboard',
       ...data
     }
   }),
@@ -94,7 +115,7 @@ const notificationTemplates = {
     tag: 'booth',
     data: {
       type: 'booth_assigned',
-      url: '/map',
+      url: '/#/interactive-map',
       boothNumber: data.boothNumber,
       ...data
     }
@@ -109,7 +130,7 @@ const notificationTemplates = {
     tag: 'lead',
     data: {
       type: 'new_lead',
-      url: '/vendor-leads',
+      url: '/#/vendor-leads',
       leadId: data.leadId,
       ...data
     }
@@ -124,7 +145,7 @@ const notificationTemplates = {
     tag: 'event',
     data: {
       type: 'event_reminder',
-      url: '/schedule',
+      url: '/#/schedule',
       ...data
     }
   }),
@@ -137,7 +158,7 @@ const notificationTemplates = {
     tag: 'schedule',
     data: {
       type: 'schedule_change',
-      url: '/schedule',
+      url: '/#/schedule',
       ...data
     }
   }),
@@ -151,7 +172,7 @@ const notificationTemplates = {
     tag: 'announcement',
     data: {
       type: 'announcement',
-      url: data.url || '/',
+      url: normalizeAppRoute(data.url || '/#/home'),
       ...data
     }
   }),
@@ -165,7 +186,7 @@ const notificationTemplates = {
     tag: data.tag || 'notification',
     data: {
       type: 'custom',
-      url: data.url || '/',
+      url: normalizeAppRoute(data.url || '/#/home'),
       ...data
     }
   })
@@ -276,7 +297,7 @@ async function getTokensByRole(role) {
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Internal-Function-Key',
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
@@ -290,6 +311,18 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
+  }
+
+  // Push sending is admin-only, with internal bypass for trusted server functions.
+  if (!hasValidInternalKey(event)) {
+    const auth = await verifyAdmin(event);
+    if (auth.error) {
+      return {
+        statusCode: auth.status || 403,
+        headers,
+        body: JSON.stringify({ error: auth.error || 'Admin authorization required' })
+      };
+    }
   }
 
   try {
@@ -362,6 +395,8 @@ exports.handler = async (event, context) => {
     // Prepare FCM message
     const { messaging } = await initFirebase();
     
+    const targetRoute = normalizeAppRoute(notification.data?.url || '/#/home');
+    const clickUrl = /^https?:\/\//i.test(targetRoute) ? targetRoute : `${appUrl}${targetRoute}`;
     const message = {
       notification: {
         title: notification.title,
@@ -376,7 +411,7 @@ exports.handler = async (event, context) => {
           requireInteraction: notification.data?.type === 'payment_received' || notification.data?.type === 'invoice_sent'
         },
         fcmOptions: {
-          link: `${appUrl}${notification.data?.url || '/'}`
+          link: clickUrl
         }
       },
       android: {
@@ -407,7 +442,8 @@ exports.handler = async (event, context) => {
       },
       data: {
         ...notification.data,
-        click_action: `${appUrl}${notification.data?.url || '/'}`
+        url: targetRoute,
+        click_action: clickUrl
       }
     };
 

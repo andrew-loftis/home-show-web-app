@@ -11,16 +11,56 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // ADMIN CHECK - uses adminEmails collection for dynamic multi-admin support
-    // Checks if the authenticated user's email has a document in adminEmails
+    function ownerPreservesContractFields() {
+      return request.resource.data.contractSigned == resource.data.contractSigned
+             && request.resource.data.contractSignerName == resource.data.contractSignerName
+             && request.resource.data.contractSignerEmail == resource.data.contractSignerEmail
+             && request.resource.data.contractVersion == resource.data.contractVersion
+             && request.resource.data.contractUrl == resource.data.contractUrl
+             && request.resource.data.contractSignedAt == resource.data.contractSignedAt
+             && request.resource.data.contractSignatureMode == resource.data.contractSignatureMode
+             && request.resource.data.contractSignatureTyped == resource.data.contractSignatureTyped
+             && request.resource.data.contractSignatureImage == resource.data.contractSignatureImage
+             && request.resource.data.contractSignedByUid == resource.data.contractSignedByUid
+             && request.resource.data.contractSignedSource == resource.data.contractSignedSource
+             && request.resource.data.contractConfirmationVendorSentAt == resource.data.contractConfirmationVendorSentAt
+             && request.resource.data.contractConfirmationAdminSentAt == resource.data.contractConfirmationAdminSentAt;
+    }
+
+    function ownerCreatesUnsignedContract() {
+      return request.resource.data.contractSigned != true;
+    }
+
+    function hasAdminDoc(emailId) {
+      return exists(/databases/$(database)/documents/adminEmails/$(emailId))
+             || exists(/databases/$(database)/documents/admin-users/$(emailId))
+             || exists(/databases/$(database)/documents/admin_users/$(emailId));
+    }
+
+    // ADMIN CHECK - supports canonical and legacy admin collections.
     function isAdmin() {
       return isSignedIn()
              && request.auth.token.email != null
-             && exists(/databases/$(database)/documents/adminEmails/$(request.auth.token.email));
+             && (
+               hasAdminDoc(request.auth.token.email)
+               || hasAdminDoc(request.auth.token.email.lower())
+             );
     }
 
-    // Admin registry - only admins can manage, anyone signed in can check membership
+    // Admin registry (canonical) - only admins can manage, anyone signed in can check membership
     match /adminEmails/{emailId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin registry (legacy, hyphen) - same permissions as canonical
+    match /admin-users/{emailId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Admin registry (legacy, underscore) - same permissions as canonical
+    match /admin_users/{emailId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
@@ -29,7 +69,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read, write: if isAdmin(); // Admin can see/edit ALL users
       allow read: if isOwner(uid); // Users can read their own profile
-      allow create: if isSignedIn(); // Anyone can create their profile
+      allow create: if isOwner(uid); // Users can create only their own profile doc
       allow update: if isOwner(uid); // Users can update their own profile
     }
 
@@ -39,17 +79,26 @@ service cloud.firestore {
       // Approved vendors are public (for attendees to see)
       allow read: if resource.data.approved == true;
       // Vendors can read/edit their own profile
-      allow read, update: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && ownerPreservesContractFields();
       // Anyone can create vendor registration
-      allow create: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && ownerCreatesUnsignedContract();
     }
 
     // Attendees collection - ROLE-BASED ACCESS  
     match /attendees/{attendeeId} {
       allow read, write: if isAdmin(); // Admin can see/edit ALL attendees
       // Attendees can only see/edit their own profile
-      allow read, update: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
-      allow create: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.ownerUid == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
     }
 
     // Leads collection - ROLE-BASED ACCESS
@@ -68,14 +117,14 @@ service cloud.firestore {
                   && exists(/databases/$(database)/documents/attendees/$(resource.data.attendeeId))
                   && get(/databases/$(database)/documents/attendees/$(resource.data.attendeeId)).data.ownerUid == request.auth.uid;
       // Signed-in users can create leads
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.createdByUid == request.auth.uid;
     }
 
     // Booth reservations - atomic booth claiming during vendor registration
     match /boothReservations/{reservationId} {
       allow read, write: if isAdmin();
       allow read: if isSignedIn(); // Anyone can check booth availability
-      allow create: if isSignedIn(); // Created atomically in transaction with vendor doc
+      allow create: if isSignedIn() && request.resource.data.vendorOwnerUid == request.auth.uid; // Created atomically in transaction with vendor doc
     }
 
     // Booth layout collection - ADMIN COMPLETE ACCESS
