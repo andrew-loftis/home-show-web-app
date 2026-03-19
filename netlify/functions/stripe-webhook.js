@@ -15,6 +15,7 @@
  * - payment_intent.payment_failed
  * - invoice.paid
  * - invoice.payment_failed
+ * - charge.refunded
  */
 
 const { getStripeContext, getWebhookSecretForAccount } = require('./utils/stripe-context');

@@ -78,7 +78,7 @@ Configure these in **Netlify Dashboard** > **Site Settings** > **Environment Var
 
 #### Stripe Dashboard Setup
 - [ ] Switch from Test mode to Live mode
-- [ ] Add product/pricing (or use dynamic pricing in functions)
+- [ ] No Stripe product/price setup required for this app; pricing is created dynamically by the Netlify functions
 - [ ] **Configure Webhook Endpoint**:
   1. Go to Stripe Dashboard > Developers > Webhooks
   2. Add endpoint: `https://your-site.netlify.app/.netlify/functions/stripe-webhook`
@@ -88,6 +88,7 @@ Configure these in **Netlify Dashboard** > **Site Settings** > **Environment Var
      - `payment_intent.payment_failed`
      - `invoice.paid`
      - `invoice.payment_failed`
+     - `charge.refunded`
   4. Copy the webhook signing secret and set as `STRIPE_WEBHOOK_SECRET` in Netlify
 
 - [ ] Test webhook with Stripe CLI (optional):

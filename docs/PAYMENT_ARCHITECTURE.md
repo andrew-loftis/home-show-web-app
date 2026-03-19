@@ -345,12 +345,18 @@ APP_URL=https://winnpro-shows.app
      - `payment_intent.payment_failed`
      - `invoice.paid`
      - `invoice.payment_failed`
+     - `charge.refunded`
 
-2. **Customer Portal (Optional):**
+2. **API Keys:**
+   - This app uses only the account secret key set in `STRIPE_SECRET_KEY`
+   - No Stripe publishable key is required for the current hosted Checkout flow
+   - No Stripe Product or Price objects need to be pre-created because the functions build Checkout line items and invoice items dynamically
+
+3. **Customer Portal (Optional):**
    - Enable for self-service invoice viewing
    - Configure branding
 
-3. **Tax Settings (If applicable):**
+4. **Tax Settings (If applicable):**
    - Configure tax rates
    - Enable automatic tax collection
 
