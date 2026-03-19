@@ -13,6 +13,18 @@ const { getAdmin } = require('./verify-admin');
 const MASTER_STRIPE_KEY = String(process.env.STRIPE_SECRET_KEY || '').trim();
 const MASTER_WEBHOOK_SECRET = String(process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 
+function withStripeRequestOptions(args = [], requestOptions = {}) {
+  const normalizedOptions = requestOptions && typeof requestOptions === 'object'
+    ? Object.fromEntries(
+        Object.entries(requestOptions).filter(([, value]) => value !== undefined)
+      )
+    : {};
+
+  return Object.keys(normalizedOptions).length > 0
+    ? [...args, normalizedOptions]
+    : args;
+}
+
 async function getVendorData(vendorId) {
   if (!vendorId) return null;
 
@@ -80,5 +92,6 @@ async function getStripeContext(options = {}) {
 module.exports = {
   getStripeContext,
   getWebhookSecretForAccount,
+  withStripeRequestOptions,
 };
 

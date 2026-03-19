@@ -8,7 +8,7 @@
  */
 
 const { verifyAdmin, verifyAuth, getAdmin } = require('./utils/verify-admin');
-const { getStripeContext } = require('./utils/stripe-context');
+const { getStripeContext, withStripeRequestOptions } = require('./utils/stripe-context');
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -50,7 +50,9 @@ exports.handler = async (event, context) => {
       if (adminCheck.error) {
         return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
       }
-      const invoice = await stripe.invoices.retrieve(invoiceId, requestOptions);
+      const invoice = await stripe.invoices.retrieve(
+        ...withStripeRequestOptions([invoiceId], requestOptions)
+      );
       return {
         statusCode: 200,
         headers,
@@ -120,10 +122,17 @@ exports.handler = async (event, context) => {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Vendor email required' }) };
       }
 
-      const customers = await stripe.customers.list({
-        email: emailToUse,
-        limit: 1
-      }, requestOptions);
+      const customers = await stripe.customers.list(
+        ...withStripeRequestOptions(
+          [
+            {
+              email: emailToUse,
+              limit: 1
+            }
+          ],
+          requestOptions
+        )
+      );
 
       if (customers.data.length === 0) {
         return {
@@ -134,10 +143,17 @@ exports.handler = async (event, context) => {
       }
 
       const customer = customers.data[0];
-      const invoices = await stripe.invoices.list({
-        customer: customer.id,
-        limit: limit
-      }, requestOptions);
+      const invoices = await stripe.invoices.list(
+        ...withStripeRequestOptions(
+          [
+            {
+              customer: customer.id,
+              limit: limit
+            }
+          ],
+          requestOptions
+        )
+      );
 
       return {
         statusCode: 200,
@@ -173,10 +189,17 @@ exports.handler = async (event, context) => {
       if (adminCheck.error) {
         return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
       }
-      const invoices = await stripe.invoices.list({
-        limit: limit,
-        expand: ['data.customer']
-      }, requestOptions);
+      const invoices = await stripe.invoices.list(
+        ...withStripeRequestOptions(
+          [
+            {
+              limit: limit,
+              expand: ['data.customer']
+            }
+          ],
+          requestOptions
+        )
+      );
 
       return {
         statusCode: 200,
@@ -210,9 +233,16 @@ exports.handler = async (event, context) => {
       if (adminCheck.error) {
         return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
       }
-      const paymentIntents = await stripe.paymentIntents.list({
-        limit: limit
-      }, requestOptions);
+      const paymentIntents = await stripe.paymentIntents.list(
+        ...withStripeRequestOptions(
+          [
+            {
+              limit: limit
+            }
+          ],
+          requestOptions
+        )
+      );
 
       return {
         statusCode: 200,
@@ -241,9 +271,20 @@ exports.handler = async (event, context) => {
       if (adminCheck.error) {
         return { statusCode: adminCheck.status, headers, body: JSON.stringify({ error: adminCheck.error }) };
       }
-      const balance = await stripe.balance.retrieve({}, requestOptions);
+      const balance = await stripe.balance.retrieve(
+        ...withStripeRequestOptions([{}], requestOptions)
+      );
 
-      const charges = await stripe.charges.list({ limit: 10 }, requestOptions);
+      const charges = await stripe.charges.list(
+        ...withStripeRequestOptions(
+          [
+            {
+              limit: 10
+            }
+          ],
+          requestOptions
+        )
+      );
 
       const recentRevenue = charges.data
         .filter(c => c.status === 'succeeded')

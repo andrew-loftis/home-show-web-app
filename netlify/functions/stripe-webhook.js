@@ -18,7 +18,7 @@
  * - charge.refunded
  */
 
-const { getStripeContext, getWebhookSecretForAccount } = require('./utils/stripe-context');
+const { getStripeContext, getWebhookSecretForAccount, withStripeRequestOptions } = require('./utils/stripe-context');
 const INTERNAL_FUNCTION_KEY = String(process.env.INTERNAL_FUNCTIONS_KEY || process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 
 function internalFunctionHeaders() {
@@ -478,7 +478,9 @@ exports.handler = async (event) => {
         // Handle refunds if needed
         const paymentIntent = charge.payment_intent;
         if (paymentIntent) {
-          const pi = await stripe.paymentIntents.retrieve(paymentIntent, requestOptions);
+          const pi = await stripe.paymentIntents.retrieve(
+            ...withStripeRequestOptions([paymentIntent], requestOptions)
+          );
           const vendorId = pi.metadata?.vendorId;
           
           if (vendorId) {

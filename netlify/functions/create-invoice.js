@@ -1,4 +1,4 @@
-const { getStripeContext } = require('./utils/stripe-context');
+const { getStripeContext, withStripeRequestOptions } = require('./utils/stripe-context');
 const { verifyAdmin } = require('./utils/verify-admin');
 
 exports.handler = async (event, context) => {
@@ -56,27 +56,35 @@ exports.handler = async (event, context) => {
     // Create or get customer
     let customer;
     const existingCustomers = await stripe.customers.list(
-      {
-        email: normalizedEmail,
-        limit: 1,
-      },
-      requestOptions
+      ...withStripeRequestOptions(
+        [
+          {
+            email: normalizedEmail,
+            limit: 1,
+          }
+        ],
+        requestOptions
+      )
     );
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
     } else {
       customer = await stripe.customers.create(
-        {
-          email: normalizedEmail,
-          name: vendorName || 'Vendor',
-          metadata: {
-            vendorId: vendorId || '',
-            showId: showId || '',
-            paymentType: paymentType || 'booth_rental',
-          },
-        },
-        requestOptions
+        ...withStripeRequestOptions(
+          [
+            {
+              email: normalizedEmail,
+              name: vendorName || 'Vendor',
+              metadata: {
+                vendorId: vendorId || '',
+                showId: showId || '',
+                paymentType: paymentType || 'booth_rental',
+              },
+            }
+          ],
+          requestOptions
+        )
       );
     }
 
@@ -84,48 +92,60 @@ exports.handler = async (event, context) => {
     const idempotencyKey = `invoice_${vendorId}_${parsedAmount}_${Date.now()}`;
 
     const invoice = await stripe.invoices.create(
-      {
-      customer: customer.id,
-      collection_method: 'send_invoice',
-      days_until_due: 30,
-      description: description,
-      metadata: {
-        vendorId: vendorId || '',
-        vendorName: vendorName || '',
-        showId: showId || '',
-        paymentType: paymentType || 'booth_rental',
-        createdByAdmin: auth.email,
-      },
-      },
-      {
-        ...requestOptions,
-        idempotencyKey,
-      }
+      ...withStripeRequestOptions(
+        [
+          {
+            customer: customer.id,
+            collection_method: 'send_invoice',
+            days_until_due: 30,
+            description: description,
+            metadata: {
+              vendorId: vendorId || '',
+              vendorName: vendorName || '',
+              showId: showId || '',
+              paymentType: paymentType || 'booth_rental',
+              createdByAdmin: auth.email,
+            },
+          }
+        ],
+        {
+          ...requestOptions,
+          idempotencyKey,
+        }
+      )
     );
 
     // Create invoice item
     await stripe.invoiceItems.create(
-      {
-        customer: customer.id,
-        invoice: invoice.id,
-        amount: parsedAmount,
-        currency: 'usd',
-        description: description,
-        metadata: {
-          vendorId: vendorId || '',
-          showId: showId || '',
-          paymentType: paymentType || 'booth_rental',
-        }
-      },
-      requestOptions
+      ...withStripeRequestOptions(
+        [
+          {
+            customer: customer.id,
+            invoice: invoice.id,
+            amount: parsedAmount,
+            currency: 'usd',
+            description: description,
+            metadata: {
+              vendorId: vendorId || '',
+              showId: showId || '',
+              paymentType: paymentType || 'booth_rental',
+            }
+          }
+        ],
+        requestOptions
+      )
     );
 
     // Finalize and send the invoice
-    const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id, requestOptions);
+    const finalizedInvoice = await stripe.invoices.finalizeInvoice(
+      ...withStripeRequestOptions([invoice.id], requestOptions)
+    );
 
     // Try to send — if this fails, invoice still exists (admin can resend from Stripe dashboard)
     try {
-      await stripe.invoices.sendInvoice(invoice.id, requestOptions);
+      await stripe.invoices.sendInvoice(
+        ...withStripeRequestOptions([invoice.id], requestOptions)
+      );
     } catch (sendErr) {
       console.warn('Invoice created and finalized but send failed:', sendErr.message);
       // Don't fail the whole request — invoice exists, admin can resend

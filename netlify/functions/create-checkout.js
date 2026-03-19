@@ -8,7 +8,7 @@
  */
 
 const { verifyAuth } = require('./utils/verify-admin');
-const { getStripeContext } = require('./utils/stripe-context');
+const { getStripeContext, withStripeRequestOptions } = require('./utils/stripe-context');
 
 // Booth pricing tiers
 const BOOTH_PRICES = {
@@ -97,69 +97,90 @@ exports.handler = async (event, context) => {
 
     // Create or retrieve Stripe customer
     let customer;
-    const existingCustomers = await stripe.customers.list({
-      email: normalizedEmail,
-      limit: 1
-    }, requestOptions);
+    const existingCustomers = await stripe.customers.list(
+      ...withStripeRequestOptions(
+        [
+          {
+            email: normalizedEmail,
+            limit: 1
+          }
+        ],
+        requestOptions
+      )
+    );
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
     } else {
-      customer = await stripe.customers.create({
-        email: normalizedEmail,
-        name: vendorName || 'Vendor',
-        metadata: {
-          vendorId,
-          source: 'winnpro_app'
-        }
-      }, requestOptions);
+      customer = await stripe.customers.create(
+        ...withStripeRequestOptions(
+          [
+            {
+              email: normalizedEmail,
+              name: vendorName || 'Vendor',
+              metadata: {
+                vendorId,
+                source: 'winnpro_app'
+              }
+            }
+          ],
+          requestOptions
+        )
+      );
     }
 
     // Create Checkout Session
-    const session = await stripe.checkout.sessions.create({
-      customer: customer.id,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: productName,
-              description: description,
+    const session = await stripe.checkout.sessions.create(
+      ...withStripeRequestOptions(
+        [
+          {
+            customer: customer.id,
+            payment_method_types: ['card'],
+            line_items: [
+              {
+                price_data: {
+                  currency: 'usd',
+                  product_data: {
+                    name: productName,
+                    description: description,
+                    metadata: {
+                      vendorId,
+                      boothType,
+                      showId: showId || ''
+                    }
+                  },
+                  unit_amount: amount
+                },
+                quantity: 1
+              }
+            ],
+            mode: 'payment',
+            success_url: `${siteUrl}/#/vendor-dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${siteUrl}/#/vendor-dashboard?payment=cancelled`,
+            metadata: {
+              vendorId,
+              vendorEmail,
+              vendorName: vendorName || '',
+              boothType,
+              showId: showId || '',
+              source: 'winnpro_checkout'
+            },
+            payment_intent_data: {
               metadata: {
                 vendorId,
                 boothType,
                 showId: showId || ''
               }
             },
-            unit_amount: amount
-          },
-          quantity: 1
-        }
-      ],
-      mode: 'payment',
-      success_url: `${siteUrl}/#/vendor-dashboard?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${siteUrl}/#/vendor-dashboard?payment=cancelled`,
-      metadata: {
-        vendorId,
-        vendorEmail,
-        vendorName: vendorName || '',
-        boothType,
-        showId: showId || '',
-        source: 'winnpro_checkout'
-      },
-      payment_intent_data: {
-        metadata: {
-          vendorId,
-          boothType,
-          showId: showId || ''
-        }
-      },
-      // Allow promo codes
-      allow_promotion_codes: true,
-      // Collect billing address
-      billing_address_collection: 'required'
-    }, requestOptions);
+            // Allow promo codes
+            allow_promotion_codes: true,
+            // Collect billing address
+            billing_address_collection: 'required'
+          }
+        ],
+        requestOptions
+      )
+    );
 
     return {
       statusCode: 200,
