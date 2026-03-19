@@ -4,8 +4,7 @@
  */
 
 const { verifyAuth, verifyAdmin, getAdmin } = require('./utils/verify-admin');
-
-const ADMIN_COLLECTION_IDS = ['adminEmails', 'admin-users', 'admin_users'];
+const { collectAdminEmails } = require('./utils/admin-email-recipients');
 const VALID_SIGNATURE_MODES = new Set(['draw', 'type']);
 const LEGACY_CONTRACT_PATH = '/assets/contracts/Contracrt.docx';
 const SOURCE_CONTRACT_PATH = '/assets/contracts/Vendor-Contract-Source.docx';
@@ -20,24 +19,6 @@ function normalizeEmail(value) {
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeText(value));
-}
-
-function parseEnvEmailList() {
-  const raw = [
-    process.env.ADMIN_EMAILS,
-    process.env.ADMIN_EMAIL_LIST,
-    process.env.ADMIN_EMAIL,
-    process.env.SUPPORT_EMAIL,
-    process.env.FROM_EMAIL
-  ]
-    .map((v) => String(v || ''))
-    .filter(Boolean)
-    .join(',');
-
-  return raw
-    .split(/[\s,;]+/)
-    .map((v) => normalizeEmail(v))
-    .filter(isValidEmail);
 }
 
 function resolveBaseUrl() {
@@ -69,24 +50,6 @@ function normalizeContractUrl(baseUrl, value) {
   if (raw === LEGACY_CONTRACT_PATH) return joinAppUrl(baseUrl, SOURCE_CONTRACT_PATH);
   if (raw.startsWith('/')) return joinAppUrl(baseUrl, raw);
   return joinAppUrl(baseUrl, `/${raw}`);
-}
-
-async function collectAdminEmails(db) {
-  const emails = new Set(parseEnvEmailList());
-
-  for (const coll of ADMIN_COLLECTION_IDS) {
-    try {
-      const snap = await db.collection(coll).limit(300).get();
-      snap.forEach((docSnap) => {
-        const idEmail = normalizeEmail(docSnap.id);
-        if (isValidEmail(idEmail)) emails.add(idEmail);
-        const rowEmail = normalizeEmail(docSnap.data()?.email);
-        if (isValidEmail(rowEmail)) emails.add(rowEmail);
-      });
-    } catch {}
-  }
-
-  return Array.from(emails);
 }
 
 async function sendTemplateEmailViaFunction({ to, template, data, baseUrl }) {
@@ -272,7 +235,7 @@ exports.handler = async (event) => {
 
     await vendorRef.set(patch, { merge: true });
 
-    const adminEmails = await collectAdminEmails(db);
+    const adminEmails = await collectAdminEmails({ db });
     const vendorEmailShouldSend = isValidEmail(signerEmail);
     const vendorAlreadyNotified = !!vendor.contractConfirmationVendorSentAt;
     const adminAlreadyNotified = !!vendor.contractConfirmationAdminSentAt;

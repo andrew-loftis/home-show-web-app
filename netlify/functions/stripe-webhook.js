@@ -19,6 +19,7 @@
  */
 
 const { getStripeContext, getWebhookSecretForAccount, withStripeRequestOptions } = require('./utils/stripe-context');
+const { collectAdminEmails } = require('./utils/admin-email-recipients');
 const INTERNAL_FUNCTION_KEY = String(process.env.INTERNAL_FUNCTIONS_KEY || process.env.STRIPE_WEBHOOK_SECRET || '').trim();
 
 function internalFunctionHeaders() {
@@ -107,7 +108,7 @@ async function sendPaymentNotificationEmails(paymentData) {
   }
 
   const appUrl = process.env.APP_URL || 'https://winnpro-shows.app';
-  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+  const adminEmails = await collectAdminEmails({ db });
 
   try {
     // 1. Send confirmation email to vendor
